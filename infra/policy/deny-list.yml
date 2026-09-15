@@ -1,0 +1,88 @@
+# FF-13 — the never-create list
+#
+# Resources that bill by EXISTING rather than by being used. A forgotten
+# instance costs nothing overnight; a forgotten gateway costs the programme.
+#
+# This file is data, not code. Adding an entry requires a PR and a reason,
+# and removing one requires an ADR — because removing an entry is a decision
+# to spend money, and the whole cost model (ADR-004) rests on this list.
+#
+# Matching is on the Terraform resource TYPE, with optional attribute
+# conditions. A rule with no conditions denies the type outright.
+
+version: 2
+updated: 2026-09-14
+
+rules:
+
+  # ---------- Azure ----------
+  - type: azurerm_cdn_frontdoor_profile
+    reason: "Front Door bills a fixed monthly base fee whether or not traffic flows"
+    cost_if_forgotten: "~US$35/month, from the minute it exists"
+
+  - type: azurerm_api_management
+    reason: "APIM Developer tier and above bill hourly for the instance"
+    cost_if_forgotten: "~US$50/month Developer; ~US$700/month Standard"
+    allow_when:
+      sku_name: ["Consumption_0"]
+    allow_reason: "Consumption tier bills per call and idles at zero"
+
+  - type: azurerm_key_vault_managed_hardware_security_module
+    reason: "Managed HSM bills per hour per instance with no idle state"
+    cost_if_forgotten: "~US$1,000/month"
+
+  - type: azurerm_fabric_capacity
+    reason: "Fabric capacity bills by capacity unit whether or not queried"
+    cost_if_forgotten: "~US$260/month at F2"
+
+  - type: azurerm_nat_gateway
+    reason: "Bills hourly plus per GB, and is easy to leave behind after a VNet is destroyed"
+    cost_if_forgotten: "~US$32/month"
+
+  # ---------- AWS ----------
+  - type: aws_sagemaker_endpoint
+    reason: "A real-time endpoint bills for the instance continuously. Batch transform does the same work for this programme"
+    cost_if_forgotten: "~US$50/month on the smallest instance"
+
+  - type: aws_kinesis_stream
+    reason: "Provisioned shards bill hourly. Use on-demand, or MSK Serverless, or neither"
+    cost_if_forgotten: "~US$11/month per shard"
+    allow_when:
+      stream_mode_details.stream_mode: ["ON_DEMAND"]
+    allow_reason: "On-demand bills per record with no shard-hour floor"
+
+  - type: aws_nat_gateway
+    reason: "The single most commonly forgotten billable resource in AWS"
+    cost_if_forgotten: "~US$32/month plus data processing"
+
+  - type: aws_db_instance
+    reason: "RDS bills by the hour. The programme's persistent store is local TimescaleDB (ADR-004)"
+    cost_if_forgotten: "~US$15/month at the smallest size"
+
+  - type: aws_redshift_cluster
+    reason: "Bills by node-hour. GCP BigQuery is the warehouse (ADR-001)"
+    cost_if_forgotten: "~US$180/month"
+
+  # ---------- GCP ----------
+  - type: google_sql_database_instance
+    reason: "Cloud SQL bills by the hour even when idle"
+    cost_if_forgotten: "~US$10/month at db-f1-micro"
+
+  - type: google_compute_router_nat
+    reason: "Cloud NAT bills per VM-hour and per GB"
+    cost_if_forgotten: "~US$32/month"
+
+  - type: google_bigtable_instance
+    reason: "Bills per node continuously. BigQuery serves the analytical need"
+    cost_if_forgotten: "~US$480/month per node"
+
+# ---------------------------------------------------------------------------
+# Not on this list, deliberately:
+#
+#   Object storage, Lambda/Functions, BigQuery (on-demand), DynamoDB
+#   (on-demand), Log Analytics at low volume, Secrets Manager.
+#
+#   These bill by USE. Forgetting them costs cents. The list exists to catch
+#   the resources where forgetting costs the budget, and a deny-list that
+#   denies everything gets bypassed within a fortnight.
+# ---------------------------------------------------------------------------

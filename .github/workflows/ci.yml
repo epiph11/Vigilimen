@@ -1,0 +1,112 @@
+# Continuous integration — the fitness functions.
+#
+# An architecture characteristic that is only written down is an aspiration.
+# Everything in this file exists to make one of them fail a build.
+#
+#   FF-01  documentation cut line          governance docs stay <= 2 pages
+#   FF-02  Terraform is formatted and valid
+#   FF-03  no static cloud credential appears anywhere in the tree
+#   FF-05  naming and tagging standard       (ADR-004 — the tag IS the teardown)
+#   FF-06  safety function independence     (ADR-011 — the TRITON constraint)
+#   FF-07  alarm state model                (ISA-18.2 — the manipulable surface)
+#   FF-13  deny-list enforcement            (ADR-004)
+#   FF-14  federation trust scope           (ADR-007)
+#
+# FF-04 onward arrive with the sprints that can first run them. A fitness
+# function written before the thing it measures exists is a stub, and stubs
+# are how a CI pipeline acquires a green tick that means nothing.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+
+  fitness:
+    name: Fitness functions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+
+      # ---------------------------------------------------------------
+      - name: FF-02 — Terraform formatted and valid
+        run: |
+          terraform fmt -check -recursive infra/
+          STACKS=$(find infra/stacks -name '*.tf' -exec dirname {} \; 2>/dev/null | sort -u)
+          if [ -z "$STACKS" ]; then
+            echo "::error::FF-02 found no Terraform stacks under infra/stacks/."
+            echo "::error::A check with nothing to check is not a pass. Either add a stack,"
+            echo "::error::or remove FF-02 until there is one — a vacuous green tick is worse"
+            echo "::error::than a missing one, because it is believed."
+            exit 1
+          fi
+          for d in $STACKS; do
+            echo "validating $d"
+            terraform -chdir="$d" init -backend=false -input=false
+            terraform -chdir="$d" validate
+          done
+
+      # ---------------------------------------------------------------
+      - name: FF-03 — no static cloud credential in the tree
+        run: bash scripts/ff03_no_static_credentials.sh
+
+      # ---------------------------------------------------------------
+      - name: FF-13 — deny-list self-test
+        run: python3 scripts/test_ff13.py
+
+      # ---------------------------------------------------------------
+      - name: FF-06 — the safety function is independent of the control function
+        run: python3 scripts/ff06_safety_independence.py
+
+      # ---------------------------------------------------------------
+      - name: FF-07 — the alarm state model behaves as ISA-18.2 describes
+        run: python3 scripts/ff07_alarm_state_model.py
+
+      # ---------------------------------------------------------------
+      - name: FF-05 — naming and tagging standard (the teardown mechanism)
+        run: bash scripts/ff05_naming_and_tagging.sh
+
+      # ---------------------------------------------------------------
+      - name: FF-14 — federation trust stays scoped to this repository
+        run: bash scripts/ff14_federation_scope.sh
+
+      # ---------------------------------------------------------------
+      - name: FF-01 — governance documents stay under the cut line
+        run: bash scripts/ff01_doc_cut_line.sh
+
+  adr:
+    name: Structural change carries an ADR
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Warn when infra changes without an ADR
+        run: |
+          BASE="${{ github.event.pull_request.base.sha }}"
+          CHANGED=$(git diff --name-only "$BASE" HEAD)
+          TOUCHES_INFRA=$(echo "$CHANGED" | grep -E '^infra/' || true)
+          TOUCHES_ADR=$(echo "$CHANGED"   | grep -E '^docs/adr/' || true)
+
+          if [ -n "$TOUCHES_INFRA" ] && [ -z "$TOUCHES_ADR" ]; then
+            echo "::warning::This PR changes infra/ without touching docs/adr/."
+            echo "::warning::If it makes a structural decision, the ADR belongs in this PR."
+            echo "::warning::If it does not, tick the 'No structural decision here' box and move on."
+          fi
+
+          # Deliberately a warning, not a failure. A gate that fires on every
+          # routine infra change gets disabled within a month, and then it
+          # protects nothing. The PR template carries the real obligation;
+          # this is a reminder at the moment it is easiest to act on.

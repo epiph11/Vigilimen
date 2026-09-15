@@ -1,0 +1,279 @@
+<title>MineDigital360 System Context</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Sans+3:wght@400;600&display=swap">
+
+<style>
+:root{
+  --paper:#E9EEF0; --sheet:#FAFCFD; --sheet-2:#DFE7EB;
+  --ink:#0D1519; --ink-2:#47575F; --ink-3:#78878F;
+  --rule:#C0CDD4; --rule-soft:#D7E0E5;
+  --sys:#14506E; --sys-tint:#D2E2EB;
+  --ot:#1F6B4A; --ot-tint:#D6E8DF;
+  --ext:#8C9CA6; --ext-tint:#EDF1F3;
+  --person:#5E8FAC; --person-tint:#E6EFF4;
+  --alert:#A85B10; --alert-tint:#F6E7D4; --alert-rule:#D9A96E;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --cond:"Barlow Condensed","Arial Narrow",sans-serif;
+  --body:"Source Sans 3",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#0A1115; --sheet:#121C22; --sheet-2:#18242B;
+  --ink:#E6EEF2; --ink-2:#9FB1BA; --ink-3:#6B7E88;
+  --rule:#25333B; --rule-soft:#1B262D;
+  --sys:#6FBBE0; --sys-tint:#173040;
+  --ot:#63BE95; --ot-tint:#13291F;
+  --ext:#5C6C76; --ext-tint:#162026;
+  --person:#4E8199; --person-tint:#15232A;
+  --alert:#D99A4A; --alert-tint:#2A2015; --alert-rule:#6A4E28;
+}}
+:root[data-theme="dark"]{
+  --paper:#0A1115; --sheet:#121C22; --sheet-2:#18242B;
+  --ink:#E6EEF2; --ink-2:#9FB1BA; --ink-3:#6B7E88;
+  --rule:#25333B; --rule-soft:#1B262D;
+  --sys:#6FBBE0; --sys-tint:#173040;
+  --ot:#63BE95; --ot-tint:#13291F;
+  --ext:#5C6C76; --ext-tint:#162026;
+  --person:#4E8199; --person-tint:#15232A;
+  --alert:#D99A4A; --alert-tint:#2A2015; --alert-rule:#6A4E28;
+}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:var(--body);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:18px;padding-block:26px 54px;
+  display:flex;flex-direction:column;gap:22px}
+h1,h2,h3{font-family:var(--cond);margin:0;letter-spacing:.01em;text-wrap:balance}
+.eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.17em;
+  text-transform:uppercase;color:var(--ink-3)}
+
+.tb{background:var(--sheet);border:1px solid var(--rule);
+  display:grid;grid-template-columns:minmax(0,2.1fr) minmax(0,1fr)}
+.tb-main{padding:20px 22px;border-right:1px solid var(--rule)}
+.tb-main h1{font-size:clamp(1.7rem,4.4vw,2.5rem);font-weight:700;line-height:1.04;margin-top:6px}
+.tb-main p{color:var(--ink-2);margin:9px 0 0;max-width:58ch}
+.tb-meta{display:grid;grid-template-columns:1fr 1fr;align-content:start}
+.cell{padding:10px 13px;border-bottom:1px solid var(--rule);border-right:1px solid var(--rule)}
+.cell:nth-child(2n){border-right:0}
+.cell:nth-last-child(-n+2){border-bottom:0}
+.cell dt{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ink-3);margin:0 0 3px}
+.cell dd{margin:0;font-family:var(--cond);font-weight:600;font-size:1.02rem}
+
+figure{margin:0;background:var(--sheet);border:1px solid var(--rule);padding:16px 16px 13px}
+.scroll{overflow-x:auto}
+svg{display:block;max-width:100%;height:auto;min-width:900px}
+figcaption{margin-top:13px;padding-top:11px;border-top:1px solid var(--rule-soft);
+  color:var(--ink-2);font-size:.92rem;max-width:86ch}
+figcaption b{color:var(--ink);font-weight:600}
+
+/* svg classes */
+.bx{stroke-width:2}
+.bx.sys{fill:var(--sys-tint);stroke:var(--sys)}
+.bx.ot{fill:var(--ot-tint);stroke:var(--ot)}
+.bx.per{fill:var(--person-tint);stroke:var(--person)}
+.bx.ext{fill:var(--ext-tint);stroke:var(--ext);stroke-dasharray:5 4}
+.bt{fill:var(--ink);font-family:var(--cond);font-weight:700;font-size:15px}
+.bt.sm{font-size:13.5px}
+.bs{fill:var(--ink-2);font-family:var(--body);font-size:10.5px}
+.tag{font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase}
+.tag.sys{fill:var(--sys)} .tag.ot{fill:var(--ot)}
+.tag.per{fill:var(--person)} .tag.ext{fill:var(--ext)}
+.ln{fill:none;stroke:var(--ink-2);stroke-width:1.6}
+.ln.one{stroke:var(--ot);stroke-width:3.2}
+.ln.dash{stroke-dasharray:5 4}
+.lt{fill:var(--ink-2);font-family:var(--mono);font-size:9px;font-weight:500}
+.lt.one{fill:var(--ot);font-weight:600;font-size:9.5px}
+.blk{stroke:var(--alert);stroke-width:2.4;stroke-linecap:round}
+
+.notes{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);
+  grid-template-columns:repeat(auto-fit,minmax(268px,1fr))}
+.note{background:var(--sheet);padding:18px 19px;display:flex;flex-direction:column;gap:7px}
+.note h3{font-size:1.04rem;font-weight:700}
+.note p{margin:0;font-size:.89rem;color:var(--ink-2)}
+.note em{font-style:normal;font-weight:600;color:var(--ink)}
+.flag{border:1px solid var(--alert-rule);border-left-width:4px;background:var(--alert-tint);
+  padding:15px 18px;display:flex;flex-direction:column;gap:7px}
+.flag h3{font-size:1.04rem;font-weight:700;color:var(--ink)}
+.flag p{margin:0;font-size:.91rem;color:var(--ink-2);max-width:80ch}
+footer{border-top:1px solid var(--rule);padding-top:13px;display:flex;justify-content:space-between;
+  gap:12px;flex-wrap:wrap;font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--ink-3)}
+@media (max-width:740px){.tb{grid-template-columns:1fr}
+  .tb-main{border-right:0;border-bottom:1px solid var(--rule)}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="wrap">
+
+<div class="tb">
+  <div class="tb-main">
+    <div class="eyebrow">C4 Level 1 · System context · Sprint 0</div>
+    <h1>MineDigital360<br>System Context</h1>
+    <p>Who uses the system, what it talks to, and — the point of the drawing — which way control is permitted to flow across the boundary between the plant and everything else.</p>
+  </div>
+  <dl class="tb-meta">
+    <div class="cell"><dt>Drawing</dt><dd>MD360-ARC-002</dd></div>
+    <div class="cell"><dt>Revision</dt><dd>1.0</dd></div>
+    <div class="cell"><dt>Notation</dt><dd>C4 Level 1</dd></div>
+    <div class="cell"><dt>Author</dt><dd>E. Zaré</dd></div>
+    <div class="cell"><dt>Governs</dt><dd>ADR-005</dd></div>
+    <div class="cell"><dt>Gate</dt><dd>M0</dd></div>
+  </dl>
+</div>
+
+<figure>
+<div class="scroll">
+<svg viewBox="0 0 1140 660" role="img" aria-label="C4 level 1 system context for MineDigital360. Four groups of people — control room operator, maintenance technician, planning supervisor and OT security analyst — use the system. The system reads telemetry, alarms and asset state from the mine plant OT environment over a single one-way conduit; a crossed-out return arrow marks that no control flows back. Vendor OEMs reach the plant only through a brokered session in the DMZ. Corporate identity and corporate reporting sit outside the system boundary.">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+    </marker>
+    <marker id="af" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+
+  <!-- ============ PEOPLE ============ -->
+  <rect class="bx per" x="40" y="34" width="228" height="76" rx="3"/>
+  <text class="tag per" x="54" y="53">Person</text>
+  <text class="bt" x="54" y="74">Control room operator</text>
+  <text class="bs" x="54" y="93">Runs the plant. Owns the</text>
+  <text class="bs" x="54" y="106">shutdown decision</text>
+
+  <rect class="bx per" x="290" y="34" width="228" height="76" rx="3"/>
+  <text class="tag per" x="304" y="53">Person</text>
+  <text class="bt" x="304" y="74">Maintenance technician</text>
+  <text class="bs" x="304" y="93">Receives work orders,</text>
+  <text class="bs" x="304" y="106">records what was found</text>
+
+  <rect class="bx per" x="540" y="34" width="228" height="76" rx="3"/>
+  <text class="tag per" x="554" y="53">Person</text>
+  <text class="bt" x="554" y="74">Planning supervisor</text>
+  <text class="bs" x="554" y="93">Schedules work against</text>
+  <text class="bs" x="554" y="106">asset condition</text>
+
+  <rect class="bx per" x="790" y="34" width="228" height="76" rx="3"/>
+  <text class="tag per" x="804" y="53">Person</text>
+  <text class="bt" x="804" y="74">OT security analyst</text>
+  <text class="bs" x="804" y="93">Watches both worlds.</text>
+  <text class="bs" x="804" y="106">Owns the SL-A gap</text>
+
+  <!-- people to system -->
+  <line class="ln" x1="154" y1="112" x2="154" y2="196" marker-end="url(#a)" color="#47575F"/>
+  <line class="ln" x1="404" y1="112" x2="404" y2="196" marker-end="url(#a)" color="#47575F"/>
+  <line class="ln" x1="654" y1="112" x2="654" y2="196" marker-end="url(#a)" color="#47575F"/>
+  <line class="ln" x1="904" y1="112" x2="904" y2="196" marker-end="url(#a)" color="#47575F"/>
+
+  <!-- ============ THE SYSTEM ============ -->
+  <rect class="bx sys" x="40" y="198" width="978" height="146" rx="3"/>
+  <text class="tag sys" x="58" y="219">System under design</text>
+  <text class="bt" x="58" y="243" style="font-size:21px">MineDigital360</text>
+  <text class="bs" x="58" y="264" style="font-size:11.5px">Senses the plant, turns condition into work, and learns from what happened. Three planes, one system.</text>
+
+  <rect class="bx sys" x="58" y="278" width="300" height="50" rx="2" opacity=".55"/>
+  <text class="bt sm" x="72" y="299">AWS · senses</text>
+  <text class="bs" x="72" y="316">ingestion · asset models · time series</text>
+
+  <rect class="bx sys" x="378" y="278" width="300" height="50" rx="2" opacity=".55"/>
+  <text class="bt sm" x="392" y="299">Azure · acts</text>
+  <text class="bs" x="392" y="316">work management · domain · APIs</text>
+
+  <rect class="bx sys" x="698" y="278" width="302" height="50" rx="2" opacity=".55"/>
+  <text class="bt sm" x="712" y="299">GCP · learns</text>
+  <text class="bs" x="712" y="316">warehouse · data products · ML</text>
+
+  <!-- ============ THE BOUNDARY ============ -->
+  <line class="ln dash" x1="24" y1="444" x2="1116" y2="444" color="#78878F" stroke-width="1.3"/>
+  <text class="tag" x="1116" y="436" text-anchor="end" fill="#78878F">Enterprise ↑ · Plant ↓</text>
+
+  <!-- one-way conduit up -->
+  <line class="ln one" x1="300" y1="470" x2="300" y2="348" marker-end="url(#a)" color="#1F6B4A"/>
+  <text class="lt one" x="314" y="374">telemetry · alarms · asset state</text>
+  <text class="lt one" x="314" y="388">ONE WAY · see ADR-005</text>
+
+  <!-- blocked return path -->
+  <line class="ln dash" x1="560" y1="348" x2="560" y2="470" color="#A85B10" stroke="#A85B10" stroke-width="1.6"/>
+  <line class="blk" x1="546" y1="384" x2="574" y2="412"/>
+  <line class="blk" x1="574" y1="384" x2="546" y2="412"/>
+  <text class="lt" x="586" y="392" fill="#A85B10" font-weight="600">no control path</text>
+  <text class="lt" x="586" y="405" fill="#A85B10">by default</text>
+
+  <!-- ============ THE PLANT ============ -->
+  <rect class="bx ot" x="40" y="472" width="560" height="150" rx="3"/>
+  <text class="tag ot" x="58" y="493">External system · simulated</text>
+  <text class="bt" x="58" y="516" style="font-size:17px">Mine plant — OT environment</text>
+  <text class="bs" x="58" y="536">Conveyor · crusher · dewatering · SCADA and HMI · engineering workstation</text>
+
+  <rect class="bx ot" x="58" y="546" width="250" height="60" rx="2"/>
+  <text class="bt sm" x="72" y="566">Control function</text>
+  <text class="bs" x="72" y="583">PLCs · Modbus ·</text>
+  <text class="bs" x="72" y="596">DNP3 · S7comm</text>
+
+  <rect class="bx ot" x="326" y="546" width="256" height="60" rx="2" stroke-dasharray="0" stroke-width="3"/>
+  <text class="bt sm" x="340" y="566">Protective function</text>
+  <text class="bs" x="340" y="583">hardwired · own zone ·</text>
+  <text class="bs" x="340" y="596">no control in its path</text>
+
+  <!-- ============ VENDORS ============ -->
+  <rect class="bx ext" x="636" y="472" width="200" height="150" rx="3"/>
+  <text class="tag ext" x="650" y="493">External · out of scope</text>
+  <text class="bt" x="650" y="515" style="font-size:15px">Vendor OEMs</text>
+  <text class="bs" x="650" y="534">Governor, protection</text>
+  <text class="bs" x="650" y="547">and SCADA suppliers</text>
+  <text class="bs" x="650" y="570">Reach the plant only</text>
+  <text class="bs" x="650" y="583">through a brokered</text>
+  <text class="bs" x="650" y="596">session in the DMZ —</text>
+  <text class="bs" x="650" y="609">never network access</text>
+
+  <line class="ln" x1="634" y1="547" x2="602" y2="547" marker-end="url(#af)" color="#47575F"/>
+
+  <!-- ============ CORPORATE ============ -->
+  <rect class="bx ext" x="866" y="472" width="152" height="70" rx="3"/>
+  <text class="tag ext" x="880" y="491">External</text>
+  <text class="bt sm" x="880" y="511">Corporate identity</text>
+  <text class="bs" x="880" y="529">Entra ID · the spine</text>
+
+  <rect class="bx ext" x="866" y="552" width="152" height="70" rx="3"/>
+  <text class="tag ext" x="880" y="571">External</text>
+  <text class="bt sm" x="880" y="591">Corporate reporting</text>
+  <text class="bs" x="880" y="609">Finance · HSE · board</text>
+
+  <line class="ln dash" x1="942" y1="470" x2="942" y2="348" marker-end="url(#a)" color="#47575F"/>
+  <text class="lt" x="820" y="380">identity federation ·</text>
+  <text class="lt" x="820" y="393">reporting extracts</text>
+</svg>
+</div>
+<figcaption><b>One arrow crosses the plant boundary, and it points up.</b> The system reads telemetry, alarms and asset state; nothing it produces reaches a controller. The crossed line is drawn deliberately — an absent arrow reads as an oversight, while a struck-through one reads as a decision, and this is a decision taken at inception precisely so that the first request for a write path arrives as a change to an architecture rather than as a gap in one. The protective function is drawn inside the plant with a heavier border and no connection to anything above the boundary, because that is the only property of this drawing that can hurt somebody if it is wrong.</figcaption>
+</figure>
+
+<div class="flag">
+  <div class="eyebrow" style="color:var(--alert)">What the crossed arrow costs</div>
+  <h3>The machine-learning plane advises; it does not act</h3>
+  <p>A predictive maintenance model at S19 raises a work order, and a person decides. No closed-loop optimisation, no remote setpoint adjustment from the enterprise plane. That is a weaker demonstration and a better architecture, and it is written into ADR-005 as an accepted capability cost rather than discovered later as a limitation.</p>
+</div>
+
+<div class="notes">
+  <article class="note">
+    <div class="eyebrow">Why the plant is external</div>
+    <h3>The plant is not ours to change</h3>
+    <p>Drawing the OT environment as an <em>external system</em> rather than a component of MineDigital360 is the first architectural statement the diagram makes. The plant existed before the software and will outlive it; the system integrates with it on the plant's terms. A context diagram that swallows the plant produces a programme that assumes it may modify controllers.</p>
+  </article>
+  <article class="note">
+    <div class="eyebrow">Why the vendors are on the drawing</div>
+    <h3>The highest-consequence path is a supplier</h3>
+    <p>Vendor remote access is out of scope as a system and firmly in scope as a risk — in the worked hydro assessment it is <em>the highest-consequence conduit in the plant</em>, because its consequence is the maximum of everything it can reach. Leaving it off the context diagram is how it ends up ungoverned.</p>
+  </article>
+  <article class="note">
+    <div class="eyebrow">Why the analyst is a user</div>
+    <h3>Security is an operating role, not a phase</h3>
+    <p>The OT security analyst appears beside the operator and the planner because the assurance work does not end at handover. They own the <em>SL-A gap</em> — the delta between the security level each zone targets and the level it actually achieves — and that delta is the remediation backlog. It is the loop the whole assurance programme exists to run.</p>
+  </article>
+</div>
+
+<footer>
+  <span>MD360-ARC-002 rev 1.0 · C4 Level 1 · Sprint 0 · Gate M0</span>
+  <span>Simulated plant · worked example · E. Zaré, Sept 2026</span>
+</footer>
+
+</div>

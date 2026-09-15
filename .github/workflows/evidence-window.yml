@@ -1,0 +1,163 @@
+# The evidence window — the only way real cloud is entered.
+#
+# ADR-004: cost control by construction, not by discipline. Infrastructure
+# exists for the length of one workflow run. What survives the run is the
+# evidence, committed to the repo; the infrastructure does not.
+#
+#   dispatch -> OIDC -> plan -> FF-13 -> apply -> evidence -> DESTROY -> sweep
+#
+# The destroy is NOT conditional on success. Every path through this workflow
+# reaches teardown, because a failed apply is exactly the run most likely to
+# leave something behind, and it is also the run where a human is most likely
+# to be looking at an error message rather than at the console.
+
+name: Evidence window
+
+on:
+  workflow_dispatch:
+    inputs:
+      cloud:
+        description: Which cloud to enter
+        required: true
+        type: choice
+        options: [aws, azure, gcp]
+      stack:
+        description: Stack under infra/stacks/ to demonstrate
+        required: true
+        type: string
+      reason:
+        description: What evidence this run is capturing (goes in the record)
+        required: true
+        type: string
+
+permissions:
+  id-token: write        # OIDC. This is the only credential in the system.
+  contents: write        # to commit the evidence back
+
+concurrency:
+  group: evidence-${{ inputs.cloud }}
+  cancel-in-progress: false   # never cancel a run that owns live infrastructure
+
+env:
+  TF_IN_AUTOMATION: "true"
+  STACK_DIR: infra/stacks/${{ inputs.stack }}
+
+jobs:
+  window:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45          # a hung run must not hold infrastructure open
+    steps:
+
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8    # pinned: an unpinned toolchain is an unpinned plan
+
+      # ---- identity: federated, short-lived, no stored secret ----
+
+      - name: Assume AWS role via OIDC
+        if: inputs.cloud == 'aws'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_OIDC_ROLE_ARN }}
+          aws-region: ap-southeast-2
+          role-duration-seconds: 3600
+
+      - name: Authenticate to Azure via OIDC
+        if: inputs.cloud == 'azure'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Authenticate to GCP via Workload Identity Federation
+        if: inputs.cloud == 'gcp'
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+
+      # Note: every credential above is a `vars`, not a `secrets`. There is
+      # nothing secret about a role ARN or a tenant id, and storing them as
+      # secrets would only make them harder to review. ADR-007.
+
+      # ---- plan, and gate the plan ----
+
+      - name: Terraform init
+        run: terraform -chdir="$STACK_DIR" init -input=false
+
+      - name: Terraform plan
+        run: |
+          terraform -chdir="$STACK_DIR" plan -input=false -out=tfplan
+          terraform -chdir="$STACK_DIR" show -json tfplan > plan.json
+
+      - name: FF-13 — deny-list enforcement
+        run: python3 scripts/ff13_denylist.py "$STACK_DIR/plan.json"
+
+      # ---- apply ----
+
+      - name: Terraform apply
+        id: apply
+        run: terraform -chdir="$STACK_DIR" apply -input=false -auto-approve tfplan
+
+      # ---- capture what this run existed to prove ----
+
+      - name: Capture evidence
+        if: always() && steps.apply.outcome != 'skipped'
+        run: |
+          # Directory names are UTC so they sort correctly and never collide
+          # across a daylight-saving boundary. ADR-010.
+          RUN="evidence/${{ inputs.cloud }}/$(date -u +%Y-%m-%dT%H%M%SZ)"
+          mkdir -p "$RUN"
+          STAMP_UTC=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          STAMP_BNE=$(TZ=Australia/Brisbane date '+%d %b %Y %H:%M AEST')
+          cp "$STACK_DIR/plan.json" "$RUN/plan.json" 2>/dev/null || true
+          terraform -chdir="$STACK_DIR" show -json > "$RUN/state.json" 2>/dev/null || true
+          terraform -chdir="$STACK_DIR" output -json > "$RUN/outputs.json" 2>/dev/null || true
+          cat > "$RUN/record.md" <<EOF
+          # Evidence record
+
+          | | |
+          |---|---|
+          | Cloud | ${{ inputs.cloud }} |
+          | Stack | ${{ inputs.stack }} |
+          | Reason | ${{ inputs.reason }} |
+          | Run | ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }} |
+          | Commit | ${{ github.sha }} |
+          | Apply outcome | ${{ steps.apply.outcome }} |
+          | Captured | \`$STAMP_UTC\` — $STAMP_BNE |
+
+          The infrastructure described in \`state.json\` no longer exists.
+          It was destroyed by the same workflow run that created it.
+          EOF
+
+      # ---- teardown: unconditional ----
+
+      - name: Terraform destroy
+        if: always()
+        run: terraform -chdir="$STACK_DIR" destroy -input=false -auto-approve || true
+
+      - name: Sweep anything Terraform did not own
+        if: always()
+        run: bash scripts/sweep.sh "${{ inputs.cloud }}"
+
+      - name: Verify the account is empty
+        if: always()
+        run: bash scripts/verify_empty.sh "${{ inputs.cloud }}"
+
+      - name: Commit the evidence
+        if: always()
+        run: |
+          git config user.name  "evidence-window"
+          git config user.email "noreply@users.noreply.github.com"
+          git add evidence/ 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "evidence: ${{ inputs.cloud }}/${{ inputs.stack }} — ${{ inputs.reason }}"
+          git push || true
+
+      # `|| true` on destroy and sweep is deliberate and is the opposite of
+      # sloppiness: a failure in destroy must not prevent the sweep from
+      # running, and a failure in the sweep must not prevent verify_empty
+      # from reporting. Verification is what actually gates the result, and
+      # it is the step allowed to fail the run.

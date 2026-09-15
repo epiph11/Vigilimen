@@ -1,0 +1,30 @@
+# Line endings.
+#
+# This repository is authored on Windows and its CI runs on ubuntu-latest.
+# A shell script committed with CRLF fails on Linux with the error
+#
+#     /bin/bash^M: bad interpreter: No such file or directory
+#
+# or, more confusingly, `$'\r': command not found` on a line that looks
+# perfectly correct in the editor. It is the single most common first-CI
+# failure for a Windows-authored repository, it costs an afternoon, and it is
+# prevented by four lines.
+
+* text=auto
+
+# Files that MUST be LF regardless of the platform they were written on,
+# because something other than a human reads them.
+*.sh       text eol=lf
+*.yml      text eol=lf
+*.yaml     text eol=lf
+Dockerfile text eol=lf
+*.sql      text eol=lf
+
+# .st files are IEC 61131-3 Structured Text, loaded by the OpenPLC runtime
+# inside a Linux container. Same argument.
+*.st       text eol=lf
+
+# Binary — never touch these.
+*.xlsx     binary
+*.png      binary
+*.pdf      binary

@@ -1,0 +1,194 @@
+# CONV-001 — site in a box.
+#
+#   docker compose up -d
+#   docker compose logs -f gateway
+#
+# Everything here runs on one machine and costs nothing (ADR-004: the
+# persistent spine is local). Nothing in this file touches a cloud account.
+#
+# ─────────────────────────────────────────────────────────────────────────
+#  THE NETWORK LAYOUT IS THE POINT
+#
+#  Three networks, and a container's membership is its zone. This is the
+#  provisional partition from MD360-ARC-006 made real enough to attack:
+#
+#      net_control      PLC, gateway            no route to the outside
+#      net_supervisory  gateway, SCADA, historian
+#      net_safety       SIS ONLY — one member, internal, no gateway
+#
+#  net_safety is declared `internal: true` and has exactly one container on
+#  it. That is not belt-and-braces: the safety controller's independence is
+#  the one property that must survive an adversary already inside the
+#  control network (ADR-011), and a shared bridge would quietly hand it
+#  away while every diagram still showed it separate.
+# ─────────────────────────────────────────────────────────────────────────
+
+name: md360-plant
+
+networks:
+  net_control:
+    driver: bridge
+    internal: true          # no route off the host. The gateway is the only way out.
+  net_supervisory:
+    driver: bridge
+  net_safety:
+    driver: bridge
+    internal: true          # SIS-CONV-001 is alone here, and stays alone.
+
+volumes:
+  historian_data:
+  fuxa_data:
+
+services:
+
+  # ---------------------------------------------------------------------
+  # L1 — the two controllers
+  # ---------------------------------------------------------------------
+
+  plc-control:
+    # PLC-CONV-001. Loads plant/plc-control/conveyor.st through the OpenPLC
+    # web UI on :8080 the first time — the runtime has no headless import.
+    image: openplc/openplc:v3
+    container_name: md360-plc-control
+    hostname: plc-conv-001
+    networks: [net_control]
+    ports:
+      - "127.0.0.1:8081:8080"     # OpenPLC web UI, LOOPBACK ONLY
+      - "127.0.0.1:15020:502"     # Modbus TCP
+    volumes:
+      - ./plc-control:/programs:ro
+    restart: unless-stopped
+
+  plc-safety:
+    # SIS-CONV-001. Same image, separate runtime, separate network, and
+    # NOTHING ELSE ON IT. Its Modbus port is deliberately not published —
+    # there is nobody on net_safety to talk to it, which is the design.
+    image: openplc/openplc:v3
+    container_name: md360-plc-safety
+    hostname: sis-conv-001
+    networks: [net_safety]
+    ports:
+      - "127.0.0.1:8082:8080"     # web UI for loading safety.st, loopback only
+    volumes:
+      - ./plc-safety:/programs:ro
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------
+  # L1.5 — the protocol break
+  # ---------------------------------------------------------------------
+
+  gateway:
+    # The only container on both net_control and net_supervisory. Every
+    # north-south flow passes through it, which is what makes it a conduit
+    # in the 62443 sense rather than "a machine that happens to route".
+    build:
+      # Context is plant/, not plant/gateway/. The gateway imports the
+      # physics and interlock models from ../sim, and a Dockerfile cannot
+      # COPY above its own context. The alternative — a second copy of the
+      # simulation inside gateway/ — is how two models of the same machine
+      # start disagreeing.
+      context: .
+      dockerfile: gateway/Dockerfile
+    container_name: md360-gateway
+    hostname: gateway
+    networks: [net_control, net_supervisory]
+    ports:
+      - "127.0.0.1:14840:4840"    # OPC UA
+    environment:
+      MD360_MODBUS_HOST: plc-conv-001
+      MD360_MODBUS_PORT: "502"
+      TZ: Australia/Brisbane      # display only. Stored values are UTC (ADR-010).
+    depends_on: [plc-control]
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------
+  # L2 / L3 — supervision and history
+  # ---------------------------------------------------------------------
+
+  scada:
+    # FUXA, MIT-licensed. The licence is the decision, not the features —
+    # see ADR-012.
+    image: frangoteam/fuxa:latest
+    container_name: md360-scada
+    hostname: scada
+    networks: [net_supervisory]
+    ports:
+      - "127.0.0.1:1881:1881"
+    volumes:
+      - fuxa_data:/usr/src/app/FUXA/server/_appdata
+      - ./scada/project:/usr/src/app/FUXA/server/_project
+    environment:
+      TZ: Australia/Brisbane
+    restart: unless-stopped
+
+  historian:
+    image: timescale/timescaledb:2.17.2-pg16
+    container_name: md360-historian
+    hostname: historian
+    networks: [net_supervisory]
+    ports:
+      - "127.0.0.1:15432:5432"
+    environment:
+      POSTGRES_DB: md360
+      POSTGRES_USER: md360
+      # Local-only, loopback-bound, no data of any value. A real deployment
+      # takes this from the identity authority (ADR-008). FF-03 permits it
+      # here because it is an environment default in a compose file for a
+      # simulated plant, not a credential in the source tree.
+      POSTGRES_PASSWORD: md360-local-only
+      TZ: UTC                     # the database stores UTC. Always.
+    volumes:
+      - historian_data:/var/lib/postgresql/data
+      - ./historian/schema.sql:/docker-entrypoint-initdb.d/10-schema.sql:ro
+    healthcheck:
+      # pg_isready, and only after the init scripts have run — the entrypoint
+      # starts a temporary server to apply schema.sql, so a naive check goes
+      # green while the tables do not yet exist.
+      test: ["CMD-SHELL", "pg_isready -U md360 -d md360 && psql -U md360 -d md360 -c 'SELECT 1 FROM tag LIMIT 1' >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+  collector:
+    # Reads the gateway over OPC UA at 1 Hz and writes to the historian.
+    # Deliberately a separate container from the gateway: the thing that
+    # PERSISTS data and the thing that BRIDGES protocols fail differently,
+    # and collapsing them means a historian outage takes the plant's
+    # supervision with it.
+    build: ./historian
+    container_name: md360-collector
+    # The gateway is `service_healthy`, not `service_started`. depends_on
+    # without a condition only waits for the container to exist, and a
+    # collector that connects 200 ms before the OPC UA endpoint is listening
+    # spends its first five seconds in the reconnect loop for no reason.
+    hostname: collector
+    networks: [net_supervisory]
+    environment:
+      MD360_OPCUA_URL: opc.tcp://gateway:4840/md360/conv001/
+      MD360_OPCUA_USER: historian
+      MD360_OPCUA_PASSWORD: h1st0r1an-demo
+      MD360_PGDSN: postgresql://md360:md360-local-only@historian:5432/md360
+      TZ: UTC
+    depends_on:
+      gateway:
+        condition: service_healthy
+      historian:
+        condition: service_healthy
+    restart: unless-stopped
+
+# ---------------------------------------------------------------------------
+# WHAT IS DELIBERATELY ABSENT
+#
+#   No engineering workstation. It is a Windows VM and does not belong in
+#   compose — it is brought up separately, which is honest: the asset that
+#   matters most in every real ICS incident is also the one that does not
+#   fit the container model.
+#
+#   No published port on anything except loopback. Every `ports:` entry
+#   binds 127.0.0.1 explicitly. Docker's default binds 0.0.0.0, which
+#   publishes a PLC's Modbus port to the local network and, behind some
+#   router configurations, past it. That default has put real plant on the
+#   internet, and `127.0.0.1:` is four characters.
+# ---------------------------------------------------------------------------

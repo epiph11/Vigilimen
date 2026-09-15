@@ -1,0 +1,75 @@
+# MineDigital360
+
+# ---------------------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# ---------------------------------------------------------------------------
+# Terraform — and the reason each line is here
+# ---------------------------------------------------------------------------
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfplan
+
+# tfstate is excluded because it is the one Terraform artefact that routinely
+# contains SECRETS IN PLAINTEXT — every attribute of every resource, including
+# the ones the provider marks sensitive. A repository with a committed tfstate
+# has published its own credentials, and the commit history keeps them after
+# the file is deleted. This programme has no remote backend yet (ADR-004: the
+# evidence window creates and destroys, so there is nothing long-lived to
+# track), and when it acquires one, the backend is where state belongs.
+
+*.tfvars
+!example.tfvars
+# tfvars carries the variable VALUES — account IDs, subscription GUIDs, org
+# names. The example file is allowed through on purpose so the shape is
+# documented without the contents.
+
+# ---------------------------------------------------------------------------
+# Credentials — belt and braces behind FF-03
+# ---------------------------------------------------------------------------
+*.pem
+*.key
+*.p12
+*.pfx
+.env
+.env.*
+credentials
+*_rsa
+*_ed25519
+
+# FF-03 fails the build on a static credential SHAPE anywhere in the tree.
+# These lines stop such a file being staged in the first place. Neither
+# replaces the other: the ignore list prevents the accident, the fitness
+# function catches the one that gets past it — for example a credential
+# pasted into a .md file, which no ignore pattern would ever cover.
+
+# ---------------------------------------------------------------------------
+# Docker / plant runtime
+# ---------------------------------------------------------------------------
+plant/scada/project/*
+!plant/scada/project/README.md
+# FUXA writes its live project state into this directory. The README is the
+# build instruction and is tracked; the generated project is not, until it is
+# deliberately exported.
+
+# ---------------------------------------------------------------------------
+# Editors and OS
+# ---------------------------------------------------------------------------
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+ehthumbs.db
+$RECYCLE.BIN/
+
+# .DS_Store is deliberately absent — there is no macOS anywhere near this
+# programme, and an ignore file padded with rules for platforms nobody uses
+# is a file nobody reads.

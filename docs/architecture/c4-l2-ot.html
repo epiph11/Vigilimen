@@ -1,0 +1,298 @@
+<title>CONV-001 Container View</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Sans+3:wght@400;600&display=swap">
+
+<style>
+:root{
+  --paper:#E9EEF0; --sheet:#FAFCFD; --sheet-2:#DFE7EB;
+  --ink:#0D1519; --ink-2:#47575F; --ink-3:#78878F;
+  --rule:#C0CDD4; --rule-soft:#D7E0E5;
+  --sys:#14506E; --sys-tint:#D2E2EB;
+  --safe:#1F6B4A; --safe-tint:#D6E8DF;
+  --later:#8C9CA6; --later-tint:#EEF2F4;
+  --alert:#A85B10; --alert-tint:#F6E7D4; --alert-rule:#D9A96E;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --cond:"Barlow Condensed","Arial Narrow",sans-serif;
+  --body:"Source Sans 3",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#0A1115; --sheet:#121C22; --sheet-2:#18242B;
+  --ink:#E6EEF2; --ink-2:#9FB1BA; --ink-3:#6B7E88;
+  --rule:#25333B; --rule-soft:#1B262D;
+  --sys:#6FBBE0; --sys-tint:#173040;
+  --safe:#63BE95; --safe-tint:#13291F;
+  --later:#5C6C76; --later-tint:#141E23;
+  --alert:#D99A4A; --alert-tint:#2A2015; --alert-rule:#6A4E28;
+}}
+:root[data-theme="dark"]{
+  --paper:#0A1115; --sheet:#121C22; --sheet-2:#18242B;
+  --ink:#E6EEF2; --ink-2:#9FB1BA; --ink-3:#6B7E88;
+  --rule:#25333B; --rule-soft:#1B262D;
+  --sys:#6FBBE0; --sys-tint:#173040;
+  --safe:#63BE95; --safe-tint:#13291F;
+  --later:#5C6C76; --later-tint:#141E23;
+  --alert:#D99A4A; --alert-tint:#2A2015; --alert-rule:#6A4E28;
+}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:var(--body);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:18px;padding-block:26px 54px;
+  display:flex;flex-direction:column;gap:22px}
+h1,h2,h3{font-family:var(--cond);margin:0;letter-spacing:.01em;text-wrap:balance}
+.eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.17em;
+  text-transform:uppercase;color:var(--ink-3)}
+
+.tb{background:var(--sheet);border:1px solid var(--rule);
+  display:grid;grid-template-columns:minmax(0,2.1fr) minmax(0,1fr)}
+.tb-main{padding:20px 22px;border-right:1px solid var(--rule)}
+.tb-main h1{font-size:clamp(1.7rem,4.4vw,2.5rem);font-weight:700;line-height:1.04;margin-top:6px}
+.tb-main p{color:var(--ink-2);margin:9px 0 0;max-width:58ch}
+.tb-meta{display:grid;grid-template-columns:1fr 1fr;align-content:start}
+.cell{padding:10px 13px;border-bottom:1px solid var(--rule);border-right:1px solid var(--rule)}
+.cell:nth-child(2n){border-right:0}
+.cell:nth-last-child(-n+2){border-bottom:0}
+.cell dt{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ink-3);margin:0 0 3px}
+.cell dd{margin:0;font-family:var(--cond);font-weight:600;font-size:1.02rem}
+
+figure{margin:0;background:var(--sheet);border:1px solid var(--rule);padding:16px 16px 13px}
+.scroll{overflow-x:auto}
+svg{display:block;max-width:100%;height:auto;min-width:940px}
+figcaption{margin-top:13px;padding-top:11px;border-top:1px solid var(--rule-soft);
+  color:var(--ink-2);font-size:.92rem;max-width:86ch}
+figcaption b{color:var(--ink);font-weight:600}
+
+.bx{stroke-width:2}
+.bx.built{fill:var(--sys-tint);stroke:var(--sys)}
+.bx.safe{fill:var(--safe-tint);stroke:var(--safe);stroke-width:3}
+.bx.later{fill:var(--later-tint);stroke:var(--later);stroke-dasharray:6 4}
+.bx.field{fill:none;stroke:var(--ink-3);stroke-width:1.4}
+.bt{fill:var(--ink);font-family:var(--cond);font-weight:700;font-size:14.5px}
+.bt.sm{font-size:13px}
+.bs{fill:var(--ink-2);font-family:var(--body);font-size:10.5px}
+.tag{font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase}
+.tag.built{fill:var(--sys)} .tag.safe{fill:var(--safe)} .tag.later{fill:var(--later)}
+.band{fill:var(--sheet-2)}
+.band-label{fill:var(--ink-3);font-family:var(--mono);font-size:9.5px;letter-spacing:.09em}
+.ln{fill:none;stroke:var(--ink-2);stroke-width:1.6}
+.ln.safe{stroke:var(--safe);stroke-width:3.4}
+.ln.later{stroke:var(--later);stroke-dasharray:5 4}
+.lt{fill:var(--ink-2);font-family:var(--mono);font-size:9px;font-weight:500}
+.lt.safe{fill:var(--safe);font-weight:600;font-size:9.5px}
+.lt.later{fill:var(--later)}
+.blk{stroke:var(--alert);stroke-width:2.4;stroke-linecap:round}
+
+.notes{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);
+  grid-template-columns:repeat(auto-fit,minmax(268px,1fr))}
+.note{background:var(--sheet);padding:18px 19px;display:flex;flex-direction:column;gap:7px}
+.note h3{font-size:1.04rem;font-weight:700}
+.note p{margin:0;font-size:.89rem;color:var(--ink-2)}
+.note em{font-style:normal;font-weight:600;color:var(--ink)}
+.flag{border:1px solid var(--alert-rule);border-left-width:4px;background:var(--alert-tint);
+  padding:15px 18px;display:flex;flex-direction:column;gap:7px}
+.flag h3{font-size:1.04rem;font-weight:700;color:var(--ink)}
+.flag p{margin:0;font-size:.91rem;color:var(--ink-2);max-width:82ch}
+.reg{border:1px solid var(--rule);background:var(--sheet);overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:600px;font-size:.89rem}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--rule-soft);
+  vertical-align:top;color:var(--ink-2)}
+th{font-family:var(--mono);font-size:9px;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--ink-3);font-weight:500;background:var(--sheet-2);
+  border-bottom:1px solid var(--rule);white-space:nowrap}
+tbody tr:last-child td{border-bottom:0}
+td.id{font-family:var(--mono);font-size:10.5px;color:var(--sys);white-space:nowrap}
+td.nm{color:var(--ink);font-weight:600;font-family:var(--cond);font-size:1.04rem}
+footer{border-top:1px solid var(--rule);padding-top:13px;display:flex;justify-content:space-between;
+  gap:12px;flex-wrap:wrap;font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--ink-3)}
+@media (max-width:740px){.tb{grid-template-columns:1fr}
+  .tb-main{border-right:0;border-bottom:1px solid var(--rule)}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="wrap">
+
+<div class="tb">
+  <div class="tb-main">
+    <div class="eyebrow">C4 Level 2 · Containers · OT environment · Sprint 3</div>
+    <h1>CONV-001<br>Container View</h1>
+    <p>What actually runs inside the plant, on which protocol, and — the reason this drawing is worth a page — which single path to the motor contactor has no network on it at all.</p>
+  </div>
+  <dl class="tb-meta">
+    <div class="cell"><dt>Drawing</dt><dd>MD360-ARC-006</dd></div>
+    <div class="cell"><dt>Revision</dt><dd>1.0</dd></div>
+    <div class="cell"><dt>Notation</dt><dd>C4 Level 2</dd></div>
+    <div class="cell"><dt>Author</dt><dd>E. Zaré</dd></div>
+    <div class="cell"><dt>Governs</dt><dd>ADR-011</dd></div>
+    <div class="cell"><dt>Zones</dt><dd>Provisional</dd></div>
+  </dl>
+</div>
+
+<figure>
+<div class="scroll">
+<svg viewBox="0 0 1180 770" role="img" aria-label="C4 level 2 container view of conveyor CONV-001. The engineering workstation, historian and FUXA SCADA arrive at sprint 4 and are drawn dashed. A gateway exposes the plant on OPC UA northbound and speaks Modbus TCP down to the control PLC. The control PLC and the safety controller both feed the motor contactor, wired in series. The safety controller has no network connection of any kind; its inputs are dual-channel field devices and its output is a hardwired trip.">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+
+  <!-- Purdue bands -->
+  <rect class="band" x="120" y="52" width="1042" height="96"/>
+  <rect class="band" x="120" y="264" width="1042" height="86"/>
+  <rect class="band" x="120" y="580" width="1042" height="160"/>
+  <text class="band-label" x="8" y="104">L3 · PLANT INFO</text>
+  <text class="band-label" x="8" y="200">L2 · SUPERVISORY</text>
+  <text class="band-label" x="8" y="312">L1.5 · GATEWAY</text>
+  <text class="band-label" x="8" y="440">L1 · CONTROL</text>
+  <text class="band-label" x="8" y="660">L0 · FIELD</text>
+
+  <!-- ===== L3 — arrives at S4 ===== -->
+  <rect class="bx later" x="140" y="62" width="250" height="76" rx="3"/>
+  <text class="tag later" x="154" y="81">Container · Sprint 4</text>
+  <text class="bt" x="154" y="101">Engineering workstation</text>
+  <text class="bs" x="154" y="119">Windows VM · PLC toolchain</text>
+  <text class="bs" x="154" y="132">the pivot in every real intrusion</text>
+
+  <rect class="bx later" x="420" y="62" width="230" height="76" rx="3"/>
+  <text class="tag later" x="434" y="81">Container · Sprint 4</text>
+  <text class="bt" x="434" y="101">Historian</text>
+  <text class="bs" x="434" y="119">TimescaleDB · 1 Hz</text>
+  <text class="bs" x="434" y="132">retention + aggregates</text>
+
+  <!-- ===== L2 — arrives at S4 ===== -->
+  <rect class="bx later" x="420" y="172" width="230" height="76" rx="3"/>
+  <text class="tag later" x="434" y="191">Container · Sprint 4</text>
+  <text class="bt" x="434" y="211">SCADA / HMI</text>
+  <text class="bs" x="434" y="229">FUXA (MIT) · mimic</text>
+  <text class="bs" x="434" y="242">alarm surface</text>
+
+  <!-- ===== L1.5 — built ===== -->
+  <rect class="bx built" x="420" y="274" width="410" height="76" rx="3"/>
+  <text class="tag built" x="434" y="293">Container · built and running</text>
+  <text class="bt" x="434" y="313">Protocol gateway</text>
+  <text class="bs" x="434" y="329">OPC UA server northbound · Modbus TCP client down</text>
+  <text class="bs" x="434" y="342">ISA-95 address space</text>
+
+  <!-- ===== L1 — built ===== -->
+  <rect class="bx built" x="140" y="384" width="290" height="96" rx="3"/>
+  <text class="tag built" x="154" y="403">Container · built</text>
+  <text class="bt" x="154" y="423">PLC-CONV-001</text>
+  <text class="bs" x="154" y="441">OpenPLC · conveyor.st</text>
+  <text class="bs" x="154" y="455">sequencing · machine protection</text>
+  <text class="bs" x="154" y="469">Modbus 502 · S7comm 102</text>
+
+  <rect class="bx safe" x="800" y="384" width="290" height="96" rx="3"/>
+  <text class="tag safe" x="814" y="403">Container · built · own runtime</text>
+  <text class="bt" x="814" y="423">SIS-CONV-001</text>
+  <text class="bs" x="814" y="441">OpenPLC · safety.st</text>
+  <text class="bs" x="814" y="455">people protection only</text>
+  <text class="bs" x="814" y="469" style="fill:var(--safe);font-weight:600">NO NETWORK INTERFACE</text>
+
+  <!-- the absent network path, drawn as absent-on-purpose -->
+  <line class="ln later" x1="945" y1="382" x2="945" y2="344" color="#8C9CA6"/>
+  <line class="blk" x1="931" y1="348" x2="959" y2="376"/>
+  <line class="blk" x1="959" y1="348" x2="931" y2="376"/>
+  <text class="lt" x="972" y="358" fill="#A85B10" font-weight="600">no path</text>
+  <text class="lt" x="972" y="371" fill="#A85B10">exists</text>
+
+  <!-- ===== L0 ===== -->
+  <rect class="bx field" x="140" y="592" width="250" height="72" rx="2"/>
+  <text class="tag" x="154" y="610" fill="#78878F">Field · process</text>
+  <text class="bt sm" x="154" y="630">Process transmitters</text>
+  <text class="bs" x="154" y="648">bearing temp · current · speed</text>
+
+  <rect class="bx field" x="800" y="592" width="290" height="72" rx="2"/>
+  <text class="tag safe" x="814" y="610">Field · dual channel</text>
+  <text class="bt sm" x="814" y="630">Safety devices</text>
+  <text class="bs" x="814" y="648">e-stop ×2 · pull-cord ×2 · guard · drift</text>
+
+  <!-- the contactor, and the series connection -->
+  <rect class="bx built" x="470" y="668" width="240" height="60" rx="3"/>
+  <text class="bt sm" x="484" y="690">Motor contactor</text>
+  <text class="bs" x="484" y="708">de-energise to trip</text>
+
+  <circle cx="590" cy="616" r="21" fill="none" stroke="var(--ink-2)" stroke-width="2"/>
+  <text class="bt sm" x="590" y="621" text-anchor="middle">AND</text>
+  <text class="lt" x="622" y="656">series, in copper</text>
+
+  <line class="ln" x1="285" y1="482" x2="285" y2="560" color="#47575F"/>
+  <polyline class="ln" points="285,560 570,560 570,598" marker-end="url(#a)" color="#47575F"/>
+  <text class="lt" x="300" y="552">run request</text>
+
+  <line class="ln safe" x1="945" y1="482" x2="945" y2="540" color="#1F6B4A"/>
+  <polyline class="ln safe" points="945,540 610,540 610,598" marker-end="url(#a)" color="#1F6B4A"/>
+  <text class="lt safe" x="700" y="532">hardwired trip · no software in this path</text>
+
+  <line class="ln" x1="590" y1="638" x2="590" y2="666" marker-end="url(#a)" color="#47575F"/>
+
+  <!-- field wiring -->
+  <line class="ln" x1="265" y1="590" x2="265" y2="482" marker-end="url(#a)" color="#47575F"/>
+  <text class="lt" x="180" y="530">4-20 mA</text>
+  <line class="ln safe" x1="965" y1="590" x2="965" y2="482" marker-end="url(#a)" color="#1F6B4A"/>
+  <text class="lt safe" x="985" y="530">dual channel</text>
+
+  <!-- conduits -->
+  <line class="ln" x1="625" y1="382" x2="625" y2="352" marker-end="url(#a)" color="#47575F"/>
+  <text class="lt" x="637" y="366">Modbus TCP 502 · NO AUTH</text>
+
+  <line class="ln later" x1="535" y1="272" x2="535" y2="250" marker-end="url(#a)" color="#8C9CA6"/>
+  <text class="lt later" x="547" y="266">OPC UA 4840</text>
+
+  <line class="ln later" x1="535" y1="170" x2="535" y2="142" marker-end="url(#a)" color="#8C9CA6"/>
+  <text class="lt later" x="547" y="160">historise</text>
+
+  <line class="ln later" x1="265" y1="140" x2="265" y2="382" marker-end="url(#a)" color="#8C9CA6"/>
+  <text class="lt later" x="277" y="232">S7comm 102</text>
+  <text class="lt later" x="277" y="245">logic download</text>
+  <text class="lt later" x="277" y="258">bypasses the</text>
+  <text class="lt later" x="277" y="271">gateway entirely</text>
+</svg>
+</div>
+<figcaption><b>One path to the contactor has no network on it, and that is the drawing.</b> Every other line here is a protocol someone can reach: Modbus authenticates nothing, S7comm barely, and even the OPC UA hop that does authenticate sits north of the controller and cannot protect it. The safety controller's absent network connection is drawn as a struck-through stub rather than left off, because an absent line reads as an oversight while a struck-through one reads as a decision — and this one was taken at Sprint 3 precisely so that the Sprint 7 partition has a real safety zone to separate rather than a diagram of one.</figcaption>
+</figure>
+
+<div class="flag">
+  <div class="eyebrow" style="color:var(--alert)">Read this before using the zone labels</div>
+  <h3>The zone partition below is provisional, and deliberately so</h3>
+  <p>Zones are drawn from <em>consequence</em>, and consequence is assessed at ZCR 2 — which happens at Sprint 7. Anything assigned now is a working grouping to build against, not a partition. It is written down anyway because a team that waits for the formal assessment before grouping anything builds a flat network and then discovers the partition is a re-cabling exercise. <em>Provisional and recorded beats absent and assumed</em>, provided the word provisional is on the page.</p>
+</div>
+
+<div class="reg">
+  <table>
+    <thead><tr><th>Provisional zone</th><th>Containers</th><th>Why grouped</th><th>Formalised</th></tr></thead>
+    <tbody>
+      <tr><td class="id">PZ-SAFETY</td><td class="nm">SIS-CONV-001 + its field devices</td><td>Its own zone from day one. The one grouping unlikely to change at S7, because the consequence is a person</td><td>S7 · ZCR 3</td></tr>
+      <tr><td class="id">PZ-CONTROL</td><td class="nm">PLC-CONV-001, process transmitters</td><td>Can act on the machine. Speaks protocols that authenticate nothing</td><td>S7 · ZCR 3</td></tr>
+      <tr><td class="id">PZ-SUPERVISORY</td><td class="nm">Gateway, SCADA/HMI</td><td>Can ask the machine, not reprogram it</td><td>S7 · ZCR 3</td></tr>
+      <tr><td class="id">PZ-ENGINEERING</td><td class="nm">Engineering workstation, historian</td><td><strong>Expect this one to split at S7.</strong> The workstation can reprogram the controller; the historian can only read. That is the Z-05 split the hydro assessment made, and the same argument applies here</td><td>S7 · ZCR 3</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="notes">
+  <article class="note">
+    <div class="eyebrow">Why the gateway is its own container</div>
+    <h3>A protocol break is a design object</h3>
+    <p>The gateway exists so that the thing speaking OPC UA northbound is <em>not</em> the thing speaking Modbus down. Collapsing them would put an internet-reachable protocol stack in the same process as the controller's client, and every later argument about conduits would be about a boundary that does not exist.</p>
+  </article>
+  <article class="note">
+    <div class="eyebrow">Why three containers are dashed</div>
+    <h3>Drawn before built, marked as such</h3>
+    <p>The SCADA, historian and engineering workstation arrive at Sprint 4. They are on this drawing because the conduits into them are already decided, and <em>a drawing that only shows what exists cannot be reviewed before it is built</em>. The dashes are the honesty: three of eight containers here have never run.</p>
+  </article>
+  <article class="note">
+    <div class="eyebrow">Why the AND is drawn in copper</div>
+    <h3>The series connection is not logic</h3>
+    <p>Both controllers reach the contactor, and the conjunction between them is a physical series connection — not a rung in either program. <em>A software AND can be written around by whoever owns the software.</em> That is the entire content of ADR-011, and FF-06 exercises it on every commit with thirteen cases.</p>
+  </article>
+</div>
+
+<footer>
+  <span>MD360-ARC-006 rev 1.0 · C4 Level 2 · Sprint 3 · zones provisional until S7</span>
+  <span>Simulated plant · worked example · E. Zaré, Sept 2026</span>
+</footer>
+
+</div>

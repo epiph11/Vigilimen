@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kanangra Creek Zone Drawing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Sans+3:wght@400;600&display=swap">
+
+<style>
+:root{
+  --paper:#EDF1F3; --sheet:#FAFCFD; --sheet-2:#E3EAEE;
+  --ink:#0F171C; --ink-2:#4A5A63; --ink-3:#7A8B95;
+  --rule:#C3D0D7; --rule-soft:#D9E2E7;
+  --sl2:#5E8FAC; --sl3:#14506E;
+  --sl2-tint:#E6EFF4; --sl3-tint:#D2E2EB;
+  --alert:#A85B10; --alert-tint:#F6E7D4;
+  --out:#8C9CA6;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --cond:"Barlow Condensed","Arial Narrow",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#0C1317; --sheet:#131D23; --sheet-2:#1A262D;
+  --ink:#E7EFF3; --ink-2:#A3B4BD; --ink-3:#6E818B;
+  --rule:#27353D; --rule-soft:#1C272E;
+  --sl2:#4E8199; --sl3:#6FBBE0;
+  --sl2-tint:#16252C; --sl3-tint:#1A3442;
+  --alert:#D99A4A; --alert-tint:#2B2015;
+  --out:#596A74;
+}}
+:root[data-theme="dark"]{
+  --paper:#0C1317; --sheet:#131D23; --sheet-2:#1A262D;
+  --ink:#E7EFF3; --ink-2:#A3B4BD; --ink-3:#6E818B;
+  --rule:#27353D; --rule-soft:#1C272E;
+  --sl2:#4E8199; --sl3:#6FBBE0;
+  --sl2-tint:#16252C; --sl3-tint:#1A3442;
+  --alert:#D99A4A; --alert-tint:#2B2015;
+  --out:#596A74;
+}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:"Source Sans 3",system-ui,sans-serif;font-size:15px;line-height:1.55;
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:1240px;margin:0 auto;padding-inline:20px;padding-block:28px 56px}
+h1,h2,h3{font-family:var(--cond);margin:0;text-wrap:balance;letter-spacing:.01em}
+.mono{font-family:var(--mono)}
+:focus-visible{outline:2px solid var(--sl3);outline-offset:2px}
+
+/* ---------- title block ---------- */
+.titleblock{background:var(--sheet);border:1px solid var(--rule);display:grid;
+  grid-template-columns:minmax(0,2.2fr) minmax(0,1fr);}
+.tb-main{padding:20px 22px;border-right:1px solid var(--rule)}
+.tb-main .eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--ink-3)}
+.tb-main h1{font-size:clamp(1.7rem,4vw,2.5rem);font-weight:700;line-height:1.04;margin-top:6px}
+.tb-main .sub{color:var(--ink-2);font-size:1rem;margin-top:8px;max-width:62ch}
+.tb-meta{display:grid;grid-template-columns:1fr 1fr}
+.tb-cell{padding:11px 14px;border-bottom:1px solid var(--rule);border-right:1px solid var(--rule)}
+.tb-cell:nth-child(2n){border-right:0}
+.tb-cell:nth-last-child(-n+2){border-bottom:0}
+.tb-cell dt{font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--ink-3);margin:0 0 3px}
+.tb-cell dd{margin:0;font-family:var(--cond);font-weight:600;font-size:1.02rem;letter-spacing:.01em}
+
+/* ---------- figure ---------- */
+figure{margin:22px 0 0;background:var(--sheet);border:1px solid var(--rule);padding:18px 18px 14px}
+.fig-scroll{overflow-x:auto}
+svg{display:block;max-width:100%;height:auto;min-width:940px}
+figcaption{margin-top:14px;padding-top:12px;border-top:1px solid var(--rule-soft);
+  color:var(--ink-2);font-size:.93rem;max-width:84ch}
+figcaption b{color:var(--ink);font-weight:600}
+
+/* svg classes */
+.band{fill:var(--sheet-2)}
+.band-line{stroke:var(--rule-soft);stroke-width:1}
+.band-label{fill:var(--ink-3);font-family:var(--mono);font-size:9.5px;letter-spacing:.09em}
+.suc{fill:none;stroke:var(--ink-3);stroke-width:1.4;stroke-dasharray:7 5}
+.suc-label{fill:var(--ink-3);font-family:var(--mono);font-size:10px;letter-spacing:.11em}
+.zone{stroke-width:2}
+.zone.sl3{fill:var(--sl3-tint);stroke:var(--sl3)}
+.zone.sl2{fill:var(--sl2-tint);stroke:var(--sl2)}
+.zone.tr{stroke-dasharray:6 4}
+.zname{fill:var(--ink);font-family:var(--cond);font-weight:700;font-size:14.5px}
+.zsub{fill:var(--ink-2);font-family:"Source Sans 3",sans-serif;font-size:10.5px}
+.zid{font-family:var(--mono);font-size:10.5px;font-weight:600}
+.zid.sl3{fill:var(--sl3)} .zid.sl2{fill:var(--sl2)}
+.badge.sl3{fill:var(--sl3)} .badge.sl2{fill:var(--sl2)}
+.badge-t{fill:var(--sheet);font-family:var(--mono);font-size:9.5px;font-weight:600}
+.ext{fill:none;stroke:var(--out);stroke-width:1.3;stroke-dasharray:4 3}
+.ext-t{fill:var(--out);font-family:var(--cond);font-weight:600;font-size:12px}
+.proc{fill:none;stroke:var(--ink-3);stroke-width:1.3}
+.proc-t{fill:var(--ink-2);font-family:"Source Sans 3",sans-serif;font-size:10.5px}
+.cd{fill:none;stroke:var(--ink-2);stroke-width:1.6}
+.cd.hi{stroke:var(--sl3);stroke-width:2.2}
+.cd.dash{stroke-dasharray:5 4}
+.cd-t{fill:var(--ink-2);font-family:var(--mono);font-size:9.5px;font-weight:500}
+.cd-t.hi{fill:var(--sl3);font-weight:600}
+.alert-dot{fill:var(--alert)}
+.alert-t{fill:var(--alert);font-family:var(--mono);font-size:9.5px;font-weight:600}
+.brk{stroke:var(--ink-3);stroke-width:1.4}
+.brk-t{fill:var(--ink-3);font-family:var(--mono);font-size:10px;font-weight:600}
+
+/* ---------- legend ---------- */
+.legend{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);margin-top:18px;
+  grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
+.lg{background:var(--sheet);padding:13px 15px}
+.lg h3{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ink-3);font-weight:500;margin-bottom:8px}
+.lg-row{display:flex;align-items:center;gap:9px;font-size:.88rem;color:var(--ink-2);padding:3px 0}
+.chip{width:26px;height:15px;border-width:2px;border-style:solid;flex:0 0 auto}
+.chip.sl3{background:var(--sl3-tint);border-color:var(--sl3)}
+.chip.sl2{background:var(--sl2-tint);border-color:var(--sl2)}
+.chip.tr{background:var(--sl3-tint);border-color:var(--sl3);border-style:dashed}
+.chip.ex{background:transparent;border-color:var(--out);border-style:dashed}
+.rule-chip{width:26px;height:0;border-top:2px solid var(--ink-2);flex:0 0 auto}
+.rule-chip.hi{border-top-color:var(--sl3);border-top-width:3px}
+.rule-chip.dash{border-top-style:dashed}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--alert);flex:0 0 auto;margin-left:8px}
+
+/* ---------- tables ---------- */
+section{margin-top:34px}
+.sec-h{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.sec-h h2{font-size:1.35rem;font-weight:700}
+.sec-h .n{font-family:var(--mono);font-size:10px;letter-spacing:.15em;color:var(--sl3);padding-top:5px}
+.sec-h p{margin:0;color:var(--ink-3);font-size:.92rem;flex:1 1 260px;min-width:0}
+.tw{overflow-x:auto;border:1px solid var(--rule);background:var(--sheet)}
+table{border-collapse:collapse;width:100%;min-width:640px;font-size:.89rem}
+th,td{text-align:left;padding:8px 13px;border-bottom:1px solid var(--rule-soft);vertical-align:top;color:var(--ink-2)}
+th{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);
+  font-weight:500;background:var(--sheet-2);border-bottom:1px solid var(--rule)}
+tr:last-child td{border-bottom:0}
+td.id{font-family:var(--mono);font-size:11px;color:var(--sl3);white-space:nowrap;font-weight:500}
+td.sl{font-family:var(--mono);font-size:11px;text-align:center;white-space:nowrap;font-weight:600}
+td.sl3{color:var(--sl3)} td.sl2{color:var(--sl2)}
+td strong{color:var(--ink)}
+
+/* ---------- notes ---------- */
+.notes{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);
+  grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.note{background:var(--sheet);padding:20px;display:flex;flex-direction:column;gap:8px}
+.note .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--sl3)}
+.note h3{font-size:1.06rem;font-weight:700}
+.note p{margin:0;font-size:.92rem;color:var(--ink-2)}
+.flag{border-left:3px solid var(--alert);background:var(--alert-tint);padding:14px 16px;margin-top:18px}
+.flag h3{font-family:var(--cond);font-size:1rem;font-weight:700;margin-bottom:5px}
+.flag p{margin:0;font-size:.91rem;color:var(--ink-2)}
+footer{margin-top:38px;padding-top:16px;border-top:1px solid var(--rule);display:flex;
+  justify-content:space-between;gap:14px;flex-wrap:wrap;
+  font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (max-width:720px){.titleblock{grid-template-columns:1fr}.tb-main{border-right:0;border-bottom:1px solid var(--rule)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="titleblock">
+  <div class="tb-main">
+    <div class="eyebrow">IEC 62443-3-2 · ZCR 6 · Document 06 of 12</div>
+    <h1>Zone &amp; Conduit Drawing</h1>
+    <p class="sub">Kanangra Creek Hydro Station — 20&nbsp;MW run-of-river generating station. Nine zones, thirteen conduits, each carrying a target security level derived from consequence rather than from network topology.</p>
+  </div>
+  <dl class="tb-meta">
+    <div class="tb-cell"><dt>Drawing</dt><dd>KCH-CYB-ZC-001</dd></div>
+    <div class="tb-cell"><dt>Revision</dt><dd>0.2 — Draft</dd></div>
+    <div class="tb-cell"><dt>Assessor</dt><dd>E. Zaré</dd></div>
+    <div class="tb-cell"><dt>Date</dt><dd>14 Sept 2026</dd></div>
+    <div class="tb-cell"><dt>Method</dt><dd>IEC 62443-3-2</dd></div>
+    <div class="tb-cell"><dt>Status</dt><dd>Unapproved</dd></div>
+  </dl>
+</div>
+
+<figure>
+  <div class="fig-scroll">
+  <svg viewBox="0 0 1200 700" role="img" aria-label="Zone and conduit drawing of Kanangra Creek Hydro Station. Nine zones are placed across six Purdue levels, deliberately not aligned to them. Z-05a engineering carries target security level 3, higher than Z-04 supervisory control at level 2, even though Z-05a sits at a higher Purdue level. Z-05b plant information sits at the same Purdue level as Z-05a but carries only level 2. The intake zone Z-06 is separated by 4.2 kilometres and reached by radio. Vendor remote access conduit C-09 and the intake carry amber markers for the two highest residual risks.">
+    <defs>
+      <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+      </marker>
+    </defs>
+
+    <!-- Purdue bands -->
+    <rect class="band" x="128" y="130" width="1050" height="80"/>
+    <rect class="band" x="128" y="330" width="1050" height="80"/>
+    <rect class="band" x="128" y="555" width="1050" height="80"/>
+    <text class="band-label" x="8" y="76">L4/5 · ENTERPRISE</text>
+    <text class="band-label" x="8" y="176">L3.5 · DMZ</text>
+    <text class="band-label" x="8" y="276">L3 · PLANT INFO</text>
+    <text class="band-label" x="8" y="376">L2 · SUPERVISORY</text>
+    <text class="band-label" x="8" y="490">L1 · CONTROL</text>
+    <text class="band-label" x="8" y="600">L0 · PROCESS</text>
+
+    <!-- SUC boundary -->
+    <rect class="suc" x="134" y="124" width="1046" height="516"/>
+    <text class="suc-label" x="1172" y="116" text-anchor="end">SYSTEM UNDER CONSIDERATION</text>
+
+    <!-- External entities -->
+    <rect class="ext" x="150" y="48" width="140" height="46"/>
+    <text class="ext-t" x="220" y="70" text-anchor="middle">Corporate IT</text>
+    <text class="ext-t" x="220" y="85" text-anchor="middle" font-size="10">out of scope</text>
+
+    <rect class="ext" x="310" y="48" width="180" height="46"/>
+    <text class="ext-t" x="400" y="70" text-anchor="middle">Portfolio control centre</text>
+    <text class="ext-t" x="400" y="85" text-anchor="middle" font-size="10">separate SUC — unassessed</text>
+
+    <rect class="ext" x="510" y="48" width="160" height="46"/>
+    <text class="ext-t" x="590" y="70" text-anchor="middle">Market operator</text>
+    <text class="ext-t" x="590" y="85" text-anchor="middle" font-size="10">telemetry &amp; dispatch</text>
+
+    <rect class="ext" x="690" y="48" width="160" height="46"/>
+    <text class="ext-t" x="770" y="70" text-anchor="middle">Vendor OEMs</text>
+    <text class="ext-t" x="770" y="85" text-anchor="middle" font-size="9.5">governor · relays · SCADA</text>
+
+    <!-- conduits from externals -->
+    <line class="cd" x1="220" y1="94" x2="220" y2="143" marker-end="url(#ar)" color="#4A5A63"/>
+    <text class="cd-t" x="226" y="122">C-11 · SL 2</text>
+    <line class="cd hi" x1="400" y1="94" x2="400" y2="143" marker-end="url(#ar)" color="#14506E"/>
+    <text class="cd-t hi" x="406" y="122">C-08 · SL 3</text>
+    <line class="cd hi" x1="590" y1="94" x2="590" y2="143" marker-end="url(#ar)" color="#14506E"/>
+    <text class="cd-t hi" x="596" y="122">C-07 · SL 3</text>
+    <line class="cd hi" x1="770" y1="94" x2="770" y2="143" marker-end="url(#ar)" color="#14506E"/>
+    <text class="cd-t hi" x="776" y="118">C-09 · SL 3</text>
+    <circle class="alert-dot" cx="770" cy="130" r="5"/>
+
+    <!-- Z-08 DMZ -->
+    <rect class="zone sl3" x="150" y="145" width="740" height="56"/>
+    <text class="zid sl3" x="162" y="163">Z-08</text>
+    <text class="zname" x="162" y="180">Site DMZ</text>
+    <text class="zsub" x="242" y="180">jump host · protocol gateway · historian replication · firewall pair</text>
+    <rect class="badge sl3" x="846" y="155" width="34" height="17" rx="2"/>
+    <text class="badge-t" x="863" y="167" text-anchor="middle">SL 3</text>
+
+    <!-- Z-07 transient -->
+    <rect class="zone sl3 tr" x="920" y="145" width="110" height="265"/>
+    <text class="zid sl3" x="932" y="165">Z-07</text>
+    <text class="zname" x="932" y="184" font-size="13">Transient</text>
+    <text class="zsub" x="932" y="199">laptops, media,</text>
+    <text class="zsub" x="932" y="212">vendor devices</text>
+    <text class="zsub" x="932" y="231">No permanent</text>
+    <text class="zsub" x="932" y="244">membership —</text>
+    <text class="zsub" x="932" y="257">attaches at any</text>
+    <text class="zsub" x="932" y="270">zone via C-10</text>
+    <rect class="badge sl3" x="932" y="288" width="34" height="17" rx="2"/>
+    <text class="badge-t" x="949" y="300" text-anchor="middle">SL 3</text>
+
+    <!-- Z-05a engineering -->
+    <rect class="zone sl3" x="150" y="245" width="175" height="68"/>
+    <text class="zid sl3" x="162" y="263">Z-05a</text>
+    <text class="zname" x="162" y="281">Engineering</text>
+    <text class="zsub" x="162" y="297">engineering workstation</text>
+    <text class="zsub" x="162" y="309">toolchain · backups</text>
+    <rect class="badge sl3" x="281" y="255" width="34" height="17" rx="2"/>
+    <text class="badge-t" x="298" y="267" text-anchor="middle">SL 3</text>
+
+    <!-- Z-05b plant information -->
+    <rect class="zone sl2" x="385" y="245" width="165" height="68"/>
+    <text class="zid sl2" x="397" y="263">Z-05b</text>
+    <text class="zname" x="397" y="281">Plant information</text>
+    <text class="zsub" x="397" y="297">station historian</text>
+    <text class="zsub" x="397" y="309">documentation store</text>
+    <rect class="badge sl2" x="506" y="255" width="34" height="17" rx="2"/>
+    <text class="badge-t" x="523" y="267" text-anchor="middle">SL 2</text>
+
+    <!-- C-13, created by the split: the split IS the control -->
+    <line class="cd hi" x1="325" y1="279" x2="385" y2="279" marker-end="url(#ar)" color="#14506E"/>
+    <text class="cd-t hi" x="355" y="270" text-anchor="middle">C-13</text>
+    <text class="cd-t hi" x="355" y="295" text-anchor="middle">SL 3</text>
+
+    <!-- Z-04 -->
+    <rect class="zone sl2" x="150" y="345" width="400" height="56"/>
+    <text class="zid sl2" x="162" y="363">Z-04</text>
+    <text class="zname" x="162" y="376">Supervisory control</text>
+    <text class="zsub" x="162" y="392">SCADA pair · HMI · alarm annunciator · time source</text>
+    <rect class="badge sl2" x="506" y="355" width="34" height="17" rx="2"/>
+    <text class="badge-t" x="523" y="367" text-anchor="middle">SL 2</text>
+
+    <!-- Z-01 -->
+    <rect class="zone sl3" x="150" y="445" width="200" height="82"/>
+    <text class="zid sl3" x="162" y="464">Z-01</text>
+    <text class="zname" x="162" y="484">Protection &amp; trip</text>
+    <text class="zsub" x="162" y="500">relays · hardwired</text>
+    <text class="zsub" x="162" y="513">overspeed trip</text>
+    <rect class="badge sl3" x="306" y="455" width="34" height="17" rx="2"/>
+    <text class="badge-t" x="323" y="467" text-anchor="middle">SL 3</text>
+
+    <!-- Z-02 -->
+    <rect class="zone sl3" x="375" y="445" width="200" height="82"/>
+    <text class="zid sl3" x="387" y="464">Z-02</text>
+    <text class="zname" x="387" y="484">Unit control</text>
+    <text class="zsub" x="387" y="500">governor · PLC · AVR</text>
+    <text class="zsub" x="387" y="513">SL 4 if A-01 false</text>
+    <rect class="badge sl3" x="531" y="455" width="34" height="17" rx="2"/>
+    <text class="badge-t" x="548" y="467" text-anchor="middle">SL 3</text>
+
+    <!-- Z-03 -->
+    <rect class="zone sl2" x="600" y="445" width="170" height="82"/>
+    <text class="zid sl2" x="612" y="464">Z-03</text>
+    <text class="zname" x="612" y="484">Auxiliaries</text>
+    <text class="zsub" x="612" y="500">cooling · lube oil</text>
+    <text class="zsub" x="612" y="513">drainage · air</text>
+    <rect class="badge sl2" x="726" y="455" width="34" height="17" rx="2"/>
+    <text class="badge-t" x="743" y="467" text-anchor="middle">SL 2</text>
+
+    <!-- Z-06 intake -->
+    <rect class="zone sl3" x="970" y="445" width="200" height="82"/>
+    <text class="zid sl3" x="982" y="464">Z-06</text>
+    <text class="zname" x="982" y="484">Intake &amp; weir</text>
+    <text class="zsub" x="982" y="500">RTU · gates · level</text>
+    <text class="zsub" x="982" y="513">spillway control</text>
+    <rect class="badge sl3" x="1126" y="455" width="34" height="17" rx="2"/>
+    <text class="badge-t" x="1143" y="467" text-anchor="middle">SL 3</text>
+    <circle class="alert-dot" cx="1160" cy="437" r="5"/>
+
+    <!-- Level 0 -->
+    <rect class="proc" x="150" y="570" width="620" height="46"/>
+    <text class="proc-t" x="460" y="590" text-anchor="middle">Francis turbine · generator · exciter · main inlet valve · wicket gates · step-up transformer · 132 kV switchyard</text>
+    <text class="proc-t" x="460" y="606" text-anchor="middle">cooling water · lubrication oil · drainage · compressed air</text>
+
+    <rect class="proc" x="970" y="570" width="200" height="46"/>
+    <text class="proc-t" x="1070" y="590" text-anchor="middle">Intake gates · trash rack</text>
+    <text class="proc-t" x="1070" y="606" text-anchor="middle">weir · spillway gate</text>
+
+    <!-- internal conduits -->
+    <line class="cd" x1="467" y1="243" x2="467" y2="203" marker-end="url(#ar)" color="#4A5A63"/>
+    <text class="cd-t" x="473" y="227">C-05 · SL 2</text>
+    <line class="cd" x1="467" y1="343" x2="467" y2="315" marker-end="url(#ar)" color="#4A5A63"/>
+    <text class="cd-t" x="473" y="334">C-04 · SL 2</text>
+    <line class="cd hi" x1="300" y1="401" x2="300" y2="443" color="#14506E"/>
+    <line class="cd hi" x1="450" y1="401" x2="450" y2="443" marker-end="url(#ar)" color="#14506E"/>
+    <text class="cd-t hi" x="456" y="427">C-02 · SL 3</text>
+    <line class="cd hi" x1="350" y1="486" x2="375" y2="486" color="#14506E"/>
+    <text class="cd-t hi" x="362" y="474" text-anchor="middle">C-01</text>
+    <line class="cd" x1="575" y1="486" x2="600" y2="486" color="#4A5A63"/>
+    <text class="cd-t" x="587" y="474" text-anchor="middle">C-03</text>
+
+    <!-- C-06 intake conduit, routed over -->
+    <polyline class="cd hi" points="1070,443 1070,420 490,420 490,403" marker-end="url(#ar)" color="#14506E"/>
+    <text class="cd-t hi" x="700" y="413" text-anchor="middle">C-06 · SL 3 · DNP3 over licensed radio</text>
+    <!-- break symbol -->
+    <line class="brk" x1="880" y1="412" x2="890" y2="428"/>
+    <line class="brk" x1="895" y1="412" x2="905" y2="428"/>
+    <text class="brk-t" x="892" y="443" text-anchor="middle">4.2 km</text>
+
+    <!-- C-10 transient -->
+    <line class="cd dash" x1="918" y1="378" x2="820" y2="378" marker-end="url(#ar)" color="#4A5A63"/>
+    <text class="cd-t" x="868" y="370" text-anchor="middle">C-10 · SL 3</text>
+    <text class="cd-t" x="868" y="392" text-anchor="middle">any zone</text>
+
+    <!-- level 0 links -->
+    <line class="cd" x1="250" y1="527" x2="250" y2="568" color="#4A5A63"/>
+    <line class="cd" x1="470" y1="527" x2="470" y2="568" color="#4A5A63"/>
+    <line class="cd" x1="685" y1="527" x2="685" y2="568" color="#4A5A63"/>
+    <line class="cd" x1="1070" y1="527" x2="1070" y2="568" color="#4A5A63"/>
+
+    <!-- alert callouts -->
+    <text class="alert-t" x="784" y="137">R-32 · extreme</text>
+    <text class="alert-t" x="1152" y="428" text-anchor="end">R-22 · extreme</text>
+
+    <!-- GPS -->
+    <polyline class="proc" points="632,330 640,316 648,330"/>
+    <line class="proc" x1="640" y1="316" x2="640" y2="373"/>
+    <line class="cd" x1="636" y1="373" x2="554" y2="373" marker-end="url(#ar)" color="#4A5A63"/>
+    <text class="cd-t" x="658" y="322">GPS</text>
+    <text class="cd-t" x="595" y="366" text-anchor="middle">C-12 · SL 2</text>
+  </svg>
+  </div>
+  <figcaption><b>Zones are drawn from consequence, not from network topology.</b> The Purdue bands are context only — the partition deliberately does not align to them. <b>Z-05a</b> sits at Level 3 and carries SL-T 3, one level above <b>Z-04</b> at Level 2, because the engineering workstation can reprogram the machine while the HMI can only ask it politely. <b>Z-05b</b> sits at the same Purdue level as Z-05a and carries only SL-T 2 — the split is the argument stated twice: neither Purdue level nor physical proximity determines a target. The two amber markers are the highest residual risks in the ZCR 5 register: an adversary standing at the intake RTU, and shared credentials on the vendor path.</figcaption>
+</figure>
+
+<div class="legend">
+  <div class="lg">
+    <h3>Zone target security level</h3>
+    <div class="lg-row"><span class="chip sl3"></span> SL-T 3 — sophisticated means, IACS-specific skills</div>
+    <div class="lg-row"><span class="chip sl2"></span> SL-T 2 — simple means, generic skills</div>
+    <div class="lg-row"><span class="chip tr"></span> Zone with no permanent membership</div>
+  </div>
+  <div class="lg">
+    <h3>Conduits and boundaries</h3>
+    <div class="lg-row"><span class="rule-chip hi"></span> Conduit at SL-T 3</div>
+    <div class="lg-row"><span class="rule-chip"></span> Conduit at SL-T 2</div>
+    <div class="lg-row"><span class="rule-chip dash"></span> Transient physical connection</div>
+    <div class="lg-row"><span class="chip ex"></span> Outside the SUC boundary</div>
+  </div>
+  <div class="lg">
+    <h3>Markers</h3>
+    <div class="lg-row"><span class="dot" style="margin-left:0"></span> Extreme residual risk (ZCR 5)</div>
+    <div class="lg-row">⎸⎸ &nbsp;Geographic break, distance annotated</div>
+    <div class="lg-row">No SL-T 4 is assigned — see note 2</div>
+  </div>
+</div>
+
+<section>
+  <div class="sec-h"><span class="n">01</span><h2>Conduit register</h2>
+  <p>Thirteen conduits. Seven at SL-T 3 — a conduit is commonly rated above the zones it joins, because it crosses a boundary that exists for a reason.</p></div>
+  <div class="tw"><table>
+    <thead><tr><th>ID</th><th>Between</th><th>Medium / protocol</th><th style="text-align:center">SL-T</th><th>Note</th></tr></thead>
+    <tbody>
+      <tr><td class="id">C-01</td><td>Z-01 ↔ Z-02</td><td>IEC 61850 GOOSE + hardwired trip</td><td class="sl sl3">3</td><td>The hardwired element must remain outside any programmable control</td></tr>
+      <tr><td class="id">C-02</td><td>Z-04 ↔ Z-02</td><td>Modbus TCP / OPC UA</td><td class="sl sl3">3</td><td><strong>The primary lateral path to the machine.</strong> Rated to the higher endpoint</td></tr>
+      <tr><td class="id">C-03</td><td>Z-03 ↔ Z-02</td><td>Modbus TCP</td><td class="sl sl2">2</td><td>Auxiliary status and permissives only</td></tr>
+      <tr><td class="id">C-04</td><td>Z-04 ↔ Z-05b</td><td>OPC UA / historian collector</td><td class="sl sl2">2</td><td>One-way in intent — candidate for a data diode</td></tr>
+      <tr><td class="id">C-05</td><td>Z-05b ↔ Z-08</td><td>Historian replication</td><td class="sl sl2">2</td><td>Northbound data</td></tr>
+      <tr><td class="id">C-06</td><td>Z-06 ↔ Z-04</td><td>DNP3 over licensed radio</td><td class="sl sl3">3</td><td><strong>Wireless, physically exposed at the far end, commands a gate</strong></td></tr>
+      <tr><td class="id">C-07</td><td>Z-08 ↔ market operator</td><td>Market network protocol</td><td class="sl sl3">3</td><td>Conditional on assumption A-07 — advisory or actuating?</td></tr>
+      <tr><td class="id">C-08</td><td>Z-08 ↔ control centre</td><td>Operator WAN</td><td class="sl sl3">3</td><td>Far end is unassessed; see note 3</td></tr>
+      <tr><td class="id">C-09</td><td>Vendors → Z-08 → targets</td><td>Internet → brokered session</td><td class="sl sl3">3</td><td><strong>The highest-consequence conduit in the plant</strong></td></tr>
+      <tr><td class="id">C-10</td><td>Z-07 → any zone</td><td>Physical connection, USB</td><td class="sl sl3">3</td><td>Has no network control at all</td></tr>
+      <tr><td class="id">C-11</td><td>Z-08 ↔ corporate IT</td><td>Operator WAN</td><td class="sl sl2">2</td><td>The SUC boundary. Nothing crosses unbrokered</td></tr>
+      <tr><td class="id">C-12</td><td>GPS → Z-04</td><td>RF</td><td class="sl sl2">2</td><td>Unauthenticated by nature — treat as untrusted input</td></tr>
+      <tr><td class="id">C-13</td><td>Z-05a ↔ Z-05b</td><td>File transfer / historian query</td><td class="sl sl3">3</td><td><strong>Created by the Z-05 split.</strong> One-way in intent, engineering → plant information</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <div class="sec-h"><span class="n">02</span><h2>What this drawing argues</h2>
+  <p>Three claims a reviewer should be able to take up.</p></div>
+  <div class="notes">
+    <article class="note">
+      <span class="k">Note 1 · Partitioning</span>
+      <h3>Purdue describes function, not consequence</h3>
+      <p>Z-05a outranks Z-04 despite sitting a level higher, because the engineering workstation holds the toolchain that can reprogram Z-01 and Z-02, and the backup store decides whether a bad day is a bad week or a bad year. A partition drawn by redrawing the network diagram produces zones that match the switches you already have — which is a description of the past.</p>
+    </article>
+    <article class="note">
+      <span class="k">Note 2 · Security levels</span>
+      <h3>Nothing is rated SL-T 4</h3>
+      <p>SL 4 implies extended resources directed at <em>this</em> asset. A 20 MW station that is not systemically significant does not obviously attract that. The contrary argument — that TRITON demonstrated nation-state interest in safety systems — is real and is set out in document 03 §5. The position taken here is that <strong>an SL-T you cannot fund is worse than an honest SL-T 3</strong>, because it produces a paper requirement rather than a control.</p>
+    </article>
+    <article class="note">
+      <span class="k">Note 3 · Boundary</span>
+      <h3>The SUC boundary creates one known gap</h3>
+      <p>The portfolio control centre is out of scope and has no assessment of its own, yet C-08 grants it supervisory authority over the unit. That is an unassessed trusted path, drawn deliberately rather than quietly omitted. Closing it is an asset owner decision recorded in document 01 §8.</p>
+    </article>
+  </div>
+  <div class="flag">
+    <h3>The constraint that overrides every control on this drawing</h3>
+    <p>No security control may be placed in the trip path of Z-01. A control that can fail closed on a protective function has made the plant less safe, not more. Every treatment for Z-01 acts on its management interfaces, on access, or on detection — never on the protective action itself. This is the direct lesson of TRITON and it is carried verbatim into the Cybersecurity Requirements Specification.</p>
+  </div>
+</section>
+
+<footer>
+  <span>KCH-CYB-ZC-001 · Rev 0.1 · Unapproved draft</span>
+  <span>Fictional facility · worked example · E. Zaré, Sept 2026</span>
+</footer>
+
+</div>
+
+</body>
+</html>
