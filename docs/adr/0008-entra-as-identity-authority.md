@@ -54,4 +54,4 @@ The counter-argument is real and is recorded: a single authority is a single poi
 
 ---
 
-*MD360-ADR-008 · Sprint 2*
+*MINED-ADR-008 · Sprint 2*

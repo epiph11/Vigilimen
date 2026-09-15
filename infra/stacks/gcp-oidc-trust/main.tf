@@ -44,14 +44,14 @@ provider "google" {
 # ---------------------------------------------------------------------------
 
 resource "google_iam_workload_identity_pool" "github" {
-  workload_identity_pool_id = "md360-github"
-  display_name              = "MineDigital360 GitHub"
+  workload_identity_pool_id = "mined-github"
+  display_name              = "MineDigital GitHub"
   description               = "Federated identity for the evidence-window workflow. No service account keys exist."
 }
 
 resource "google_iam_workload_identity_pool_provider" "github" {
   workload_identity_pool_id          = google_iam_workload_identity_pool.github.workload_identity_pool_id
-  workload_identity_pool_provider_id = "md360-github-oidc"
+  workload_identity_pool_provider_id = "mined-github-oidc"
   display_name                       = "GitHub Actions OIDC"
 
   oidc {
@@ -81,8 +81,8 @@ resource "google_iam_workload_identity_pool_provider" "github" {
 # ---------------------------------------------------------------------------
 
 resource "google_service_account" "evidence_window" {
-  account_id   = "md360-evidence-window"
-  display_name = "MineDigital360 evidence window"
+  account_id   = "mined-evidence-window"
+  display_name = "MineDigital evidence window"
   description  = "Impersonated by the evidence-window workflow via WIF. Has no keys, and must never be given one."
 }
 

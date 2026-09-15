@@ -46,4 +46,4 @@ The split is not by workload size or by cost. It is by **what happens to the dat
 
 ---
 
-*MD360-ADR-001 · Sprint 0 · Gate M0*
+*MINED-ADR-001 · Sprint 0 · Gate M0*

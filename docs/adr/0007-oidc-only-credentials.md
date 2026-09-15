@@ -51,4 +51,4 @@ Rego would not have made the rules better; it would have made them harder to pro
 
 ---
 
-*MD360-ADR-007 · Sprint 1*
+*MINED-ADR-007 · Sprint 1*

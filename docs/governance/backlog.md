@@ -1,6 +1,6 @@
 # Backlog — epics and MoSCoW cut lines
 
-**Ref:** MD360-GOV-003 · **Rev:** 1.0 · **Date:** 14 September 2026
+**Ref:** MINED-GOV-003 · **Rev:** 1.0 · **Date:** 14 September 2026
 
 ---
 
@@ -85,4 +85,4 @@ Applied at every sprint unless an ADR overrides.
 
 ---
 
-*MD360-GOV-003 rev 1.0 · Sprint 0 · Gate M0*
+*MINED-GOV-003 rev 1.0 · Sprint 0 · Gate M0*

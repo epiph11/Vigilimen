@@ -12,7 +12,7 @@ variable "location" {
 variable "evidence_resource_group" {
   description = "The single resource group every evidence window builds into. scripts/sweep.sh deletes this group as its unit of teardown, so nothing else may live here."
   type        = string
-  default     = "rg-md360-evidence"
+  default     = "rg-mined-evidence"
 }
 
 variable "federated_subjects" {

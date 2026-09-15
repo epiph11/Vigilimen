@@ -1,6 +1,6 @@
 # Environment strategy
 
-**Ref:** MD360-ARC-003 · **Rev:** 1.0 · **Date:** 14 September 2026
+**Ref:** MINED-ARC-003 · **Rev:** 1.0 · **Date:** 14 September 2026
 
 ---
 
@@ -56,10 +56,10 @@ State buckets are therefore *not* on the FF-13 deny-list, and this paragraph is 
 
 ## Naming and tagging
 
-Everything created in an evidence window carries `md360-ephemeral=true`, applied through the provider's `default_tags` rather than per resource, so it cannot be forgotten. The sweep and the verification both key off that tag.
+Everything created in an evidence window carries `mined-ephemeral=true`, applied through the provider's `default_tags` rather than per resource, so it cannot be forgotten. The sweep and the verification both key off that tag.
 
 ```
-md360-<cloud>-<stack>-<resource>        e.g. md360-aws-telemetry-ingest-bucket
+mined-<cloud>-<stack>-<resource>        e.g. mined-aws-telemetry-ingest-bucket
 ```
 
 Region is `ap-southeast-2` / `australiaeast` / `australia-southeast1` throughout. Data residency is not a requirement of this programme, but it is a requirement of the sector it models, and modelling it costs nothing.
@@ -83,4 +83,4 @@ Conversion happens at the presentation layer and nowhere else. **No stored value
 
 ---
 
-*MD360-ARC-003 rev 1.0 · Sprint 1*
+*MINED-ARC-003 rev 1.0 · Sprint 1*

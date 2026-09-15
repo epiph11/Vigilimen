@@ -49,11 +49,11 @@ except ImportError:                                        # pragma: no cover
 # there is no path on which a credential can be committed (FF-03).
 # ---------------------------------------------------------------------------
 
-OPCUA_URL = os.environ.get("MD360_OPCUA_URL", "opc.tcp://127.0.0.1:14840/md360/conv001/")
-OPCUA_USER = os.environ.get("MD360_OPCUA_USER", "historian")
-OPCUA_PASSWORD = os.environ.get("MD360_OPCUA_PASSWORD", "h1st0r1an-demo")
-PGDSN = os.environ.get("MD360_PGDSN", "postgresql://md360:md360-local-only@127.0.0.1:15432/md360")
-PERIOD_S = float(os.environ.get("MD360_PERIOD_S", "1.0"))
+OPCUA_URL = os.environ.get("MINED_OPCUA_URL", "opc.tcp://127.0.0.1:14840/mined/conv001/")
+OPCUA_USER = os.environ.get("MINED_OPCUA_USER", "historian")
+OPCUA_PASSWORD = os.environ.get("MINED_OPCUA_PASSWORD", "h1st0r1an-demo")
+PGDSN = os.environ.get("MINED_PGDSN", "postgresql://mined:mined-local-only@127.0.0.1:15432/mined")
+PERIOD_S = float(os.environ.get("MINED_PERIOD_S", "1.0"))
 
 # ---------------------------------------------------------------------------
 # The name map.
@@ -126,7 +126,7 @@ async def resolve(client: Client) -> list[tuple[str, object]]:
     extra round trips per second on a link that, on a real site, is the
     slowest thing in the architecture.
     """
-    ns = await client.get_namespace_index("urn:md360:plant:conv001")
+    ns = await client.get_namespace_index("urn:mined:plant:conv001")
     root = client.nodes.objects
     for name in ("Enterprise", "PilbaraSite", "ProcessingArea", "ConveyingCell", "CONV001"):
         root = await root.get_child(f"{ns}:{name}")

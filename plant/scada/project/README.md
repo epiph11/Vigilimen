@@ -10,7 +10,7 @@ into this directory, which is what puts it under version control.
 **Build it in this order — the order matters:**
 
 1. **Device first.** Settings → Devices → add an OPC UA client:
-   `opc.tcp://gateway:4840/md360/conv001/`, username `engineer`, password
+   `opc.tcp://gateway:4840/mined/conv001/`, username `engineer`, password
    `eng1neer-demo`. Use the container hostname `gateway`, not `localhost` —
    FUXA runs inside the compose network, and `localhost` there is FUXA itself.
 2. **Tags second.** Browse the address space to

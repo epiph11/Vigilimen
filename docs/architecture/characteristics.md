@@ -1,6 +1,6 @@
 # Architecture Characteristics Worksheet
 
-**Ref:** MD360-ARC-001 · **Rev:** 1.0 · **Date:** 14 September 2026
+**Ref:** MINED-ARC-001 · **Rev:** 1.0 · **Date:** 14 September 2026
 **Method:** Mark Richards / Neal Ford — *Fundamentals of Software Architecture*
 
 ---
@@ -101,4 +101,4 @@ Characteristics are re-examined at **M1, M3 and M5**. A driver that has not cost
 
 ---
 
-*MD360-ARC-001 rev 1.0 · Sprint 0 · Gate M0*
+*MINED-ARC-001 rev 1.0 · Sprint 0 · Gate M0*

@@ -1,6 +1,6 @@
 (*
     PLC-CONV-001 — control function for conveyor CONV-001
-    MineDigital360 · Sprint 3 · OpenPLC · Purdue Level 1, control zone
+    MineDigital · Sprint 3 · OpenPLC · Purdue Level 1, control zone
 
     This program sequences and protects the MACHINE. It does not protect
     people — SIS-CONV-001 does that, on a separate runtime, in a separate

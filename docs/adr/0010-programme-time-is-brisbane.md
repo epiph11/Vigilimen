@@ -57,4 +57,4 @@ It is the tidier answer and it is rejected for one reason: **people do not opera
 
 ---
 
-*MD360-ADR-010 · Sprint 1*
+*MINED-ADR-010 · Sprint 1*

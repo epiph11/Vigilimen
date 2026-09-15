@@ -53,4 +53,4 @@ The destroy is **not conditional on success**. A failed apply, a cancelled run, 
 
 ---
 
-*MD360-ADR-004 · Sprint 0 · Gate M0*
+*MINED-ADR-004 · Sprint 0 · Gate M0*

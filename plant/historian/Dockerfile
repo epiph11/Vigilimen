@@ -10,13 +10,13 @@ FROM python:3.12-slim
 
 RUN useradd --create-home --uid 10002 collector
 
-WORKDIR /opt/md360
+WORKDIR /opt/mined
 
 RUN pip install --no-cache-dir --root-user-action=ignore \
         "asyncua==1.1.5" \
         "psycopg[binary]==3.2.3"
 
-COPY collector.py /opt/md360/collector.py
+COPY collector.py /opt/mined/collector.py
 
 USER collector
 

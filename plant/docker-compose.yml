@@ -10,7 +10,7 @@
 #  THE NETWORK LAYOUT IS THE POINT
 #
 #  Three networks, and a container's membership is its zone. This is the
-#  provisional partition from MD360-ARC-006 made real enough to attack:
+#  provisional partition from MINED-ARC-006 made real enough to attack:
 #
 #      net_control      PLC, gateway            no route to the outside
 #      net_supervisory  gateway, SCADA, historian
@@ -23,7 +23,7 @@
 #  away while every diagram still showed it separate.
 # ─────────────────────────────────────────────────────────────────────────
 
-name: md360-plant
+name: mined-plant
 
 networks:
   net_control:
@@ -49,7 +49,7 @@ services:
     # PLC-CONV-001. Loads plant/plc-control/conveyor.st through the OpenPLC
     # web UI on :8080 the first time — the runtime has no headless import.
     image: openplc/openplc:v3
-    container_name: md360-plc-control
+    container_name: mined-plc-control
     hostname: plc-conv-001
     networks: [net_control]
     ports:
@@ -64,7 +64,7 @@ services:
     # NOTHING ELSE ON IT. Its Modbus port is deliberately not published —
     # there is nobody on net_safety to talk to it, which is the design.
     image: openplc/openplc:v3
-    container_name: md360-plc-safety
+    container_name: mined-plc-safety
     hostname: sis-conv-001
     networks: [net_safety]
     ports:
@@ -89,14 +89,14 @@ services:
       # start disagreeing.
       context: .
       dockerfile: gateway/Dockerfile
-    container_name: md360-gateway
+    container_name: mined-gateway
     hostname: gateway
     networks: [net_control, net_supervisory]
     ports:
       - "127.0.0.1:14840:4840"    # OPC UA
     environment:
-      MD360_MODBUS_HOST: plc-conv-001
-      MD360_MODBUS_PORT: "502"
+      MINED_MODBUS_HOST: plc-conv-001
+      MINED_MODBUS_PORT: "502"
       TZ: Australia/Brisbane      # display only. Stored values are UTC (ADR-010).
     depends_on: [plc-control]
     restart: unless-stopped
@@ -109,7 +109,7 @@ services:
     # FUXA, MIT-licensed. The licence is the decision, not the features —
     # see ADR-012.
     image: frangoteam/fuxa:latest
-    container_name: md360-scada
+    container_name: mined-scada
     hostname: scada
     networks: [net_supervisory]
     ports:
@@ -123,19 +123,19 @@ services:
 
   historian:
     image: timescale/timescaledb:2.17.2-pg16
-    container_name: md360-historian
+    container_name: mined-historian
     hostname: historian
     networks: [net_supervisory]
     ports:
       - "127.0.0.1:15432:5432"
     environment:
-      POSTGRES_DB: md360
-      POSTGRES_USER: md360
+      POSTGRES_DB: mined
+      POSTGRES_USER: mined
       # Local-only, loopback-bound, no data of any value. A real deployment
       # takes this from the identity authority (ADR-008). FF-03 permits it
       # here because it is an environment default in a compose file for a
       # simulated plant, not a credential in the source tree.
-      POSTGRES_PASSWORD: md360-local-only
+      POSTGRES_PASSWORD: mined-local-only
       TZ: UTC                     # the database stores UTC. Always.
     volumes:
       - historian_data:/var/lib/postgresql/data
@@ -144,7 +144,7 @@ services:
       # pg_isready, and only after the init scripts have run — the entrypoint
       # starts a temporary server to apply schema.sql, so a naive check goes
       # green while the tables do not yet exist.
-      test: ["CMD-SHELL", "pg_isready -U md360 -d md360 && psql -U md360 -d md360 -c 'SELECT 1 FROM tag LIMIT 1' >/dev/null 2>&1"]
+      test: ["CMD-SHELL", "pg_isready -U mined -d mined && psql -U mined -d mined -c 'SELECT 1 FROM tag LIMIT 1' >/dev/null 2>&1"]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -158,7 +158,7 @@ services:
     # and collapsing them means a historian outage takes the plant's
     # supervision with it.
     build: ./historian
-    container_name: md360-collector
+    container_name: mined-collector
     # The gateway is `service_healthy`, not `service_started`. depends_on
     # without a condition only waits for the container to exist, and a
     # collector that connects 200 ms before the OPC UA endpoint is listening
@@ -166,10 +166,10 @@ services:
     hostname: collector
     networks: [net_supervisory]
     environment:
-      MD360_OPCUA_URL: opc.tcp://gateway:4840/md360/conv001/
-      MD360_OPCUA_USER: historian
-      MD360_OPCUA_PASSWORD: h1st0r1an-demo
-      MD360_PGDSN: postgresql://md360:md360-local-only@historian:5432/md360
+      MINED_OPCUA_URL: opc.tcp://gateway:4840/mined/conv001/
+      MINED_OPCUA_USER: historian
+      MINED_OPCUA_PASSWORD: h1st0r1an-demo
+      MINED_PGDSN: postgresql://mined:mined-local-only@historian:5432/mined
       TZ: UTC
     depends_on:
       gateway:

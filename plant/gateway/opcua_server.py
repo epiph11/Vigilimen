@@ -50,7 +50,7 @@ from asyncua import Server, ua                            # noqa: E402
 from asyncua.server.user_managers import UserManager      # noqa: E402
 from asyncua.crypto.permission_rules import User, UserRole  # noqa: E402
 
-URI = "urn:md360:plant:conv001"
+URI = "urn:mined:plant:conv001"
 
 
 # ---------------------------------------------------------------------------
@@ -179,8 +179,8 @@ async def run(port: int) -> None:
 
     server = Server(user_manager=PlantUserManager())
     await server.init()
-    server.set_endpoint(f"opc.tcp://0.0.0.0:{port}/md360/conv001/")
-    server.set_server_name("MD360 CONV-001")
+    server.set_endpoint(f"opc.tcp://0.0.0.0:{port}/mined/conv001/")
+    server.set_server_name("MINED CONV-001")
 
     # Username/password only. Anonymous is NOT in this list, and its absence
     # is the control — an endpoint that also offers Anonymous alongside
@@ -197,7 +197,7 @@ async def run(port: int) -> None:
     physics, logic = Physics(), Logic()
 
     async with server:
-        print(f"CONV-001 OPC UA server on opc.tcp://0.0.0.0:{port}/md360/conv001/")
+        print(f"CONV-001 OPC UA server on opc.tcp://0.0.0.0:{port}/mined/conv001/")
         print("Anonymous sessions are refused. Accounts: historian (read), engineer (read/write)\n")
 
         while True:

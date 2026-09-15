@@ -44,4 +44,4 @@ That limitation is recorded in the fidelity statement of every artifact the plan
 
 ---
 
-*MD360-ADR-003 · Sprint 0 · Gate M0*
+*MINED-ADR-003 · Sprint 0 · Gate M0*

@@ -32,16 +32,16 @@ provider "aws" {
   # filter cannot be defeated by someone forgetting a tag block.
   default_tags {
     tags = {
-      programme         = "md360"
+      programme         = "mined"
       stack             = "aws-telemetry"
       managedby         = "terraform"
-      "md360-ephemeral" = "true"
+      "mined-ephemeral" = "true"
     }
   }
 }
 
 locals {
-  name = "md360-aws-telemetry"
+  name = "mined-aws-telemetry"
 }
 
 # ---------------------------------------------------------------------------
@@ -98,7 +98,7 @@ resource "aws_iot_policy" "conveyor" {
       {
         Effect   = "Allow"
         Action   = ["iot:Publish"]
-        Resource = ["arn:aws:iot:${var.region}:${data.aws_caller_identity.current.account_id}:topic/md360/plant/CONV-001/*"]
+        Resource = ["arn:aws:iot:${var.region}:${data.aws_caller_identity.current.account_id}:topic/mined/plant/CONV-001/*"]
       },
       # No iot:Subscribe and no iot:Receive. The device publishes; it does
       # not listen. That is ADR-005 expressed at the device rather than at
@@ -117,7 +117,7 @@ data "aws_caller_identity" "current" {}
 resource "aws_iot_topic_rule" "to_landing" {
   name        = replace("${local.name}_to_landing", "-", "_")
   enabled     = true
-  sql         = "SELECT *, timestamp() AS ingest_utc_ms FROM 'md360/plant/CONV-001/+'"
+  sql         = "SELECT *, timestamp() AS ingest_utc_ms FROM 'mined/plant/CONV-001/+'"
   sql_version = "2016-03-23"
 
   # ingest_utc_ms is epoch milliseconds — UTC by definition. Rendering to

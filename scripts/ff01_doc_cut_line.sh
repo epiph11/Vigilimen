@@ -25,6 +25,7 @@ GOVERNED=(
   "docs/architecture/characteristics.md"
   "docs/architecture/environments.md"
   "docs/architecture/threat-model-v1.md"
+  "docs/architecture/protocol-register.md"
   "docs/compliance"
 )
 

@@ -75,4 +75,4 @@ Three of eight transfer cleanly, two partially, three barely. **The mapping is r
 
 ---
 
-*MD360-ADR-009 · Sprint 2*
+*MINED-ADR-009 · Sprint 2*

@@ -74,4 +74,4 @@ The enhanced table lists ISO/IEC 27001:2023, ASD Essential Eight at **ML2**, NIS
 
 ---
 
-*MD360-ADR-006 · Sprint 0 · Gate M0*
+*MINED-ADR-006 · Sprint 0 · Gate M0*

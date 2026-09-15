@@ -1,6 +1,6 @@
 # AESCSF — orientation
 
-**Ref:** MD360-CMP-002 · **Rev:** 1.0 · **Date:** 14 September 2026 (AEST)
+**Ref:** MINED-CMP-002 · **Rev:** 1.0 · **Date:** 14 September 2026 (AEST)
 **Why this exists:** ADR-009 nominates AESCSF 2023 Framework Core at SP-2. This is the one page that makes the framework usable before the assessment starts at S11.
 
 ---
@@ -97,4 +97,4 @@ Examples of the shape (illustrative, not quoted from the framework):
 
 ---
 
-*MD360-CMP-002 rev 1.0 · Sprint 2 · Assessment proper at S11*
+*MINED-CMP-002 rev 1.0 · Sprint 2 · Assessment proper at S11*

@@ -1,6 +1,6 @@
-# Programme Charter — MineDigital360
+# Programme Charter — MineDigital
 
-**Ref:** MD360-GOV-001 · **Rev:** 1.0 · **Date:** 14 September 2026 · **Owner:** Epiphane Zaré
+**Ref:** MINED-GOV-001 · **Rev:** 1.0 · **Date:** 14 September 2026 · **Owner:** Epiphane Zaré
 
 ---
 
@@ -8,7 +8,7 @@
 
 A mining operation runs two worlds that do not speak to each other. The plant floor measures, moves and protects; the enterprise plans, procures and reports. Between them sits a gap that gets crossed by spreadsheets, phone calls and a radio.
 
-MineDigital360 closes that gap **as an engineered system rather than an integration project**, on the terms the plant floor sets rather than the terms the enterprise would prefer: safety first, then availability, then integrity, then confidentiality.
+MineDigital closes that gap **as an engineered system rather than an integration project**, on the terms the plant floor sets rather than the terms the enterprise would prefer: safety first, then availability, then integrity, then confidentiality.
 
 It is built as a portfolio: one engineer, a real cadence, no client. That is a constraint on scale, not on rigour — the artifacts are the ones a real programme would produce, and they are defended the way a real programme would have to defend them.
 
@@ -97,4 +97,4 @@ It is not a commitment to anyone. There is no client, no sponsor and no delivery
 
 ---
 
-*MD360-GOV-001 rev 1.0 · Sprint 0 · Gate M0*
+*MINED-GOV-001 rev 1.0 · Sprint 0 · Gate M0*
