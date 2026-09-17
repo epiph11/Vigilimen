@@ -1,6 +1,6 @@
 (*
     SIS-CONV-001 — safety function for conveyor CONV-001
-    MineDigital · Sprint 3 · runs on OpenPLC, separate runtime, separate zone
+    Vigilimen · Sprint 3 · runs on OpenPLC, separate runtime, separate zone
 
     ─────────────────────────────────────────────────────────────────────
     THIS PROGRAM TAKES NO INPUT FROM THE CONTROL FUNCTION.

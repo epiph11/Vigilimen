@@ -1,7 +1,7 @@
 # STRIDE Threat Model v1
 
-**Ref:** MINED-ARC-004 · **Rev:** 1.0 · **Date:** 14 September 2026 (AEST)
-**Scope:** the C4 Level-1 context, MINED-ARC-002 · **Sprint:** 2
+**Ref:** VIGILIMEN-ARC-004 · **Rev:** 1.0 · **Date:** 14 September 2026 (AEST)
+**Scope:** the C4 Level-1 context, VIGILIMEN-ARC-002 · **Sprint:** 2
 
 ---
 
@@ -26,9 +26,9 @@ Four, taken straight off the context drawing. A boundary that is not on the draw
 
 | # | Boundary | Direction permitted |
 |---|---|---|
-| **TB-1** | Plant OT ↔ MineDigital | **Data up only.** No control path down (ADR-005) |
+| **TB-1** | Plant OT ↔ Vigilimen | **Data up only.** No control path down (ADR-005) |
 | **TB-2** | Vendor OEMs ↔ Plant OT | Brokered session, one asset, one protocol |
-| **TB-3** | Corporate identity ↔ MineDigital | Authentication assertions in |
+| **TB-3** | Corporate identity ↔ Vigilimen | Authentication assertions in |
 | **TB-4** | Between the three cloud planes | Data forward through defined integrations |
 
 ---
@@ -37,7 +37,7 @@ Four, taken straight off the context drawing. A boundary that is not on the draw
 
 **S**poofing · **T**ampering · **R**epudiation · **I**nformation disclosure · **D**enial of service · **E**levation of privilege
 
-### TB-1 — Plant OT ↔ MineDigital
+### TB-1 — Plant OT ↔ Vigilimen
 
 | | Threat | Mitigation | Carried to |
 |---|---|---|---|
@@ -65,7 +65,7 @@ Four, taken straight off the context drawing. A boundary that is not on the draw
 
 > **This is the Oldsmar shape.** Shared credentials on a remote access tool, no session recording, no approval step. The failure there was architectural, not technical — which is why five of the six mitigations above are contractual or procedural rather than products.
 
-### TB-3 — Corporate identity ↔ MineDigital
+### TB-3 — Corporate identity ↔ Vigilimen
 
 | | Threat | Mitigation | Carried to |
 |---|---|---|---|
@@ -105,4 +105,4 @@ Re-run at **M1**, when the OT world exists and TB-1 and TB-2 stop being drawings
 
 ---
 
-*MINED-ARC-004 rev 1.0 · Sprint 2*
+*VIGILIMEN-ARC-004 rev 1.0 · Sprint 2*

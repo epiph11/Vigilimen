@@ -1,7 +1,7 @@
 # ADR-011 — The safety function is a separate controller, from Sprint 3
 
 **Status:** Accepted · **Date:** 14 September 2026 · **Deciders:** E. Zaré
-**Related:** MINED-ARC-001 (safety as a driving characteristic) · **Sprint:** 3
+**Related:** VIGILIMEN-ARC-001 (safety as a driving characteristic) · **Sprint:** 3
 *(The delivery plan numbered this ADR-010; that number was taken by the programme time convention. Renumbered here.)*
 
 ---
@@ -77,4 +77,4 @@ It covers the two Sprint 3 definition-of-done cases directly: the interlock trip
 
 ---
 
-*MINED-ADR-011 · Sprint 3*
+*VIGILIMEN-ADR-011 · Sprint 3*

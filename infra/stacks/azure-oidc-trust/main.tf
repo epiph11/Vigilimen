@@ -46,7 +46,7 @@ data "azurerm_subscription" "current" {}
 # ---------------------------------------------------------------------------
 
 resource "azuread_application" "evidence_window" {
-  display_name = "mined-evidence-window"
+  display_name = "VIGILIMEN-evidence-window"
   description  = "Federated to GitHub Actions. Has no client secret, and must never be given one."
 
   # No password / no client_secret resource anywhere in this stack. That

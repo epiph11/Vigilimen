@@ -59,7 +59,7 @@ CMD ["python3", "gateway/opcua_server.py", "--port", "4840"]
 # WHAT THIS CONTAINER IS NOT, YET.
 #
 # It runs the physics and interlock models in-process and serves them over
-# OPC UA. It does NOT read the OpenPLC runtime over Modbus — MINED_MODBUS_HOST
+# OPC UA. It does NOT read the OpenPLC runtime over Modbus — VIGILIMEN_MODBUS_HOST
 # is set in compose and is not consumed here.
 #
 # That gap is real and is named rather than hidden: closing it is S5 work

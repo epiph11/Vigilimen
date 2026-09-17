@@ -1,6 +1,6 @@
 # Protocol register
 
-**Ref:** MINED-ARC-005 · **Rev:** 1.0 · **Date:** 14 September 2026 (AEST) · **Sprint:** 3
+**Ref:** VIGILIMEN-ARC-005 · **Rev:** 1.0 · **Date:** 14 September 2026 (AEST) · **Sprint:** 3
 
 The protocols spoken in the simulated plant, and — the only column that matters — **what each one authenticates.**
 
@@ -82,4 +82,4 @@ Port numbers and the authentication properties above are standard and stable. **
 
 ---
 
-*MINED-ARC-005 rev 1.0 · Sprint 3 · Feeds ZCR 1 and ZCR 3 at S7*
+*VIGILIMEN-ARC-005 rev 1.0 · Sprint 3 · Feeds ZCR 1 and ZCR 3 at S7*

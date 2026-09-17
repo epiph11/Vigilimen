@@ -1,4 +1,4 @@
-# MineDigital
+# Vigilimen
 
 An IT/OT convergence programme for a mining operation, built as an engineered system: a simulated plant on vendor-realistic industrial protocols, a full IEC 62443 assurance programme over it, and a three-cloud data and work-management architecture on top.
 
@@ -92,7 +92,7 @@ Sprint 0 complete at gate **M0**. **Sprints 1 and 2 complete** — identity, com
 
 Phase A is closed. **S3 complete.** **S4 in progress** — the compose stack now *builds*: both Dockerfiles and the OPC UA → TimescaleDB collector exist, and `depends_on` waits on health rather than on existence. Outstanding: the FUXA mimic (built through the browser — FUXA has no headless import) and the engineering workstation VM.
 
-> **The gateway does not yet read the OpenPLC runtime over Modbus.** It serves the in-process simulation, and `MINED_MODBUS_HOST` is set in compose and unused. That is S5 work and it is named in `plant/gateway/Dockerfile` rather than left to be discovered.
+> **The gateway does not yet read the OpenPLC runtime over Modbus.** It serves the in-process simulation, and `VIGILIMEN_MODBUS_HOST` is set in compose and unused. That is S5 work and it is named in `plant/gateway/Dockerfile` rather than left to be discovered.
 
 ### What this repository deliberately does not contain
 

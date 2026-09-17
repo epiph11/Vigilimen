@@ -35,13 +35,13 @@ provider "aws" {
       programme         = "mined"
       stack             = "aws-telemetry"
       managedby         = "terraform"
-      "mined-ephemeral" = "true"
+      "VIGILIMEN-ephemeral" = "true"
     }
   }
 }
 
 locals {
-  name = "mined-aws-telemetry"
+  name = "VIGILIMEN-aws-telemetry"
 }
 
 # ---------------------------------------------------------------------------

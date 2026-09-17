@@ -49,11 +49,11 @@ except ImportError:                                        # pragma: no cover
 # there is no path on which a credential can be committed (FF-03).
 # ---------------------------------------------------------------------------
 
-OPCUA_URL = os.environ.get("MINED_OPCUA_URL", "opc.tcp://127.0.0.1:14840/mined/conv001/")
-OPCUA_USER = os.environ.get("MINED_OPCUA_USER", "historian")
-OPCUA_PASSWORD = os.environ.get("MINED_OPCUA_PASSWORD", "h1st0r1an-demo")
-PGDSN = os.environ.get("MINED_PGDSN", "postgresql://mined:mined-local-only@127.0.0.1:15432/mined")
-PERIOD_S = float(os.environ.get("MINED_PERIOD_S", "1.0"))
+OPCUA_URL = os.environ.get("VIGILIMEN_OPCUA_URL", "opc.tcp://127.0.0.1:14840/mined/conv001/")
+OPCUA_USER = os.environ.get("VIGILIMEN_OPCUA_USER", "historian")
+OPCUA_PASSWORD = os.environ.get("VIGILIMEN_OPCUA_PASSWORD", "h1st0r1an-demo")
+PGDSN = os.environ.get("VIGILIMEN_PGDSN", "postgresql://mined:VIGILIMEN-local-only@127.0.0.1:15432/mined")
+PERIOD_S = float(os.environ.get("VIGILIMEN_PERIOD_S", "1.0"))
 
 # ---------------------------------------------------------------------------
 # The name map.

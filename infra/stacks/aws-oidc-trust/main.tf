@@ -34,7 +34,7 @@ provider "aws" {
       programme = "mined"
       stack     = "aws-oidc-trust"
       managedby = "terraform"
-      # deliberately NOT mined-ephemeral: the sweep must not delete the
+      # deliberately NOT VIGILIMEN-ephemeral: the sweep must not delete the
       # thing that grants the sweep its permissions.
     }
   }
@@ -95,7 +95,7 @@ data "aws_iam_policy_document" "trust" {
 }
 
 resource "aws_iam_role" "evidence_window" {
-  name                 = "mined-evidence-window"
+  name                 = "VIGILIMEN-evidence-window"
   description          = "Assumed by the evidence-window workflow. Short-lived, scoped by subject."
   assume_role_policy   = data.aws_iam_policy_document.trust.json
   max_session_duration = 3600
@@ -143,7 +143,7 @@ data "aws_iam_policy_document" "permissions" {
 }
 
 resource "aws_iam_role_policy" "evidence_window" {
-  name   = "mined-evidence-window"
+  name   = "VIGILIMEN-evidence-window"
   role   = aws_iam_role.evidence_window.id
   policy = data.aws_iam_policy_document.permissions.json
 }

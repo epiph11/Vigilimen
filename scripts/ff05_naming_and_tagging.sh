@@ -58,14 +58,14 @@ for dir in $STACKS; do
 
   # ---- the ephemeral marker ----------------------------------------------
   if [ "$kind" = ephemeral ]; then
-    if echo "$C" | grep -qE '"mined-ephemeral"|mined-ephemeral'; then
-      say "✓ $stack: carries the mined-ephemeral marker"
+    if echo "$C" | grep -qE '"VIGILIMEN-ephemeral"|VIGILIMEN-ephemeral'; then
+      say "✓ $stack: carries the VIGILIMEN-ephemeral marker"
     else
-      bad "$stack: is an evidence stack and does not set mined-ephemeral. sweep.sh will not see anything it creates."
+      bad "$stack: is an evidence stack and does not set VIGILIMEN-ephemeral. sweep.sh will not see anything it creates."
     fi
   else
-    if echo "$C" | grep -qE '"mined-ephemeral"[[:space:]]*='; then
-      bad "$stack: is a bootstrap stack and sets mined-ephemeral. The sweep would delete the federation that lets the sweep run."
+    if echo "$C" | grep -qE '"VIGILIMEN-ephemeral"[[:space:]]*='; then
+      bad "$stack: is a bootstrap stack and sets VIGILIMEN-ephemeral. The sweep would delete the federation that lets the sweep run."
     else
       say "✓ $stack: bootstrap, correctly not marked ephemeral"
     fi
@@ -82,7 +82,7 @@ for dir in $STACKS; do
   if echo "$C" | grep -qE 'programme[[:space:]]*=[[:space:]]*"mined"'; then
     say "✓ $stack: tagged programme = mined"
   elif echo "$C" | grep -q 'google_iam_workload_identity_pool\|google_service_account'; then
-    say "~ $stack: GCP IAM resources accept no labels — attribution falls back to the mined- name prefix"
+    say "~ $stack: GCP IAM resources accept no labels — attribution falls back to the VIGILIMEN- name prefix"
   else
     bad "$stack: no programme tag. Cross-account cost attribution depends on it."
   fi
@@ -90,12 +90,12 @@ for dir in $STACKS; do
   # ---- naming prefix ------------------------------------------------------
   # Names are built from a local, so check the local rather than every
   # resource — a standard enforced at one place is a standard that holds.
-  if echo "$C" | grep -qE 'name[[:space:]]*=[[:space:]]*"mined-'; then
-    say "✓ $stack: names built from an mined- prefix"
-  elif echo "$C" | grep -qE 'account_id[[:space:]]*=[[:space:]]*"mined-|display_name[[:space:]]*=[[:space:]]*"mined-|name[[:space:]]*=[[:space:]]*var\.'; then
-    say "✓ $stack: names built from an mined- prefix or a validated variable"
+  if echo "$C" | grep -qE 'name[[:space:]]*=[[:space:]]*"VIGILIMEN-'; then
+    say "✓ $stack: names built from an VIGILIMEN- prefix"
+  elif echo "$C" | grep -qE 'account_id[[:space:]]*=[[:space:]]*"VIGILIMEN-|display_name[[:space:]]*=[[:space:]]*"VIGILIMEN-|name[[:space:]]*=[[:space:]]*var\.'; then
+    say "✓ $stack: names built from an VIGILIMEN- prefix or a validated variable"
   else
-    bad "$stack: no mined- naming prefix found."
+    bad "$stack: no VIGILIMEN- naming prefix found."
   fi
 
   echo
@@ -105,10 +105,10 @@ done
 # The sweep and the verification must agree on the tag they use.
 # ---------------------------------------------------------------------------
 SWEEP_KEY=$(grep -oE 'TAG_KEY:-[a-z0-9-]+' scripts/sweep.sh | head -1 | cut -d- -f2-)
-if [ "$SWEEP_KEY" = "mined-ephemeral" ]; then
+if [ "$SWEEP_KEY" = "VIGILIMEN-ephemeral" ]; then
   say "✓ sweep.sh defaults to the same tag key the stacks set"
 else
-  bad "sweep.sh defaults to tag key '$SWEEP_KEY' but the stacks set 'mined-ephemeral'. The sweep would find nothing."
+  bad "sweep.sh defaults to tag key '$SWEEP_KEY' but the stacks set 'VIGILIMEN-ephemeral'. The sweep would find nothing."
 fi
 
 echo

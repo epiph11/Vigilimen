@@ -27,7 +27,7 @@ Look at what microservices are actually for, against what this system actually h
 | What microservices buy | Does this system need it? |
 |---|---|
 | Independent deployability across teams | **One engineer.** There is no team boundary to align to a service boundary |
-| Independent scalability per service | **One site, one user.** Scalability was explicitly rejected as a driver (MINED-ARC-001 §3) |
+| Independent scalability per service | **One site, one user.** Scalability was explicitly rejected as a driver (VIGILIMEN-ARC-001 §3) |
 | Fault isolation | Real. Achievable in-process at this size, and cheaper |
 | Technology heterogeneity | Not needed. One language serves the whole plane |
 
@@ -53,4 +53,4 @@ This is the point Fowler and Richards both make and that gets ignored: *you cann
 
 ---
 
-*MINED-ADR-002 · Sprint 0 · Gate M0*
+*VIGILIMEN-ADR-002 · Sprint 0 · Gate M0*

@@ -14,8 +14,8 @@
 
 set -uo pipefail
 CLOUD="${1:?usage: sweep.sh <aws|azure|gcp>}"
-TAG_KEY="${MINED_TAG_KEY:-mined-ephemeral}"
-TAG_VALUE="${MINED_TAG_VALUE:-true}"
+TAG_KEY="${VIGILIMEN_TAG_KEY:-VIGILIMEN-ephemeral}"
+TAG_VALUE="${VIGILIMEN_TAG_VALUE:-true}"
 REGION="${AWS_REGION:-ap-southeast-2}"
 
 echo "Sweeping ${CLOUD} for ${TAG_KEY}=${TAG_VALUE}"
@@ -56,7 +56,7 @@ case "$CLOUD" in
   azure)
     # Azure makes this easy and the design leans on it: every evidence window
     # builds into ONE resource group, and the group is the unit of teardown.
-    RG="${AZURE_EVIDENCE_RG:-rg-mined-evidence}"
+    RG="${AZURE_EVIDENCE_RG:-rg-VIGILIMEN-evidence}"
     if az group exists --name "$RG" 2>/dev/null | grep -qi true; then
       echo "  deleting resource group $RG"
       az group delete --name "$RG" --yes --no-wait || true
