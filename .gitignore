@@ -73,3 +73,6 @@ $RECYCLE.BIN/
 # .DS_Store is deliberately absent — there is no macOS anywhere near this
 # programme, and an ignore file padded with rules for platforms nobody uses
 # is a file nobody reads.
+
+# Programme management: local only, never pushed (see pilotage/README.md)
+/pilotage/
