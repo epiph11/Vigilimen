@@ -9,7 +9,7 @@ output "thing_name" {
 
 output "topic" {
   description = "The only topic this device may publish to. It may not subscribe at all (ADR-005)."
-  value       = "mined/plant/${aws_iot_thing.conveyor.name}/+"
+  value       = "limen/plant/${aws_iot_thing.conveyor.name}/+"
 }
 
 output "evidence_note" {

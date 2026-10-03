@@ -47,4 +47,4 @@ Where a genuine write path is later required, it is subject to four conditions, 
 
 ---
 
-*VIGILIMEN-ADR-005 · Sprint 0 · Gate M0*
+*LIMEN-ADR-005 · Sprint 0 · Gate M0*

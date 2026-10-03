@@ -51,7 +51,7 @@ case "$CLOUD" in
     ;;
 
   azure)
-    RG="${AZURE_EVIDENCE_RG:-rg-VIGILIMEN-evidence}"
+    RG="${AZURE_EVIDENCE_RG:-rg-limen-evidence}"
     if az group exists --name "$RG" 2>/dev/null | grep -qi true; then
       n=$(az resource list --resource-group "$RG" --query 'length(@)' -o tsv 2>/dev/null || echo 0)
       [ "$n" = "0" ] && note "Resource group empty" || bad "$n resource(s) in $RG"

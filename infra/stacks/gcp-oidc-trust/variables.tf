@@ -33,14 +33,14 @@ variable "allowed_refs" {
   description = <<-EOT
     Git refs permitted to impersonate the evidence-window service account.
 
-    Form: refs/heads/main
+    Form: refs/heads/master
 
     Kept as an explicit list rather than a pattern. The cost of listing
     three refs is three lines; the cost of a pattern that turns out to
     match a fourth is a credential you did not intend to issue.
   EOT
   type        = list(string)
-  default     = ["refs/heads/main"]
+  default     = ["refs/heads/master"]
 
   validation {
     condition     = length(var.allowed_refs) > 0
@@ -49,7 +49,7 @@ variable "allowed_refs" {
 
   validation {
     condition     = alltrue([for r in var.allowed_refs : startswith(r, "refs/")])
-    error_message = "Each ref must be fully qualified, e.g. refs/heads/main."
+    error_message = "Each ref must be fully qualified, e.g. refs/heads/master."
   }
 }
 

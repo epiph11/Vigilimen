@@ -46,4 +46,4 @@ The split is not by workload size or by cost. It is by **what happens to the dat
 
 ---
 
-*VIGILIMEN-ADR-001 · Sprint 0 · Gate M0*
+*LIMEN-ADR-001 · Sprint 0 · Gate M0*

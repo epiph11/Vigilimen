@@ -1,6 +1,6 @@
 # Backlog — epics and MoSCoW cut lines
 
-**Ref:** VIGILIMEN-GOV-003 · **Rev:** 1.0 · **Date:** 14 September 2026
+**Ref:** LIMEN-GOV-003 · **Rev:** 1.0 · **Date:** 14 September 2026
 
 ---
 
@@ -85,4 +85,4 @@ Applied at every sprint unless an ADR overrides.
 
 ---
 
-*VIGILIMEN-GOV-003 rev 1.0 · Sprint 0 · Gate M0*
+*LIMEN-GOV-003 rev 1.0 · Sprint 0 · Gate M0*

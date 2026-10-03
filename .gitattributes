@@ -28,3 +28,7 @@ Dockerfile text eol=lf
 *.xlsx     binary
 *.png      binary
 *.pdf      binary
+
+# GitHub Linguist reads .st as Smalltalk; these are IEC 61131-3 Structured Text.
+*.st linguist-detectable=false
+*.st linguist-language=Text

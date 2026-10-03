@@ -1,7 +1,7 @@
 # STRIDE Threat Model v1
 
-**Ref:** VIGILIMEN-ARC-004 · **Rev:** 1.0 · **Date:** 14 September 2026 (AEST)
-**Scope:** the C4 Level-1 context, VIGILIMEN-ARC-002 · **Sprint:** 2
+**Ref:** LIMEN-ARC-004 · **Rev:** 1.0 · **Date:** 14 September 2026 (AEST)
+**Scope:** the C4 Level-1 context, LIMEN-ARC-002 · **Sprint:** 2
 
 ---
 
@@ -105,4 +105,4 @@ Re-run at **M1**, when the OT world exists and TB-1 and TB-2 stop being drawings
 
 ---
 
-*VIGILIMEN-ARC-004 rev 1.0 · Sprint 2*
+*LIMEN-ARC-004 rev 1.0 · Sprint 2*

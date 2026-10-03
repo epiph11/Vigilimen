@@ -53,4 +53,4 @@ The destroy is **not conditional on success**. A failed apply, a cancelled run, 
 
 ---
 
-*VIGILIMEN-ADR-004 · Sprint 0 · Gate M0*
+*LIMEN-ADR-004 · Sprint 0 · Gate M0*

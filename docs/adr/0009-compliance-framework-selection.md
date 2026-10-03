@@ -75,4 +75,4 @@ Three of eight transfer cleanly, two partially, three barely. **The mapping is r
 
 ---
 
-*VIGILIMEN-ADR-009 · Sprint 2*
+*LIMEN-ADR-009 · Sprint 2*

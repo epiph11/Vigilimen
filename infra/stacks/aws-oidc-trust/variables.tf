@@ -12,7 +12,7 @@ variable "allowed_subjects" {
     here would let any branch — including a branch pushed to a fork in a
     pull request — assume the role.
 
-    Form: repo:<owner>/<repo>:ref:refs/heads/main
+    Form: repo:<owner>/<repo>:ref:refs/heads/master
        or repo:<owner>/<repo>:environment:evidence
   EOT
   type        = list(string)

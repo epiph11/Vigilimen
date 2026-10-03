@@ -44,14 +44,14 @@ provider "google" {
 # ---------------------------------------------------------------------------
 
 resource "google_iam_workload_identity_pool" "github" {
-  workload_identity_pool_id = "VIGILIMEN-github"
+  workload_identity_pool_id = "limen-github"
   display_name              = "Vigilimen GitHub"
   description               = "Federated identity for the evidence-window workflow. No service account keys exist."
 }
 
 resource "google_iam_workload_identity_pool_provider" "github" {
   workload_identity_pool_id          = google_iam_workload_identity_pool.github.workload_identity_pool_id
-  workload_identity_pool_provider_id = "VIGILIMEN-github-oidc"
+  workload_identity_pool_provider_id = "limen-github-oidc"
   display_name                       = "GitHub Actions OIDC"
 
   oidc {
@@ -81,7 +81,7 @@ resource "google_iam_workload_identity_pool_provider" "github" {
 # ---------------------------------------------------------------------------
 
 resource "google_service_account" "evidence_window" {
-  account_id   = "VIGILIMEN-evidence-window"
+  account_id   = "limen-evidence-window"
   display_name = "Vigilimen evidence window"
   description  = "Impersonated by the evidence-window workflow via WIF. Has no keys, and must never be given one."
 }

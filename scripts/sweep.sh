@@ -14,8 +14,8 @@
 
 set -uo pipefail
 CLOUD="${1:?usage: sweep.sh <aws|azure|gcp>}"
-TAG_KEY="${VIGILIMEN_TAG_KEY:-VIGILIMEN-ephemeral}"
-TAG_VALUE="${VIGILIMEN_TAG_VALUE:-true}"
+TAG_KEY="${LIMEN_TAG_KEY:-limen-ephemeral}"
+TAG_VALUE="${LIMEN_TAG_VALUE:-true}"
 REGION="${AWS_REGION:-ap-southeast-2}"
 
 echo "Sweeping ${CLOUD} for ${TAG_KEY}=${TAG_VALUE}"
@@ -46,7 +46,7 @@ case "$CLOUD" in
     # service rather than by Terraform, they are never in state, and they
     # accumulate silently across every run.
     for lg in $(aws logs describe-log-groups --region "$REGION" \
-                  --log-group-name-prefix /aws/mined \
+                  --log-group-name-prefix /aws/limen \
                   --query 'logGroups[].logGroupName' --output text 2>/dev/null || true); do
       echo "    deleting log group $lg"
       aws logs delete-log-group --region "$REGION" --log-group-name "$lg" || true
@@ -56,7 +56,7 @@ case "$CLOUD" in
   azure)
     # Azure makes this easy and the design leans on it: every evidence window
     # builds into ONE resource group, and the group is the unit of teardown.
-    RG="${AZURE_EVIDENCE_RG:-rg-VIGILIMEN-evidence}"
+    RG="${AZURE_EVIDENCE_RG:-rg-limen-evidence}"
     if az group exists --name "$RG" 2>/dev/null | grep -qi true; then
       echo "  deleting resource group $RG"
       az group delete --name "$RG" --yes --no-wait || true

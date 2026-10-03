@@ -1,6 +1,6 @@
 # Architecture Characteristics Worksheet
 
-**Ref:** VIGILIMEN-ARC-001 · **Rev:** 1.0 · **Date:** 14 September 2026
+**Ref:** LIMEN-ARC-001 · **Rev:** 1.0 · **Date:** 14 September 2026
 **Method:** Mark Richards / Neal Ford — *Fundamentals of Software Architecture*
 
 ---
@@ -97,8 +97,8 @@ A characteristic that is only written down is an aspiration. Each driver has mac
 
 ## 6. Review
 
-Characteristics are re-examined at **M1, M3 and M5**. A driver that has not cost anything by its review point was not a driver — it was a preference, and it should be demoted so the list keeps its meaning.
+Characteristics are re-exalimen at **M1, M3 and M5**. A driver that has not cost anything by its review point was not a driver — it was a preference, and it should be demoted so the list keeps its meaning.
 
 ---
 
-*VIGILIMEN-ARC-001 rev 1.0 · Sprint 0 · Gate M0*
+*LIMEN-ARC-001 rev 1.0 · Sprint 0 · Gate M0*

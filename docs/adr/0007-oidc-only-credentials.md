@@ -51,4 +51,4 @@ Rego would not have made the rules better; it would have made them harder to pro
 
 ---
 
-*VIGILIMEN-ADR-007 · Sprint 1*
+*LIMEN-ADR-007 · Sprint 1*

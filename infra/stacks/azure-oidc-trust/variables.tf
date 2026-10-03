@@ -12,7 +12,7 @@ variable "location" {
 variable "evidence_resource_group" {
   description = "The single resource group every evidence window builds into. scripts/sweep.sh deletes this group as its unit of teardown, so nothing else may live here."
   type        = string
-  default     = "rg-VIGILIMEN-evidence"
+  default     = "rg-limen-evidence"
 }
 
 variable "federated_subjects" {
@@ -23,7 +23,7 @@ variable "federated_subjects" {
     have.
 
     Subject forms:
-      repo:<owner>/<repo>:ref:refs/heads/main
+      repo:<owner>/<repo>:ref:refs/heads/master
       repo:<owner>/<repo>:environment:evidence
       repo:<owner>/<repo>:pull_request
 

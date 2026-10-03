@@ -1,6 +1,6 @@
 # Programme Charter — Vigilimen
 
-**Ref:** VIGILIMEN-GOV-001 · **Rev:** 1.0 · **Date:** 14 September 2026 · **Owner:** Epiphane Zaré
+**Ref:** LIMEN-GOV-001 · **Rev:** 1.0 · **Date:** 14 September 2026 · **Owner:** Epiphane Zaré
 
 ---
 
@@ -97,4 +97,4 @@ It is not a commitment to anyone. There is no client, no sponsor and no delivery
 
 ---
 
-*VIGILIMEN-GOV-001 rev 1.0 · Sprint 0 · Gate M0*
+*LIMEN-GOV-001 rev 1.0 · Sprint 0 · Gate M0*

@@ -20,7 +20,7 @@
 
 ## Safety and security
 
-- [ ] This change does **not** place any control inside the trip path of a protective function *(VIGILIMEN-ARC-001 — hard constraint)*
+- [ ] This change does **not** place any control inside the trip path of a protective function *(LIMEN-ARC-001 — hard constraint)*
 - [ ] This change does not create a communication path across a zone boundary — or it does, and the **conduit register is updated in this PR**
 - [ ] This change does not introduce an IT → OT control path — or it does, and **ADR-005's four conditions are each addressed above**
 

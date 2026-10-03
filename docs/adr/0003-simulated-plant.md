@@ -44,4 +44,4 @@ That limitation is recorded in the fidelity statement of every artifact the plan
 
 ---
 
-*VIGILIMEN-ADR-003 · Sprint 0 · Gate M0*
+*LIMEN-ADR-003 · Sprint 0 · Gate M0*

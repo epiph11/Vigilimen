@@ -57,4 +57,4 @@ It is the tidier answer and it is rejected for one reason: **people do not opera
 
 ---
 
-*VIGILIMEN-ADR-010 · Sprint 1*
+*LIMEN-ADR-010 · Sprint 1*

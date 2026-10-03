@@ -1,6 +1,6 @@
 # RAID Log
 
-**Ref:** VIGILIMEN-GOV-002 · **Rev:** 1.0 · **Date:** 14 September 2026
+**Ref:** LIMEN-GOV-002 · **Rev:** 1.0 · **Date:** 14 September 2026
 **Seeded by:** first risk-storming pass (Sprint 0)
 
 Risks · Assumptions · Issues · Dependencies. Reviewed at the end of every cycle, and re-scored at every gate.
@@ -76,4 +76,4 @@ Risks · Assumptions · Issues · Dependencies. Reviewed at the end of every cyc
 
 ---
 
-*VIGILIMEN-GOV-002 rev 1.0 · Sprint 0 · Gate M0*
+*LIMEN-GOV-002 rev 1.0 · Sprint 0 · Gate M0*

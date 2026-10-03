@@ -31,10 +31,10 @@ provider "aws" {
 
   default_tags {
     tags = {
-      programme = "mined"
+      programme = "limen"
       stack     = "aws-oidc-trust"
       managedby = "terraform"
-      # deliberately NOT VIGILIMEN-ephemeral: the sweep must not delete the
+      # deliberately NOT limen-ephemeral: the sweep must not delete the
       # thing that grants the sweep its permissions.
     }
   }
@@ -79,7 +79,7 @@ data "aws_iam_policy_document" "trust" {
     # Subject. This is the condition that actually scopes the role, and it
     # is the one that gets written too broadly.
     #
-    #   repo:<owner>/<repo>:ref:refs/heads/main      one branch
+    #   repo:<owner>/<repo>:ref:refs/heads/master      one branch
     #   repo:<owner>/<repo>:environment:evidence     one environment
     #   repo:<owner>/<repo>:*                        ANY branch, any fork PR
     #
@@ -95,7 +95,7 @@ data "aws_iam_policy_document" "trust" {
 }
 
 resource "aws_iam_role" "evidence_window" {
-  name                 = "VIGILIMEN-evidence-window"
+  name                 = "limen-evidence-window"
   description          = "Assumed by the evidence-window workflow. Short-lived, scoped by subject."
   assume_role_policy   = data.aws_iam_policy_document.trust.json
   max_session_duration = 3600
@@ -143,7 +143,7 @@ data "aws_iam_policy_document" "permissions" {
 }
 
 resource "aws_iam_role_policy" "evidence_window" {
-  name   = "VIGILIMEN-evidence-window"
+  name   = "limen-evidence-window"
   role   = aws_iam_role.evidence_window.id
   policy = data.aws_iam_policy_document.permissions.json
 }

@@ -21,14 +21,14 @@ FROM python:3.12-slim
 # copied into something that does.
 RUN useradd --create-home --uid 10001 gateway
 
-WORKDIR /opt/mined
+WORKDIR /opt/limen
 
 # Dependencies first, so a change to the plant code does not re-resolve pip.
 RUN pip install --no-cache-dir --root-user-action=ignore \
         "asyncua==1.1.5"
 
-COPY sim/     /opt/mined/sim/
-COPY gateway/ /opt/mined/gateway/
+COPY sim/     /opt/limen/sim/
+COPY gateway/ /opt/limen/gateway/
 
 USER gateway
 
@@ -46,7 +46,7 @@ import asyncio,sys;\
 from asyncua import Client;\
 \
 async def m():\
-    c = Client('opc.tcp://127.0.0.1:4840/mined/conv001/');\
+    c = Client('opc.tcp://127.0.0.1:4840/limen/conv001/');\
     c.set_user('historian'); c.set_password('h1st0r1an-demo');\
     await c.connect();\
     await c.disconnect();\
@@ -59,7 +59,7 @@ CMD ["python3", "gateway/opcua_server.py", "--port", "4840"]
 # WHAT THIS CONTAINER IS NOT, YET.
 #
 # It runs the physics and interlock models in-process and serves them over
-# OPC UA. It does NOT read the OpenPLC runtime over Modbus — VIGILIMEN_MODBUS_HOST
+# OPC UA. It does NOT read the OpenPLC runtime over Modbus — LIMEN_MODBUS_HOST
 # is set in compose and is not consumed here.
 #
 # That gap is real and is named rather than hidden: closing it is S5 work
