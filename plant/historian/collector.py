@@ -21,11 +21,13 @@ historian makes silently.
    transmitter was disconnected" into "the temperature was 0 degrees", and
    S13's maintenance model will cheerfully learn from it.
 
-3. READING IS THE ONLY THING THIS PROCESS IS ALLOWED TO DO.
-   It authenticates as `historian`, which holds no write access to any node
-   (see gateway/opcua_server.py). If this container is compromised the
-   adversary gets the plant's history, which is a confidentiality problem.
-   The same code authenticating as `engineer` would hand them the plant.
+3. READING IS THE ONLY THING THIS PROCESS DOES, BUT NOT THE ONLY THING IT MAY DO.
+   It authenticates as `historian`, and the code never writes a node. That is
+   a property of THIS CODE, not of the account: both accounts hold the same
+   role and any authenticated session can write StartCommand, StopCommand and
+   the Fault* tags (ADR-017). A compromised collector can therefore start the
+   conveyor. An earlier version of this comment said the account could write
+   nothing; that was wrong.
 """
 
 from __future__ import annotations
@@ -37,6 +39,9 @@ import sys
 from datetime import datetime, timezone
 
 from asyncua import Client, ua
+
+from engine import build_conv001   # plant/alarms/engine.py, copied next to this file
+import store                       # plant/alarms/store.py, copied next to this file
 
 try:
     import psycopg
@@ -54,6 +59,10 @@ OPCUA_USER = os.environ.get("VIGILIMEN_OPCUA_USER", "historian")
 OPCUA_PASSWORD = os.environ.get("VIGILIMEN_OPCUA_PASSWORD", "h1st0r1an-demo")
 PGDSN = os.environ.get("VIGILIMEN_PGDSN", "postgresql://vigilimen:vigilimen-local-only@127.0.0.1:15432/vigilimen")
 PERIOD_S = float(os.environ.get("VIGILIMEN_PERIOD_S", "1.0"))
+# Alarm state in the database (ADR-019). OFF by default: the table only exists on
+# a volume that has had migrations/001_alarm_state.sql applied, and the default
+# must keep working on the volume that existed before it.
+PERSIST_ALARMS = os.environ.get("VIGILIMEN_ALARM_PERSIST", "off").strip().lower() in ("1", "on", "true", "yes")
 
 # ---------------------------------------------------------------------------
 # The name map.
@@ -81,6 +90,93 @@ TAG_MAP: dict[str, str] = {
 }
 
 INSERT = "INSERT INTO sample (ts, tag_id, value, quality) VALUES (%s, %s, %s, %s)"
+INSERT_ALARM = ("INSERT INTO alarm_event (ts, tag_id, condition, from_state, to_state, priority, actor, note) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)")
+
+
+class AlarmFeed:
+    """Feeds each 1 Hz sample to the ISA-18.2 engine and persists transitions.
+
+    The engine's clock is the SAMPLE's source timestamp, not wall time, for
+    the same reason as decision 1 above. Alarm latency is therefore measured
+    from when the plant produced the value.
+
+    Speed alarms are gated: LO/LO_LO on belt speed are arithmetic, not news,
+    while the belt is stopped or still ramping, so they are evaluated only once
+    the belt has been up to speed since the last start ("armed"). Without this
+    every Start raises a LO_LO. A stopped belt feeds a nominal value so any
+    standing speed alarm clears rather than hanging forever.
+
+    STATE. With persist=False it lives in memory only: a restart forgets an
+    ACKED alarm still in condition and re-raises it as a NEW UNACK, which
+    discards the acknowledgement and writes a second NORMAL->UNACK into a
+    history that is supposed to be a record. With persist=True (ADR-019) the
+    engine's state is loaded at start and every change is saved in the SAME
+    transaction as the events that explain it.
+    """
+
+    NOMINAL_SPEED = 2.5
+    ARM_AT = 2.1                       # LO limit 2.0 + deadband, with margin
+
+    def __init__(self, persist: bool = False) -> None:
+        self.engine = build_conv001()
+        self.flushed = 0
+        self.armed = False
+        self.persist = persist
+        self.restored = False
+        self.saved: dict = {}          # what the database holds, as of the last commit
+
+    def restore(self, conn) -> None:
+        """Load saved state once per process. A reconnect after a database blip
+        must NOT reload: the in-memory state is newer than the table."""
+        if not self.persist or self.restored:
+            return
+        try:
+            with conn.cursor() as cur:
+                rows = store.load(cur)
+            conn.commit()
+        except psycopg.errors.UndefinedTable:
+            conn.rollback()
+            raise RuntimeError(store.MIGRATION_HINT) from None
+        n = self.engine.restore(rows)
+        # Baseline = the restored state, so alarms that have no row are not
+        # written back as NORMAL on the first cycle.
+        self.saved = self.engine.snapshot()
+        self.restored = True
+        active = [(a.tag_id, a.condition, a.state.value) for a in self.engine.active()]
+        print(f"alarms: restored {n} saved state(s); active: {active or 'none'}", flush=True)
+
+    def dirty(self) -> dict:
+        return store.changed(self.saved, self.engine.snapshot()) if self.persist else {}
+
+    def committed(self, mark: int, saved_rows: dict) -> None:
+        """Called only after the transaction committed."""
+        self.flushed = mark
+        self.saved.update(saved_rows)
+
+    def feed(self, values: dict[str, float], ts: datetime) -> None:
+        running = values.get("CONV001.Running", 0.0) >= 0.5
+        speed = values.get("CONV001.Speed_mps")
+        if not running:
+            self.armed = False
+        elif speed is not None and speed >= self.ARM_AT:
+            self.armed = True
+        for tag_id, v in values.items():
+            if tag_id == "CONV001.Speed_mps":
+                v = speed if self.armed else self.NOMINAL_SPEED
+            self.engine.evaluate(tag_id, v, ts)
+        self.engine.unshelve_expired(ts)
+
+    def pending(self) -> tuple[list[tuple], int]:
+        """Events not yet committed, and the mark to pass to committed().
+
+        The mark is NOT advanced here. It used to be, which meant a failed insert
+        lost the events for good: the transition had happened, the history never
+        heard of it, and nothing would ever say so.
+        """
+        ev = self.engine.events[self.flushed:]
+        return ([(e.ts, e.tag_id, e.condition, e.from_state.value, e.to_state.value,
+                  int(e.priority), e.actor, e.note) for e in ev], len(self.engine.events))
 
 
 def quality_of(status: ua.StatusCode | None) -> int:
@@ -137,11 +233,13 @@ async def resolve(client: Client) -> list[tuple[str, object]]:
     return out
 
 
-async def cycle(client: Client, nodes, conn) -> int:
+async def cycle(client: Client, nodes, conn, feed: AlarmFeed) -> int:
     """One acquisition. Returns the number of rows written."""
     # read_data_value on each node rather than read_value: the DataValue is
     # the whole point (see decisions 1 and 2 at the top of this file).
     rows = []
+    values: dict[str, float] = {}
+    sample_ts = None
     for tag_id, node in nodes:
         dv = await node.read_data_value()
         ts = dv.SourceTimestamp or dv.ServerTimestamp or datetime.now(timezone.utc)
@@ -150,11 +248,28 @@ async def cycle(client: Client, nodes, conn) -> int:
             # time here would put the whole history an hour out for half the
             # year in any DST zone — ADR-010 exists because of exactly this.
             ts = ts.replace(tzinfo=timezone.utc)
-        rows.append((ts, tag_id, value_of(dv.Value.Value), quality_of(dv.StatusCode)))
+        val, q = value_of(dv.Value.Value), quality_of(dv.StatusCode)
+        rows.append((ts, tag_id, val, q))
+        sample_ts = max(sample_ts, ts) if sample_ts else ts
+        # Only GOOD numeric values reach the alarm engine: a Bad reading is a
+        # data-quality problem, not a process excursion.
+        if val is not None and q == 192:
+            values[tag_id] = val
 
+    feed.feed(values, sample_ts)
+    alarm_rows, mark = feed.pending()
+    dirty = feed.dirty()
     with conn.cursor() as cur:
         cur.executemany(INSERT, rows)
+        if alarm_rows:
+            cur.executemany(INSERT_ALARM, alarm_rows)
+        if dirty:
+            store.save(cur, dirty, datetime.now(timezone.utc))
     conn.commit()
+    # Only after the commit: samples, events and state became durable together.
+    feed.committed(mark, dirty)
+    for r in alarm_rows:
+        print(f"alarm: {r[1]} {r[2]} {r[3]}->{r[4]} P{r[5]}", flush=True)
     return len(rows)
 
 
@@ -167,9 +282,11 @@ async def main() -> int:
             pass
 
     written = 0
+    feed = AlarmFeed(persist=PERSIST_ALARMS)
     while not stop.is_set():
         try:
             conn = psycopg.connect(PGDSN)
+            feed.restore(conn)
             client = Client(OPCUA_URL)
             # set_user/set_password BEFORE connect. `async with Client(url)`
             # calls __aenter__, which connects anonymously before any
@@ -180,11 +297,11 @@ async def main() -> int:
             await client.connect()
             try:
                 nodes = await resolve(client)
-                print(f"collector: {len(nodes)} tags at {1 / PERIOD_S:.0f} Hz -> {PGDSN.split('@')[-1]}",
-                      flush=True)
+                print(f"collector: {len(nodes)} tags at {1 / PERIOD_S:.0f} Hz -> {PGDSN.split('@')[-1]}"
+                      f" (alarm state persistence: {'on' if PERSIST_ALARMS else 'off'})", flush=True)
                 next_at = asyncio.get_running_loop().time()
                 while not stop.is_set():
-                    written += await cycle(client, nodes, conn)
+                    written += await cycle(client, nodes, conn, feed)
                     if written % 600 == 0:
                         print(f"collector: {written} samples written", flush=True)
                     # Fixed-rate, not fixed-delay. Sleeping a constant period

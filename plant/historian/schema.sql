@@ -163,6 +163,41 @@ CREATE INDEX ON alarm_event (tag_id, ts DESC);
 --   shows that. It is "who shelved it, and when", which nothing records
 --   unless somebody designed a column for it.
 
+-- Alarm STATE, beside the history, written in the same transaction as the events
+-- it explains (ADR-019). Same statements as migrations/001_alarm_state.sql, which
+-- exists because this file runs only on an empty volume.
+
+CREATE TABLE IF NOT EXISTS alarm_state (
+    tag_id        text        NOT NULL REFERENCES tag(tag_id),
+    condition     text        NOT NULL,
+    state         text        NOT NULL,
+    in_condition  boolean     NOT NULL,
+    shelved_until timestamptz,
+    pending_since timestamptz,
+    updated_at    timestamptz NOT NULL,
+    PRIMARY KEY (tag_id, condition)
+);
+
+-- "Append only" was a comment. It is now a trigger. It stops an accidental
+-- UPDATE or DELETE by the collector or a person with psql; it does NOT stop the
+-- table owner dropping the trigger. Separate roles for write and administer are
+-- an S8 item, recorded in ADR-019 rather than implied here.
+CREATE OR REPLACE FUNCTION alarm_event_append_only() RETURNS trigger AS $$
+BEGIN
+    RAISE EXCEPTION 'alarm_event is append-only: % refused', TG_OP;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS alarm_event_no_change ON alarm_event;
+CREATE TRIGGER alarm_event_no_change
+    BEFORE UPDATE OR DELETE ON alarm_event
+    FOR EACH ROW EXECUTE FUNCTION alarm_event_append_only();
+
+DROP TRIGGER IF EXISTS alarm_event_no_truncate ON alarm_event;
+CREATE TRIGGER alarm_event_no_truncate
+    BEFORE TRUNCATE ON alarm_event
+    FOR EACH STATEMENT EXECUTE FUNCTION alarm_event_append_only();
+
 -- ---------------------------------------------------------------------------
 -- Convenience: read the plant in Brisbane time (ADR-010)
 -- ---------------------------------------------------------------------------

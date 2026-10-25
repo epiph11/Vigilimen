@@ -176,6 +176,47 @@ class AlarmEngine:
         elif a.state is State.ACKED:
             self._emit(a, State.ACKED, State.NORMAL, now=now)
 
+    # ---- persistence: what must survive a restart -------------------------
+
+    def snapshot(self) -> dict[tuple[str, str], dict]:
+        """Everything that is STATE and not configuration, one dict per alarm.
+
+        Limits, priorities, deadbands and delays are rebuilt from build_conv001()
+        and are deliberately not in here: a snapshot that carried them would let
+        a stale row from an old release override today's alarm limits.
+        """
+        return {(a.tag_id, a.condition): {
+                    "state": a.state.value,
+                    "in_condition": a.in_condition,
+                    "shelved_until": a.shelved_until,
+                    "pending_since": a._pending_since,
+                } for a in self.alarms.values()}
+
+    def restore(self, rows) -> int:
+        """Put saved state back. Emits NO events: the transitions that led here
+        are already in the history, and replaying them would write them twice.
+
+        A row for an alarm this build does not define is ignored, and a row with
+        a state this build does not know is ignored, so a rollback or a renamed
+        condition cannot crash the collector at start-up. Returns how many rows
+        were applied.
+        """
+        n = 0
+        for r in rows:
+            a = self.alarms.get((r["tag_id"], r["condition"]))
+            if a is None:
+                continue
+            try:
+                st = State(r["state"])
+            except ValueError:
+                continue
+            a.state = st
+            a.in_condition = bool(r["in_condition"])
+            a.shelved_until = r.get("shelved_until")
+            a._pending_since = r.get("pending_since")
+            n += 1
+        return n
+
     # ---- an operator drives these -----------------------------------------
 
     def acknowledge(self, tag_id: str, condition: str, actor: str,
@@ -268,7 +309,7 @@ def build_conv001() -> AlarmEngine:
     e.add(Alarm("CONV001.BearingTemp_C", "HI",    85.0, Priority.HIGH,   deadband=2.0, on_delay_s=10))
     e.add(Alarm("CONV001.BearingTemp_C", "HI_HI", 95.0, Priority.URGENT, deadband=2.0))
     e.add(Alarm("CONV001.Vibration_mms", "HI",     4.5, Priority.LOW,    deadband=0.3, on_delay_s=30))
-    e.add(Alarm("CONV001.Vibration_mms", "HI_HI",  7.1, Priority.HIGH,   deadband=0.3, on_delay_s=5))
+    e.add(Alarm("CONV001.Vibration_mms", "HI_HI",  7.1, Priority.HIGH,   deadband=0.3))
     e.add(Alarm("CONV001.Current_A",     "HI",    38.0, Priority.LOW,    deadband=1.0, on_delay_s=5))
     e.add(Alarm("CONV001.Current_A",     "HI_HI", 42.0, Priority.HIGH,   deadband=1.0))
     e.add(Alarm("CONV001.Speed_mps",     "LO",     2.0, Priority.LOW,    deadband=0.1, on_delay_s=15))

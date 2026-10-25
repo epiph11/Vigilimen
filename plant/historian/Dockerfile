@@ -2,9 +2,9 @@
 #
 #   docker compose build collector
 #
-# Build context is plant/historian/. Unlike the gateway this container needs
-# nothing from sim/ — it reads the plant over the wire like any other client,
-# which is the property that makes it replaceable.
+# Build context is plant/ (like the gateway) so alarms/engine.py can be copied
+# in. It still needs nothing from sim/ — it reads the plant over the wire like
+# any other client, which is the property that makes it replaceable.
 
 FROM python:3.12-slim
 
@@ -16,7 +16,9 @@ RUN pip install --no-cache-dir --root-user-action=ignore \
         "asyncua==1.1.5" \
         "psycopg[binary]==3.2.3"
 
-COPY collector.py /opt/vigilimen/collector.py
+COPY historian/collector.py /opt/vigilimen/collector.py
+COPY alarms/engine.py /opt/vigilimen/engine.py
+COPY alarms/store.py /opt/vigilimen/store.py
 
 USER collector
 
