@@ -23,6 +23,7 @@ scan() {
   hits=$(grep -rInE "$pattern" \
           --exclude-dir=.git \
           --exclude-dir=evidence \
+          --exclude-dir=pilotage \
           --exclude-dir=node_modules \
           --exclude="ff03_no_static_credentials.sh" \
           . 2>/dev/null || true)

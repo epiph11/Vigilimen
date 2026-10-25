@@ -1,6 +1,6 @@
 # Environment strategy
 
-**Ref:** LIMEN-ARC-003 · **Rev:** 1.0 · **Date:** 14 September 2026
+**Ref:** VIGILIMEN-ARC-003 · **Rev:** 1.0 · **Date:** 14 September 2026
 
 ---
 
@@ -56,10 +56,10 @@ State buckets are therefore *not* on the FF-13 deny-list, and this paragraph is 
 
 ## Naming and tagging
 
-Everything created in an evidence window carries `limen-ephemeral=true`, applied through the provider's `default_tags` rather than per resource, so it cannot be forgotten. The sweep and the verification both key off that tag.
+Everything created in an evidence window carries `vigilimen-ephemeral=true`, applied through the provider's `default_tags` rather than per resource, so it cannot be forgotten. The sweep and the verification both key off that tag.
 
 ```
-limen-<cloud>-<stack>-<resource>        e.g. limen-aws-telemetry-ingest-bucket
+vigilimen-<cloud>-<stack>-<resource>        e.g. vigilimen-aws-telemetry-ingest-bucket
 ```
 
 Region is `ap-southeast-2` / `australiaeast` / `australia-southeast1` throughout. Data residency is not a requirement of this programme, but it is a requirement of the sector it models, and modelling it costs nothing.
@@ -83,4 +83,4 @@ Conversion happens at the presentation layer and nowhere else. **No stored value
 
 ---
 
-*LIMEN-ARC-003 rev 1.0 · Sprint 1*
+*VIGILIMEN-ARC-003 rev 1.0 · Sprint 1*

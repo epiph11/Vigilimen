@@ -25,7 +25,7 @@ import sys
 from asyncua import Client, ua
 
 OK, BAD = "✓", "✗"
-URI = "urn:limen:plant:conv001"
+URI = "urn:vigilimen:plant:conv001"
 
 
 def banner(n: int, title: str) -> None:
@@ -42,7 +42,7 @@ async def node(c: Client, name: str):
 
 async def main(host: str, port: int) -> int:
     logging.getLogger("asyncua").setLevel(logging.CRITICAL)
-    url = f"opc.tcp://{host}:{port}/limen/conv001/"
+    url = f"opc.tcp://{host}:{port}/vigilimen/conv001/"
     failures = 0
 
     # ---------------------------------------------------------------------
