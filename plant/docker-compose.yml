@@ -48,7 +48,7 @@ services:
   plc-control:
     # PLC-CONV-001. Loads plant/plc-control/conveyor.st through the OpenPLC
     # web UI on :8080 the first time — the runtime has no headless import.
-    image: openplc/openplc:v3
+    image: openplc:v3
     container_name: vigilimen-plc-control
     hostname: plc-conv-001
     networks: [net_control]
@@ -63,7 +63,7 @@ services:
     # SIS-CONV-001. Same image, separate runtime, separate network, and
     # NOTHING ELSE ON IT. Its Modbus port is deliberately not published —
     # there is nobody on net_safety to talk to it, which is the design.
-    image: openplc/openplc:v3
+    image: openplc:v3
     container_name: vigilimen-plc-safety
     hostname: sis-conv-001
     networks: [net_safety]
@@ -95,7 +95,11 @@ services:
     ports:
       - "127.0.0.1:14840:4840"    # OPC UA
     environment:
-      VIGILIMEN_MODBUS_HOST: plc-conv-001
+      # A SERVICE name, not the PLC's `hostname:`. Docker's DNS answers for service
+      # names, container names and network aliases, and NOT for a container's
+      # hostname: the old value (plc-conv-001) would not have resolved from here.
+      # FF-22 checks that this names something Docker can resolve on net_control.
+      VIGILIMEN_MODBUS_HOST: plc-control
       VIGILIMEN_MODBUS_PORT: "502"
       TZ: Australia/Brisbane      # display only. Stored values are UTC (ADR-010).
     depends_on: [plc-control]
@@ -157,7 +161,9 @@ services:
     # PERSISTS data and the thing that BRIDGES protocols fail differently,
     # and collapsing them means a historian outage takes the plant's
     # supervision with it.
-    build: ./historian
+    build:
+      context: .
+      dockerfile: historian/Dockerfile
     container_name: vigilimen-collector
     # The gateway is `service_healthy`, not `service_started`. depends_on
     # without a condition only waits for the container to exist, and a

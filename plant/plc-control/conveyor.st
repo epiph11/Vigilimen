@@ -14,34 +14,65 @@
     This program can stop the belt. It cannot start it against a trip.
 
     Reference model: plant/sim/interlock_model.py
+    I/O contract:    plant/gateway/plc_io_map.py  (ADR-013), checked by FF-23
 *)
 
 PROGRAM PLC_CONV_001
-VAR_INPUT
-    Start_PB        : BOOL;    (* %IX1.0  start, local or SCADA          *)
-    Stop_PB         : BOOL;    (* %IX1.1  normal stop                    *)
-    Zero_Speed      : BOOL;    (* %IX1.2  TRUE when belt is stationary   *)
-    Upstream_Ready  : BOOL;    (* %IX1.3  crusher permissive             *)
-    Downstream_Ready: BOOL;    (* %IX1.4  stockpile permissive           *)
-
-    Bearing_Temp    : REAL;    (* %IW10   drive-end bearing, degC        *)
-    Motor_Current   : REAL;    (* %IW11   amps                           *)
-    Belt_Speed      : REAL;    (* %IW12   m/s                            *)
-END_VAR
-
-VAR_OUTPUT
-    Motor_Run       : BOOL;    (* %QX1.0  RUN REQUEST — in series with SIS *)
-    Alarm_Horn      : BOOL;    (* %QX1.1  pre-start warning              *)
-    Alarm_Word      : WORD;    (* %QW20   to SCADA                       *)
-END_VAR
-
 VAR
+    (* ── I/O contract with the gateway: plant/gateway/plc_io_map.py ────────
+       FF-23 fails the build if this block and that table disagree.
+
+       INPUTS. On a real plant these are physical inputs (%IX / %IW). Here
+       the gateway plays the field over Modbus, and a Modbus master cannot
+       write %IX or %IW, so the simulated field values live in %QX / %QW
+       variables that this program only READS. It must never assign them:
+       FF-23 checks that too. A simulation device, not a design to copy.
+       Addresses 100+ are OpenPLC's slave range: coil = byte*8+bit, holding
+       register = word number (ADR-013). *)
+    Start_PB          AT %QX100.0 : BOOL;   (* start, local or SCADA          coil 800 *)
+    Stop_PB           AT %QX100.1 : BOOL;   (* normal stop                    coil 801 *)
+    Zero_Speed        AT %QX100.2 : BOOL;   (* TRUE when belt is stationary   coil 802 *)
+    Upstream_Ready    AT %QX100.3 : BOOL;   (* crusher permissive             coil 803 *)
+    Downstream_Ready  AT %QX100.4 : BOOL;   (* stockpile permissive           coil 804 *)
+    Bearing_Temp_x10  AT %QW100   : UINT;   (* drive-end bearing, 0.1 degC    hreg 100 *)
+    Motor_Current_x10 AT %QW101   : UINT;   (* amps x 10                      hreg 101 *)
+    Belt_Speed_x100   AT %QW102   : UINT;   (* m/s x 100                      hreg 102 *)
+
+    (* OUTPUTS. Written by this program, read by the gateway. *)
+    Motor_Run         AT %QX101.0 : BOOL;   (* RUN REQUEST, in series with SIS coil 808 *)
+    Alarm_Horn        AT %QX101.1 : BOOL;   (* pre-start warning              coil 809 *)
+    Alarm_Word        AT %QW110   : WORD;   (* to SCADA                       hreg 110 *)
+    Plc_State         AT %QW111   : UINT;   (* State below, for diagnostics   hreg 111 *)
+    Plc_Map_Version   AT %QW112   : UINT;   (* signature: MAP_VERSION         hreg 112 *)
+END_VAR
+
+(* MatIEC (and the IEC grammar) takes a VAR block as ALL located or ALL plain.
+   Mixing them in one block fails with 'invalid located variable declaration'
+   on every plain line, then a cascade of ':=' errors (found by compiling in
+   OpenPLC, 25 Oct). Located variables stay above; plain ones start here.
+   FF-23 checks that no block mixes the two. *)
+VAR
+    (* Engineering values, decoded from the registers once per scan. *)
+    Bearing_Temp    : REAL;    (* degC *)
+    Motor_Current   : REAL;    (* amps *)
+    Belt_Speed      : REAL;    (* m/s  *)
+
     State           : INT := 0;  (* 0 stopped 1 warning 2 starting 3 running 4 stopping 5 fault *)
     Warn_Timer      : TON;
     Start_Timer     : TON;
     Start_Edge      : R_TRIG;
 
     Permissives_OK  : BOOL;
+
+    (* One BOOL per alarm bit. MatIEC does not accept bit access on a WORD
+       (Alarm_Word.0 := ...), so the bits are kept separately and packed
+       into Alarm_Word once per scan, at the end of the program.
+       Bit 0 bearing, 1 current, 2 permissive, 3 start fail, 4 run stop. *)
+    Alm_Bearing     : BOOL;
+    Alm_Current     : BOOL;
+    Alm_Permissive  : BOOL;
+    Alm_StartFail   : BOOL;
+    Alm_RunStop     : BOOL;
 END_VAR
 
 VAR CONSTANT
@@ -50,7 +81,15 @@ VAR CONSTANT
     OVERLOAD_TRIP   : REAL := 42.0;
     WARN_TIME       : TIME := T#10s;
     START_TIMEOUT   : TIME := T#15s;
+    MAP_VERSION     : UINT := 1;   (* = plc_io_map.MAP_VERSION, FF-23 *)
 END_VAR
+
+
+(* ── Decode the registers ───────────────────────────────────────────── *)
+
+Bearing_Temp  := UINT_TO_REAL(Bearing_Temp_x10) / 10.0;
+Motor_Current := UINT_TO_REAL(Motor_Current_x10) / 10.0;
+Belt_Speed    := UINT_TO_REAL(Belt_Speed_x100) / 100.0;
 
 
 (* ── Permissives ────────────────────────────────────────────────────── *)
@@ -65,9 +104,9 @@ Permissives_OK := Upstream_Ready AND Downstream_Ready;
    function loaded with machine protection trips more often for reasons
    operations do not respect. *)
 
-Alarm_Word.0 := Bearing_Temp >= BEARING_ALARM;
-Alarm_Word.1 := Motor_Current >= (OVERLOAD_TRIP * 0.9);
-Alarm_Word.2 := NOT Permissives_OK;
+Alm_Bearing    := Bearing_Temp >= BEARING_ALARM;
+Alm_Current    := Motor_Current >= (OVERLOAD_TRIP * 0.9);
+Alm_Permissive := NOT Permissives_OK;
 
 IF Bearing_Temp >= BEARING_TRIP OR Motor_Current >= OVERLOAD_TRIP THEN
     State := 5;
@@ -114,7 +153,7 @@ CASE State OF
            or the SAFETY CONTACTOR IS OPEN — this program cannot tell the
            difference, and deliberately does not try. It stops asking. *)
         Start_Timer(IN := FALSE);
-        Alarm_Word.3 := TRUE;
+        Alm_StartFail := TRUE;
         State := 5;
     END_IF;
 
@@ -125,7 +164,7 @@ CASE State OF
     ELSIF Zero_Speed THEN
         (* Was running, now stationary, and nobody asked. Same reasoning
            as above: an unexplained stop is a fault, not a state to sit in *)
-        Alarm_Word.4 := TRUE;
+        Alm_RunStop   := TRUE;
         State := 5;
     END_IF;
 
@@ -142,11 +181,25 @@ CASE State OF
        AND Bearing_Temp < BEARING_ALARM
        AND Motor_Current < 1.0
     THEN
-        Alarm_Word := 0;
+        Alm_StartFail := FALSE;
+        Alm_RunStop   := FALSE;
         State := 0;
     END_IF;
 
 END_CASE;
+
+
+Plc_State := INT_TO_UINT(State);
+Plc_Map_Version := MAP_VERSION;
+
+
+(* ── Pack the alarm bits for SCADA ──────────────────────────────────── *)
+
+Alarm_Word := BOOL_TO_WORD(Alm_Bearing)
+              OR SHL(BOOL_TO_WORD(Alm_Current), 1)
+              OR SHL(BOOL_TO_WORD(Alm_Permissive), 2)
+              OR SHL(BOOL_TO_WORD(Alm_StartFail), 3)
+              OR SHL(BOOL_TO_WORD(Alm_RunStop), 4);
 
 (*
     NOTE FOR THE 62443 ASSESSMENT AT S7

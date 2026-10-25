@@ -37,18 +37,19 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
+import os
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "sim"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from conveyor_physics import Conveyor as Physics          # noqa: E402
-from interlock_model import Conveyor as Logic, Inputs     # noqa: E402
+from plant_cycle import PlantCycle, FAULT_LIMITS         # noqa: E402
+from plc_link import PlcLink                              # noqa: E402
 
 from asyncua import Server, ua                            # noqa: E402
 from asyncua.server.user_managers import UserManager      # noqa: E402
-from asyncua.crypto.permission_rules import User, UserRole  # noqa: E402
+from asyncua.server.users import User, UserRole  # noqa: E402
 
 URI = "urn:vigilimen:plant:conv001"
 
@@ -63,8 +64,11 @@ class PlantUserManager(UserManager):
     Two roles, because the read/write split is the whole point of having
     identity at all:
 
-        historian  — reads. Cannot write anything.
-        engineer   — reads, and may write the operator setpoints.
+        historian  — intended to read.   engineer — intended to write setpoints.
+
+    INTENDED, not enforced: both hold UserRole.User, and write permission is a
+    property of the NODE. `historian` CAN write StartCommand, StopCommand and the
+    Fault* tags. See ADR-017 and the finding below.
 
     A single account with full rights would authenticate perfectly and
     protect nothing, which is the shape most OPC UA deployments actually
@@ -169,6 +173,24 @@ async def build(server: Server) -> dict:
         "MotorCurrent_A": await ro("MotorCurrent_A", 0.0),
         "StartCommand":   await rw("StartCommand", False),
         "StopCommand":    await rw("StopCommand", False),
+        # ---- FAULT INJECTION (S4 acceptance 4e, S8, S13) -------------------
+        # APPENDED AFTER the nine tags above on purpose: asyncua numbers nodes
+        # in creation order, and FUXA addresses them as ns=2;i=N. Inserting
+        # earlier would silently re-point every SCADA binding (these are i=15..19).
+        # These are simulation inputs, not plant tags: a real server would not
+        # have them, and ADR-003 says why this one does. NOTE the finding: any
+        # authenticated session can write them (roles differ in attribution,
+        # not authorisation - see above), including `historian`.
+        "FaultBearingWear":    await rw("FaultBearingWear", 0.0),
+        "FaultBeltSlip":       await rw("FaultBeltSlip", 0.0),
+        "FaultMisalignment":   await rw("FaultMisalignment", 0.0),
+        "FaultIdlerSeizure":   await rw("FaultIdlerSeizure", 0.0),
+        "FaultVibrationSpike": await rw("FaultVibrationSpike", 0.0),
+        # ---- PLC LINK STATUS (ADR-013) — appended again: i=20..22 --------------
+        # Read-only. In embedded mode (no PLC link) they read False / 0 / 0.
+        "PlcLinkOK":      await ro("PlcLinkOK", False),
+        "PlcState":       await ro("PlcState", 0),
+        "PlcAlarmWord":   await ro("PlcAlarmWord", 0),
     }
 
 
@@ -191,35 +213,39 @@ async def run(port: int) -> None:
     # apart — which is how a correctly-authenticated engineer ends up able to
     # write a measurement.
     server.set_security_policy([ua.SecurityPolicyType.NoSecurity])
-    server.set_identity_tokens([ua.UserNameIdentityToken])
+    server.set_security_IDs(["Username"])
 
     tags = await build(server)
-    physics, logic = Physics(), Logic()
+
+    # PLC link: OFF by default. "modbus" makes PLC-CONV-001 the control function
+    # (ADR-013). The default stays "off" until the link is validated in Docker,
+    # so acceptance test 4e keeps meaning what it meant when it was written.
+    mode = os.environ.get("VIGILIMEN_PLC_LINK", "off").strip().lower()
+    if mode not in ("off", "modbus"):
+        raise SystemExit(f"VIGILIMEN_PLC_LINK must be 'off' or 'modbus', got {mode!r}")
+    link = None
+    if mode == "modbus":
+        link = PlcLink(os.environ.get("VIGILIMEN_MODBUS_HOST", "plc-control"),
+                       int(os.environ.get("VIGILIMEN_MODBUS_PORT", "502")))
+    cycle = PlantCycle(link, dt_s=0.5)
 
     async with server:
         print(f"CONV-001 OPC UA server on opc.tcp://0.0.0.0:{port}/vigilimen/conv001/")
-        print("Anonymous sessions are refused. Accounts: historian (read), engineer (read/write)\n")
+        print("Anonymous sessions are refused. Accounts: historian (read), engineer (read/write)")
+        print(f"Control function: {'PLC-CONV-001 over Modbus (' + link.host + ':' + str(link.port) + ')' if link else 'embedded Python model (no PLC link)'}\n")
 
         while True:
-            i = Inputs(
-                start_pressed=await tags["StartCommand"].get_value(),
-                stop_pressed=await tags["StopCommand"].get_value(),
-                safety_reset_pressed=True,          # panel reset, modelled as held
-                zero_speed=physics.zero_speed,
-                bearing_temp_c=physics.bearing_temp_c,
-                motor_current_a=physics.motor_current_a,
-            )
-            running = logic.scan(i)
-            physics.running = running
-            t = physics.step(0.5)
+            start = await tags["StartCommand"].get_value()
+            stop = await tags["StopCommand"].get_value()
+            # Fault injection: raw values here, clamped inside PlantCycle.
+            faults = {name: await tags[name].get_value() for name in FAULT_LIMITS}
 
-            await tags["Running"].write_value(running)
-            await tags["SafetyTripped"].write_value(logic.safety.tripped)
-            await tags["BeltSpeed_mps"].write_value(t["CONV001.Speed_mps"])
-            await tags["Load_tph"].write_value(t["CONV001.Load_tph"])
-            await tags["BearingTemp_C"].write_value(t["CONV001.BearingTemp_C"])
-            await tags["Vibration_mms"].write_value(t["CONV001.Vibration_mms"])
-            await tags["MotorCurrent_A"].write_value(t["CONV001.Current_A"])
+            # The scan does blocking socket I/O in PLC mode, so it runs in a
+            # worker thread: a slow or absent PLC must not freeze OPC UA.
+            snap = await asyncio.to_thread(cycle.step, start, stop, faults)
+
+            for name, value in snap.items():
+                await tags[name].write_value(value)
 
             await asyncio.sleep(0.5)
 

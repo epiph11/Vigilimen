@@ -23,8 +23,11 @@ The unit id is a bus address, not a credential — it says which device on a
 serial line, not who is asking.
 
 Function codes implemented: 1 read coils · 3 read holding registers ·
-5 write single coil · 6 write single register. That is what a conveyor
-needs. No dependency, so this runs anywhere Python does.
+5 write single coil · 6 write single register · 15 write multiple coils ·
+16 write multiple registers. FC 15/16 were added for the gateway-to-PLC link
+(ADR-013): one write per block is one consistent set of inputs per PLC scan,
+where five single writes are five chances for a scan to see half an update.
+No dependency, so this runs anywhere Python does.
 """
 
 from __future__ import annotations
@@ -38,6 +41,8 @@ FC_READ_COILS = 1
 FC_READ_HOLDING = 3
 FC_WRITE_COIL = 5
 FC_WRITE_REGISTER = 6
+FC_WRITE_COILS = 15
+FC_WRITE_REGISTERS = 16
 
 ERR_ILLEGAL_FUNCTION = 0x01
 ERR_ILLEGAL_ADDRESS = 0x02
@@ -117,6 +122,29 @@ def _apply(regs: Registers, pdu: bytes) -> bytes:
                 if addr >= len(regs.regs):
                     return struct.pack(">BB", fc | 0x80, ERR_ILLEGAL_ADDRESS)
                 regs.regs[addr] = val
+            return pdu[:5]
+
+        if fc == FC_WRITE_COILS:
+            addr, qty, nbytes = struct.unpack(">HHB", pdu[1:6])
+            data = pdu[6:6 + nbytes]
+            if qty == 0 or nbytes != (qty + 7) // 8 or len(data) != nbytes:
+                return struct.pack(">BB", fc | 0x80, ERR_ILLEGAL_ADDRESS)
+            with regs.lock:
+                if addr + qty > len(regs.coils):
+                    return struct.pack(">BB", fc | 0x80, ERR_ILLEGAL_ADDRESS)
+                for i in range(qty):
+                    regs.coils[addr + i] = bool((data[i // 8] >> (i % 8)) & 1)
+            return pdu[:5]
+
+        if fc == FC_WRITE_REGISTERS:
+            addr, qty, nbytes = struct.unpack(">HHB", pdu[1:6])
+            if qty == 0 or nbytes != qty * 2 or len(pdu) < 6 + nbytes:
+                return struct.pack(">BB", fc | 0x80, ERR_ILLEGAL_ADDRESS)
+            vals = struct.unpack(f">{qty}H", pdu[6:6 + nbytes])
+            with regs.lock:
+                if addr + qty > len(regs.regs):
+                    return struct.pack(">BB", fc | 0x80, ERR_ILLEGAL_ADDRESS)
+                regs.regs[addr:addr + qty] = list(vals)
             return pdu[:5]
 
     except (struct.error, IndexError):
@@ -220,3 +248,14 @@ class Client:
 
     def write_register(self, addr: int, value: int) -> None:
         self._tx(struct.pack(">BHH", FC_WRITE_REGISTER, addr, value & 0xFFFF))
+
+    def write_coils(self, addr: int, values: list[bool]) -> None:
+        packed = bytearray((len(values) + 7) // 8)
+        for i, v in enumerate(values):
+            if v:
+                packed[i // 8] |= 1 << (i % 8)
+        self._tx(struct.pack(">BHHB", FC_WRITE_COILS, addr, len(values), len(packed)) + bytes(packed))
+
+    def write_registers(self, addr: int, values: list[int]) -> None:
+        body = struct.pack(f">{len(values)}H", *[v & 0xFFFF for v in values])
+        self._tx(struct.pack(">BHHB", FC_WRITE_REGISTERS, addr, len(values), len(body)) + body)

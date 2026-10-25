@@ -41,30 +41,18 @@ EXPOSE 4840
 # accepts and answers nothing is the exact failure this stack is meant to
 # make visible, so the check opens a session.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD python3 -c "\
-import asyncio,sys;\
-from asyncua import Client;\
-\
-async def m():\
-    c = Client('opc.tcp://127.0.0.1:4840/vigilimen/conv001/');\
-    c.set_user('historian'); c.set_password('h1st0r1an-demo');\
-    await c.connect();\
-    await c.disconnect();\
-\
-sys.exit(0 if not asyncio.run(m()) else 1)" || exit 1
+  CMD ["python3", "gateway/healthcheck.py"]
 
 CMD ["python3", "gateway/opcua_server.py", "--port", "4840"]
 
 # ---------------------------------------------------------------------------
-# WHAT THIS CONTAINER IS NOT, YET.
+# TWO MODES (ADR-013).
 #
-# It runs the physics and interlock models in-process and serves them over
-# OPC UA. It does NOT read the OpenPLC runtime over Modbus — VIGILIMEN_MODBUS_HOST
-# is set in compose and is not consumed here.
+# Default: the physics and interlock models run in-process and are served over
+# OPC UA; the OpenPLC containers run beside the plant and decide nothing.
 #
-# That gap is real and is named rather than hidden: closing it is S5 work
-# (`gateway/modbus.py` already speaks the wire format). Until then the two
-# OpenPLC containers exist so that logic can be downloaded to them from an
-# engineering workstation, which is the attack path S8 needs, and the OPC UA
-# values come from the simulation.
+# VIGILIMEN_PLC_LINK=modbus (set by docker-compose.plcio.yml): this container
+# plays the field and drives PLC-CONV-001 over Modbus (gateway/plc_link.py), and
+# the motor turns only if the safety-contactor model is energised AND the PLC
+# requests run. It stays opt-in until FF-26 has passed against real OpenPLC.
 # ---------------------------------------------------------------------------

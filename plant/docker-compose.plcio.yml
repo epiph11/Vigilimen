@@ -1,0 +1,26 @@
+# Opt-in layer: PLC-CONV-001 as the control function, alarm state in the database.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.plcio.yml up -d
+#
+# WHY A SEPARATE FILE, AND NOT THE DEFAULT
+# Acceptance test 4e was written against the embedded model (interlock_model.py
+# plays both controllers). Switching the default and validating 4e in the same
+# build would make a failure impossible to attribute. So: validate 4e on the base
+# file, then add this one. When the link is validated in Docker (FF-26), these
+# two lines move into docker-compose.yml and this file is deleted (ADR-013).
+#
+# PREREQUISITES, in order, or the gateway reports PlcLinkOK = False and the
+# belt will not run (that is the fail-safe working, not a bug):
+#   1. Apply plant/historian/migrations/001_alarm_state.sql to an existing volume.
+#   2. Upload plant/plc-upload/conveyor_upload.st to PLC-CONV-001 and Start PLC
+#      (plant/tools/plc-ui-relay.ps1 opens the UI; ADR-013 explains why it needs one).
+#
+# Nothing here touches net_safety. FF-22 checks the merged result of both files.
+
+services:
+  gateway:
+    environment:
+      VIGILIMEN_PLC_LINK: modbus
+  collector:
+    environment:
+      VIGILIMEN_ALARM_PERSIST: "on"
