@@ -46,7 +46,7 @@ Three behaviours are the substance, and **FF-24** exercises each against a fake 
 
 **Proven in Docker, 25 October.** MatIEC accepts the located variables only once they are in a `VAR` block of their own: mixing located and plain declarations in one block fails with `invalid located variable declaration` on every plain line, a cascade no text-level check could see (FF-23 now checks the shape). Then: runtime rebuilt, `%QW112` read at holding register 112 (`Plc_Map_Version` = 1), `%QW100` at HR100, the gateway reports `read-back clean`, START waits 10.4 s for the horn, and a spike reaches `alarm_event` in 0.60 s.
 
-**Still not proven.** The 95 °C and 42 A trips and the fault-reset rule have run in the fake PLC only; `conveyor.st` itself has not been driven through them in Docker.
+**Machine protection, proven in the real OpenPLC (FF-27, 25 October).** Slip plus a seized idler trip the PLC to FAULT on overload in 1.4 s; a second START does not clear a FAULT, only STOP with the belt stopped does; and **one forged Modbus frame** writing a bearing of 96.0 °C to the PLC, with no credential, trips it in 0.21 s. The last is the S8 point: the 95 °C trip is the program's own (`BEARING_TRIP`), and anything on `net_control` can trigger it.
 
 ---
 

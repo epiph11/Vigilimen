@@ -90,6 +90,7 @@ An architecture characteristic that is only written down is an aspiration. These
 | **FF-24** | The gateway drives the PLC over Modbus and fails safe (ADR-013) | Running locally against a **fake** OpenPLC — 22 cases |
 | **FF-25** | A collector restart does not rewrite the alarm history (ADR-019) | Running locally — 19 cases |
 | **FF-26** | The running stack end to end (alarm < 2 s, restart, append-only) | Run 25 Oct: embedded 7/7, PLC in the loop 6+2+2. Needs Docker, not in CI |
+| **FF-27** | `conveyor.st`'s 42 A and 95 °C trips and fault-reset rule, in the real OpenPLC | Run 25 Oct: 13/13. Needs Docker, not in CI |
 
 `python3 scripts/ff06_safety_independence.py` · `python3 scripts/ff07_alarm_state_model.py` · `python3 scripts/test_ff13.py` · `bash scripts/ff01_doc_cut_line.sh` · `bash scripts/ff03_no_static_credentials.sh` · `bash scripts/ff05_naming_and_tagging.sh` · `bash scripts/ff14_federation_scope.sh`
 

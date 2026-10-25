@@ -71,3 +71,10 @@ git log --oneline -9
 ```
 
 Commits 4 and 5 should be checked against CI before merging: FF-22 needs `pip install pyyaml` (the workflow does it).
+
+## 9. FF-27 and the follow-up edits (after the eight above)
+
+```powershell
+git add -- scripts/ff27_plc_trips_e2e.py plant/tools/validate-trips.ps1 docs/adr/0013-gateway-plc-modbus-link.md docs/adr/0016-fault-injection-tags.md README.md docs/runs/NOTES.md docs/runs/COMMITS.md docs/VIGILIMEN-etat-des-lieux.md
+git commit -m "FF-27: conveyor.st's 42 A and 95 C trips proven in the real OpenPLC" -m "13/13 in Docker on 25 Oct: overload trip in 1.4 s, START does not clear a FAULT, one forged Modbus frame trips the 95 C protection in 0.21 s with no credential (the S8 point). ADR-013 and ADR-016 updated."
+```

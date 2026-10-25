@@ -1,10 +1,10 @@
 # Vigilimen — état des lieux complet (Stations 1 à 4, liaison PLC validée dans Docker)
 
-Dernière mise à jour : 25 octobre 2026, 16 h. Même contenu que le doc du projet « MINE 360 » (`claude/VIGILIMEN-etat-des-lieux.md`). Schémas : `docs/img/` (à régénérer : ils décrivent l'état d'avant la liaison PLC).
+Dernière mise à jour : 25 octobre 2026, 16 h 30. Même contenu que le doc du projet « MINE 360 » (`claude/VIGILIMEN-etat-des-lieux.md`). Schémas : `docs/img/` (à régénérer : ils décrivent l'état d'avant la liaison PLC).
 
 ## En bref
 
-La station CONV-001 (un convoyeur de mine simulé) tourne en local dans six conteneurs Docker : deux automates OpenPLC, un gateway OPC UA, un historien TimescaleDB, un collecteur et un SCADA FUXA. Les stations 1 à 4 sont faites. **Le 25/10, 4e, la liaison PLC, la persistance des alarmes et l'isolation ont été validés dans Docker.**
+La station CONV-001 (un convoyeur de mine simulé) tourne en local dans six conteneurs Docker : deux automates OpenPLC, un gateway OPC UA, un historien TimescaleDB, un collecteur et un SCADA FUXA. Les stations 1 à 4 sont faites. **Le 25/10, 4e, la liaison PLC, la persistance des alarmes et l'isolation et les déclenchements de `conveyor.st` ont été validés dans Docker.**
 
 **Vérifié sur la machine d'Epiphane (avant le 25/10)**
 
@@ -21,18 +21,16 @@ La station CONV-001 (un convoyeur de mine simulé) tourne en local dans six cont
 | Compilation de `conveyor.st` avec les variables `AT` | OK **après correction** : MatIEC refuse un bloc `VAR` qui mélange variables localisées et ordinaires. `%QW112` = registre 112 (signature lue = 1) |
 | Persistance des alarmes (ADR-019, **Accepted**) | Redémarrage du collecteur en pleine alarme : un seul `NORMAL→UNACK`, `alarm_state` conservé. Le déclencheur refuse un UPDATE sur `alarm_event` |
 | Isolation du SIS en direct (`prove-isolation.ps1`) | 7/7 : un seul membre, DNS non résolu, `Network is unreachable` par IP vers 8080 et 502, témoin positif CONNECTED |
+| Déclenchements de `conveyor.st` dans OpenPLC (`validate-trips.ps1`, FF-27) | 13/13. Surcharge 42 A : FAULT en 1,4 s. Un second START n'efface pas le défaut, STOP oui. Une trame Modbus forgée (palier à 96 °C, sans identifiant) déclenche le PLC en 0,21 s |
 
 **Pas encore prouvé**
-- Les déclenchements 95 °C et 42 A, et la règle de remise à zéro des défauts, ont tourné dans le faux PLC seulement, pas dans OpenPLC.
 - `safety.st` n'a jamais reçu d'entrée (ADR-014) ; rejouer les 13 vecteurs de FF-06 hors réseau reste à faire.
 - Redémarrage du collecteur pendant qu'une alarme est SHELVED ; DELETE et TRUNCATE sur `alarm_event` (volontairement non testés).
 - Le mode par défaut du compose reste *embedded* ; passer au mode PLC par défaut est un changement à part.
 
 **Reste ouvert**
-- Aucun commit : huit commits proposés dans `docs\runs\COMMITS.md`, rien n'est poussé. Un fichier a changé depuis la proposition (`prove-isolation.ps1`, `conveyor.st`, FF-23, FF-24) : relire avant de valider.
+- Huit commits faits en local (`056dbc7` à `5443d67`), **rien n'est poussé**. Un neuvième est à faire : FF-27, `validate-trips.ps1`, ADR 013/016, README, notes, walkthrough 1.3. La CI n'a jamais tourné sur ces commits.
 - Station 5 : sept constats (F1 à F7) dans `docs/assessments/hydro-station/EVALUATION-station5.md`.
-- Le walkthrough (rev 1.2) dit encore « jamais lancé » dans sa table d'état : à passer en rev 1.3.
-- FF-03 échoue sur ton `my-notes.md` ligne 66 (clé d'exemple écrite en clair ; fichier ignoré par git).
 
 ## Vue d'ensemble
 
@@ -78,7 +76,7 @@ Calculées par le gateway toutes les 0,5 s (`plant/sim/conveyor_physics.py`), pa
 | Vibration (mm/s) | `1,6 + 0,4 × charge/850` + bruit ; défauts : usure `5,5 × usure^1,5`, désalignement `+4,0`, galet `+2,0`, spike `+valeur`. **0 à l'arrêt** |
 | Bearing temperature (°C) | tend vers `28 + 26 × charge/850` (+34 usure, +12 galet), constante 420 s ; retour vers 28 °C à l'arrêt, 900 s |
 
-Mesuré le 25/10 : l'usure à 100 % seule plafonne vers **85 °C** ; atteindre 95 °C demande usure **et** galet grippé, environ **50 minutes**, et le déclenchement sur 42 A peut venir avant.
+Mesuré le 25/10 : l'usure à 100 % seule plafonne vers **85 °C** ; atteindre 95 °C demande usure **et** galet grippé, environ **50 minutes**, et le déclenchement sur 42 A peut venir avant. FF-27 déclenche donc le 95 °C par une écriture Modbus directe.
 
 ## L'isolation de la sécurité
 
@@ -107,7 +105,7 @@ L'ancienne preuve `ping sis-conv-001` était vide : `sis-conv-001` est un `hostn
 
 | Composant | Fichier | Rôle | Statut |
 | --- | --- | --- | --- |
-| Logique de commande | `plant/plc-control/conveyor.st` | Séquence, 95 °C, 42 A ; variables `AT` en bloc `VAR` séparé (ADR-013) | Compile et tourne dans OpenPLC |
+| Logique de commande | `plant/plc-control/conveyor.st` | Séquence, 95 °C, 42 A ; variables `AT` en bloc `VAR` séparé (ADR-013) | Compile et tourne dans OpenPLC ; déclenchements prouvés (FF-27) |
 | Logique de sécurité | `plant/plc-safety/safety.st` | Fonction de sécurité | Compile ; jamais pilotée par une entrée |
 | Contrat E/S | `plant/gateway/plc_io_map.py` | Table unique des adresses, `MAP_VERSION` | FF-23 |
 | Liaison PLC | `plant/gateway/plc_link.py`, `plant_cycle.py` | Client Modbus, échec sûr, signature | Validée dans Docker ; FF-24 (faux PLC) |
@@ -117,7 +115,7 @@ L'ancienne preuve `ping sis-conv-001` était vide : `sis-conv-001` est un `hostn
 | Historien | `plant/historian/schema.sql`, `migrations/` | `sample`, `alarm_event`, `alarm_state` | Migration appliquée le 25/10 |
 | SCADA | `plant/scada/project/` | Projet FUXA généré | Fichier d'import |
 | Orchestration | `plant/docker-compose.yml` + `docker-compose.plcio.yml` | 6 services, 3 réseaux | override = opt-in |
-| Outils | `plant/tools/` | `validate-4e`, `validate-plcio`, `prove-isolation`, `plc-ui-relay` | Lancés le 25/10 |
+| Outils | `plant/tools/` | `validate-4e`, `validate-plcio`, `validate-trips`, `prove-isolation`, `plc-ui-relay` | Lancés le 25/10 |
 
 ## Blocages rencontrés et corrections
 
@@ -141,11 +139,13 @@ L'ancienne preuve `ping sis-conv-001` était vide : `sis-conv-001` est un `hostn
 | Compilation : `invalid located variable declaration` sur les lignes ordinaires, puis 40 erreurs `invalid variable before ':='` | MatIEC veut un bloc `VAR` entièrement localisé ou entièrement ordinaire ; je les avais mélangés. FF-23 et FF-24 lisent le texte et ne lancent pas MatIEC | Deux blocs `VAR` ; FF-23 vérifie la forme. Compilation confirmée avec `iec2c` dans le conteneur, puis dans l'interface |
 | OpenPLC garde une écriture Modbus à une adresse qu'aucun programme ne déclare (mesuré : HR100 et coils 801 à 804 avec l'ancien programme) | Le faux PLC de FF-24 supposait le contraire | La relecture ne prouve rien sur le programme ; seule la signature le fait. FF-24, `plc_link.py` et ADR-013 corrigés |
 | `prove-isolation.ps1` : `bad character U+002D '-'`, puis trois FAIL | Windows PowerShell 5.1 retire les guillemets doubles internes passés à `docker inspect` : faux négatifs de mon script, pas de l'isolation | Adresses lues dans le JSON de `docker inspect` ; arrêt clair si une adresse manque |
+| `git commit` : `index.lock: File exists` | Fichier vide du 5 octobre, laissé par une commande git lancée depuis mon environnement (qui ne peut pas supprimer ses verrous) | `Remove-Item .git\index.lock` après vérification qu'aucun git ne tourne |
 
 ## Constats et limites
 
 | Constat | Pourquoi c'est important | Statut |
 | --- | --- | --- |
+| Une seule trame Modbus sans identifiant déclenche le PLC (FF-27, 0,21 s) | Le point central de S8 : la segmentation est la seule authentification | ADR-013 |
 | `historian` et `engineer` ne diffèrent que par l'attribution : `historian` peut écrire `StartCommand`, `StopCommand` et `Fault*` | Le collecteur prétendait ne rien pouvoir écrire ; commentaire corrigé | ADR-017, cible S8 |
 | Rien n'enregistre qui a écrit un `Fault*` | Un défaut falsifié est indiscernable d'un défaut injecté | ADR-016 |
 | OpenPLC v3 archivé le 4 avril 2026, remplacé par v4 (sans interface web) | Aucun correctif à attendre | ADR-015 |
@@ -155,7 +155,7 @@ L'ancienne preuve `ping sis-conv-001` était vide : `sis-conv-001` est un `hostn
 | Canal OPC UA `NoSecurity` | Mot de passe en clair sur le réseau Docker | Connu, ADR-018 |
 | Deux implémentations de la logique de sécurité, une seule bouclée | Dérive possible entre `safety.st` et le modèle | ADR-014 |
 | Le SCADA détient un identifiant qui peut démarrer le convoyeur (R-14) | Cible de S8 | Volontaire |
-| Rien n'est commité | Tout le travail est local | `docs\runs\COMMITS.md` (à relire) |
+| Huit commits locaux, rien de poussé | La CI n'a jamais exécuté FF-21 à FF-25 | `git push` à ton initiative |
 
 ## Commandes
 
@@ -176,6 +176,14 @@ powershell -ExecutionPolicy Bypass -File tools\validate-plcio.ps1
 
 Résultat du 25/10 : tout vert (la partie isolation après correction du script). Elle applique la migration, démarre avec `docker-compose.plcio.yml`, te laisse téléverser `plc-upload\conveyor_upload.st` (via `tools\plc-ui-relay.ps1 -Action start -Target control`, puis `http://127.0.0.1:8081`, `openplc` / `openplc`), lance FF-26 avec le PLC dans la boucle, redémarre le collecteur en pleine alarme, puis exécute `prove-isolation.ps1`. Pense à `tools\plc-ui-relay.ps1 -Action stop` ensuite.
 
+**Passe 3 : les déclenchements de `conveyor.st`, une fois la passe 2 réussie et la pile encore dans cet état.**
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\validate-trips.ps1
+```
+
+Résultat du 25/10 : 13/13, environ trois minutes.
+
 Tests locaux : `python scripts\ff22_compose_topology.py` (idem 23, 24, 25, 21, 07, 06). Arrêt : `docker compose down` garde les données, `down -v` les supprime (avec l'override, passer les deux `-f`).
 
 ## Prompt de reprise
@@ -183,5 +191,5 @@ Tests locaux : `python scripts\ff22_compose_topology.py` (idem 23, 24, 25, 21, 0
 ```text
 Tu es mon architecte OT/IT. Projet : Vigilimen (sécurité OT/IT d'une mine, convoyeur CONV-001), 100 % local avec Docker.
 Lis docs/VIGILIMEN-etat-des-lieux.md, docs/runs/NOTES.md et docs/adr/0013 à 0019.
-Point de départ : 4e, la liaison PLC, la persistance et l'isolation sont validés dans Docker (25/10). Reste : déclenchements 95 °C et 42 A dans OpenPLC, commits, walkthrough rev 1.3. Si je te colle une sortie de validate-*.ps1, analyse-la : note symptôme, cause, correction dans NOTES.md AVANT de corriger. Chaque test = une fitness function FF-xx. Ports sur 127.0.0.1, aucun secret réel, ne commite rien sans mon accord.
+Point de départ : 4e, la liaison PLC, la persistance, l'isolation et les déclenchements de conveyor.st sont validés dans Docker (25/10). Reste : pousser (CI jamais lancée), neuvième commit, mode PLC par défaut, safety.st piloté hors réseau. Si je te colle une sortie de validate-*.ps1, analyse-la : note symptôme, cause, correction dans NOTES.md AVANT de corriger. Chaque test = une fitness function FF-xx. Ports sur 127.0.0.1, aucun secret réel, ne commite rien sans mon accord.
 ```

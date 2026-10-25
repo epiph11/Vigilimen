@@ -56,3 +56,9 @@ Passed in the real stack: gateway `plc-link: linked to plc-control:502, read-bac
 `prove-isolation.ps1` after the quoting fix: 7/7 PASS. net_safety has one member; plc-control cannot resolve `plc-safety`; SIS 172.20.0.2 and control 172.21.0.2 found; positive control CONNECTED to 172.21.0.2:8080; plc-control to SIS :8080 and :502 both `UNREACHABLE OSError [Errno 101] Network is unreachable` (not REFUSED); FF-22 pass. **Isolation proven live.**
 
 Follow-ups done: FF-24's fake now STORES writes at unlocated addresses (the measured behaviour) and a KNOWN LIMIT case documents that a program with the right signature but a missing input is undetectable at run time; plc_link.py docstring and ADR-013 corrected; ADR-013 and ADR-019 moved to Accepted with what was and was not proven; README updated.
+
+## 16:23 FF-27 in the real OpenPLC (log trips-20261025-162339.log): 13/13
+
+PLC link up; START to state 3 after the horn (11.8 s); slip + seized idler trip FAULT in 1.4 s and the belt stops; **START does not clear a FAULT**, STOP does (1.2 s); one forged Modbus frame writing 96.0 degC to HR100 trips the PLC in **0.21 s**, belt stops, STOP recovers. So `conveyor.st`'s 42 A and 95 degC trips and its reset rule are proven in OpenPLC, not only in FF-24's port. The forged frame is also the S8 finding: no credential was asked for.
+
+8 commits made locally by Epiphane (056dbc7..5443d67), not pushed. FF-03 passes after my-notes.md was cleaned.

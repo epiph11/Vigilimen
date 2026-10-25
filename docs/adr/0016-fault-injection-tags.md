@@ -29,7 +29,7 @@ Acceptance test 4e says a vibration spike must raise an alarm within 2 seconds. 
 
 **Negative, and a finding.** These are plant-model inputs in a namespace that otherwise models a plant. A real server would not have them. Worse, **any authenticated session can write them, including `historian`** (ADR-017), and **nothing records who wrote one**: a falsified fault is indistinguishable from an injected one by design. That is the S24 detection problem in miniature, so it is recorded here and not fixed.
 
-**Reaching machine protection.** Slip plus a seized idler push current over 42 A, so the PLC trips on overload (FF-24 asserts it). The 95 °C trip is hard to provoke: in the physics, full bearing wear alone levels off near 85 °C, and 95 °C needs wear **and** a seized idler, then about 50 minutes of simulated running (measured), during which the overload trip can fire first. FF-24 therefore tests the 95 °C trip by setting the temperature directly. That is a property of the model, not of the program.
+**Reaching machine protection.** Slip plus a seized idler push current over 42 A, so the PLC trips on overload (FF-24 asserts it). The 95 °C trip is hard to provoke: in the physics, full bearing wear alone levels off near 85 °C, and 95 °C needs wear **and** a seized idler, then about 50 minutes of simulated running (measured), during which the overload trip can fire first. FF-24 therefore tests the 95 °C trip by setting the temperature directly, and FF-27 does it against the real OpenPLC with one Modbus write to the temperature register. That is a property of the model, not of the program.
 
 **Revisit when:** S8 needs the writes attributed, or a `VIGILIMEN_FAULT_INJECTION=off` switch is wanted for a run that must be unfalsifiable.
 
