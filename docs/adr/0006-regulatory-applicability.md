@@ -67,7 +67,7 @@ The enhanced table lists ISO/IEC 27001:2023, ASD Essential Eight at **ML2**, NIS
 ## Verification
 
 **Eleven sectors, mining not among them** — CISC, *Security of Critical Infrastructure Act 2018*, verified 14 Sept 2026.
-**Critical electricity threshold, 30 MW or an SRAS contract** — secondary legal commentary on the SOCI Definitions Rules, 14 Sept 2026, **to be re-checked against the primary rules before external use.**
+**Critical electricity threshold, 30 MW or an SRAS contract** — **checked on 26 Oct 2026 against the primary text**: Security of Critical Infrastructure (Definitions) Rules (LIN 21/039) 2021, s 5(1): the station is connected to a wholesale electricity market (para 5(1)(b)) **and** either its owner or operator is contracted to provide a system restart ancillary service (sub-para 5(1)(a)(i)) or its installed capacity is at least 30 MW (sub-para 5(1)(a)(ii)). Read on the as-made version (F2021L01769, registered 13 Dec 2021). **Amendments since then have not been checked: confirm the current compilation before external use.**
 **Enhanced CIRMP framework table** — Enhanced CIRMP Rules 2026, carried from the hydro assessment, Annexure D.
 
 **The middle line is deliberately left marked.** A verification note that records *how well* something was verified is worth more than one that records only that it was.

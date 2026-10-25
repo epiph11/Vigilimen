@@ -31,9 +31,9 @@ This document establishes the boundary and enumerates every access point crossin
 
 ### ⚠ Verify before external use
 
-Two regulatory characterisations in this document needed verifying, and both change the assessment materially. **Status as of 26 Oct 2026:** the first has been *resolved against the original assumption* (see the README and Annexure D of the CRS), but the 30 MW figure it rests on comes from **secondary commentary** (ADR-006) and has **not** been re-checked against the primary rules; the second is still open.
+Two regulatory characterisations in this document needed verifying, and both change the assessment materially. **Status as of 26 Oct 2026:** the first has been *resolved against the original assumption* (see the README and Annexure D of the CRS), and the 30 MW figure and the SRAS limb were **checked against the primary rules on 26 Oct 2026** (Definitions Rules 2021, s 5(1), as-made text; later amendments not checked, see ADR-006); the second is still open.
 
-1. **Whether this station meets the SOCI Act *critical electricity asset* threshold.** *Resolved on a secondary source:* the test is a wholesale-market connection plus either 30 MW installed capacity or a system restart ancillary services contract, so a 20 MW station does not qualify on its own, and CRS Annexure D is a four-branch test the asset owner must answer. **Before external use, confirm the 30 MW figure and the SRAS limb against the primary SOCI rules.**
+1. **Whether this station meets the SOCI Act *critical electricity asset* threshold.** *Resolved, and verified on the primary text (as made):* the test is a wholesale-market connection plus either 30 MW installed capacity or a system restart ancillary services contract, so a 20 MW station does not qualify on its own, and CRS Annexure D is a four-branch test the asset owner must answer. **Before external use, confirm that no later amendment has changed s 5 (check the current compilation).**
 2. **The market registration category and its telemetry obligations.** Whether this unit is scheduled, semi-scheduled or non-scheduled determines what data must flow to the market operator, how fast, and with what availability obligation — which directly sets the SL-T of conduit **C7**.
 
 Both are flagged again in §7.
