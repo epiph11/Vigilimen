@@ -1,8 +1,11 @@
 # Vigilimen — état des lieux complet (Stations 1 à 4, liaison PLC validée dans Docker)
 
-Dernière mise à jour : 26 octobre 2026, 1 h. Même contenu que le doc du projet « MINE 360 » (`claude/VIGILIMEN-etat-des-lieux.md`). Schémas : `docs/img/` (à régénérer : ils décrivent l'état d'avant la liaison PLC).
+Dernière mise à jour : 26 octobre 2026, 1 h. Même contenu que le doc du projet « MINE 360 » (`claude/VIGILIMEN-etat-des-lieux.md`). Schémas : `docs/img/01…06-*.png` (intégrés ci-dessous). Les anciens `architecture`, `chemin-valeur`, `etats-alarme` décrivent l'état d'avant la liaison PLC et restent à régénérer.
 
 ## En bref
+
+![Où on en est et la suite](img/06-feuille-de-route.png)
+
 
 La station CONV-001 (un convoyeur de mine simulé) tourne en local dans six conteneurs Docker : deux automates OpenPLC, un gateway OPC UA, un historien TimescaleDB, un collecteur et un SCADA FUXA. Les stations 1 à 4 sont faites. **Le 25 et le 26/10, 4e, la liaison PLC, la persistance des alarmes, l'isolation, les déclenchements de `conveyor.st` et le rejeu de `safety.st` ont été validés dans Docker.**
 
@@ -33,7 +36,80 @@ La station CONV-001 (un convoyeur de mine simulé) tourne en local dans six cont
 - Neuf commits faits et poussés (`056dbc7` à `f46e977`). Deux commits locaux, **non poussés** : `9634611` (le banc) et `b55c150` (le modèle sur front montant, FF-06 à 15 cas). Un petit troisième est à faire : `replay-safety.ps1` affiche maintenant ce que le conteneur a reçu. Puis `git push`.
 - Station 5 : sept constats (F1 à F7) dans `docs/assessments/hydro-station/EVALUATION-station5.md`.
 
+## Les conteneurs : à quoi sert chacun, et comment ils s'emboîtent
+
+![Les 6 conteneurs et les 3 réseaux](img/01-conteneurs-et-reseaux.png)
+
+
+**L'idée en une phrase.** On a un convoyeur de mine qui n'existe pas. Pour étudier sa sécurité comme sur un vrai site, on a besoin des mêmes « pièces » qu'un vrai site, chacune dans sa propre boîte (un conteneur), reliées par des tuyaux précis (les réseaux). C'est cette séparation en boîtes qui rend la sécurité **mesurable** : on peut montrer qu'une boîte ne peut pas parler à une autre.
+
+**Les six boîtes, avec une image simple**
+
+| Conteneur | Image simple | Ce qu'il fait | Pourquoi il existe | Si on l'enlève |
+|---|---|---|---|---|
+| **`plc-control`** (OpenPLC) | Le **cerveau de la machine** | Exécute `conveyor.st` : séquence de démarrage (avertisseur 10 s), arrêt sur 95 °C ou 42 A, remise à zéro des défauts | Sur un vrai site c'est lui qui pilote le moteur. C'est lui qu'on attaque en S8 | Plus de logique de commande : la bande ne démarre pas (mode PLC) |
+| **`plc-safety`** (OpenPLC) | Le **cerveau d'urgence**, séparé et muet | Exécute `safety.st` : arrêt d'urgence, câble d'arrêt, garde, dérive de bande | L'ADR-011 : la sécurité des personnes ne doit dépendre de rien de ce qui est piloté ou attaquable. Il n'a **aucune liaison** avec les autres | Plus de fonction de sécurité (ici elle est de toute façon modélisée à part, voir ADR-014) |
+| **`gateway`** | Le **traducteur** et le **faux convoyeur** | (1) simule la machine : vitesse, courant, vibration, température ; (2) parle Modbus au PLC et OPC UA aux écrans ; (3) tient le contacteur de sécurité modélisé | Rien de physique n'existe, donc quelqu'un doit *être* la machine. Et le PLC et les écrans ne parlent pas la même langue (voir plus bas) | Plus de machine, plus de traduction : tout s'arrête |
+| **`scada`** (FUXA) | L'**écran de l'opérateur** | Affiche la bande, les boutons START, STOP, « Spike vibration », « Clear all faults » | Un opérateur doit voir et commander. Choix de licence (ADR-012) | Plus d'interface ; le reste tourne |
+| **`historian`** (TimescaleDB) | La **mémoire à long terme** | Base de données qui garde chaque valeur et chaque alarme avec leur date | Pour répondre « pourquoi a-t-on arrêté le trimestre dernier ? ». Une alarme sans historique ne sert pas à l'enquête | Plus d'historique ; la bande tourne quand même |
+| **`collector`** | Le **greffier** | Toutes les secondes : lit 7 valeurs au gateway, les écrit dans la mémoire, et décide s'il y a une alarme (ISA-18.2) | Une base de données **stocke** mais n'aime pas aller chercher : il faut quelqu'un pour copier | Les valeurs ne sont plus enregistrées et aucune alarme n'est levée |
+
+**Pourquoi le gateway, en détail.** Il fait trois métiers à la fois, parce que sur ce banc d'essai rien de physique n'existe :
+1. **Il EST le convoyeur.** Sans lui personne ne produit de vibration ni de température. La physique (`conveyor_physics.py`) est dedans, et c'est là qu'on injecte les défauts (les cinq tags `Fault*`).
+2. **Il traduit.** Les PLC parlent **Modbus**, une langue sans mot de passe ni identité. Les écrans et la base parlent **OPC UA**, avec connexion par nom et mot de passe. Le gateway est la porte entre les deux : c'est la « rupture de protocole ».
+3. **Il tient le contacteur de sécurité modélisé.** Le vrai `plc-safety` n'est relié à rien, donc le gateway joue sa partie : le moteur tourne seulement si *le contacteur est enclenché ET le PLC demande la marche*.
+
+C'est une **simplification assumée**. Sur un vrai site ce seraient trois choses différentes : la machine, une passerelle OPC UA, et un contacteur câblé. Ici une seule boîte les réunit. Conséquence honnête : le gateway est la pièce la plus « de confiance » du banc, donc la cible naturelle de S8.
+
+**Pourquoi le collecteur, en détail.** Trois raisons :
+- **Une base ne va pas chercher.** TimescaleDB attend qu'on lui écrive. Le collecteur lit le gateway et écrit à la base.
+- **Il décide des alarmes.** « Cette vibration est-elle une alarme ? » est une décision qu'on veut garder avec l'historique, et qui doit survivre à un redémarrage. Il écrit l'événement et l'état dans **la même transaction** (ADR-019), pour qu'une panne en plein milieu ne perde rien.
+- **Il est dans le bon réseau.** Il n'a accès qu'au côté supervision, s'identifie avec le compte `historian` et ne fait que lire. Si la base ou le collecteur est compromis, ils n'ont aucune route vers le PLC. *Limite à connaître* : ce compte `historian` peut techniquement écrire `StartCommand` et les `Fault*` (ADR-017).
+
+**Les trois réseaux : des pièces avec des portes**
+
+| Réseau | Qui est dedans | Particularité |
+|---|---|---|
+| `net_control` | `plc-control`, `gateway` | **Interne** : aucune sortie vers l'extérieur. Le gateway est le seul à pouvoir entrer |
+| `net_supervisory` | `gateway`, `scada`, `historian`, `collector` | Le seul réseau avec des ports ouverts vers ta machine, uniquement sur `127.0.0.1` |
+| `net_safety` | `plc-safety` seul | **Interne** et un seul membre (FF-22, preuve en direct `prove-isolation.ps1`) |
+
+Le `gateway` est le **seul conteneur dans deux pièces à la fois** : c'est la porte entre la commande et la supervision, et c'est voulu.
+
+**Qui parle à qui, dans quelle langue**
+
+| De | Vers | Langue | Ce qui passe | Qui initie |
+|---|---|---|---|---|
+| `scada` | `gateway` | OPC UA (compte `engineer`) | Il lit les valeurs, il écrit START, STOP et les défauts | `scada` |
+| `collector` | `gateway` | OPC UA (compte `historian`) | Il lit 7 valeurs à 1 Hz | `collector` |
+| `collector` | `historian` | SQL (PostgreSQL) | Il écrit valeurs, événements d'alarme, état des alarmes | `collector` |
+| `gateway` | `plc-control` | Modbus TCP, **sans authentification** | Il écrit les entrées simulées (température, courant, boutons), il lit la décision (marche, avertisseur) toutes les 0,5 s | `gateway` |
+| *(personne)* | `plc-safety` | — | Rien. C'est le but | — |
+| Toi | `scada`, `historian`, `gateway` | navigateur, `psql`, client OPC UA | Sur `127.0.0.1` seulement (ports 1881, 15432, 14840) | Toi |
+
+**Un exemple suivi de bout en bout : tu appuies sur START**
+1. Dans FUXA, tu cliques START. FUXA écrit `StartCommand = vrai` dans le gateway (OPC UA).
+2. Toutes les 0,5 s, le gateway recopie ce bouton dans le PLC de commande (Modbus), avec la température, le courant et la vitesse simulés.
+3. Le PLC voit le front montant du bouton et lance son **avertisseur de 10 secondes** (mesuré : 10,4 s). La bande ne bouge pas encore.
+4. À la fin, le PLC demande la marche. Le gateway vérifie que le contacteur modélisé est enclenché, **puis seulement** il fait tourner la machine simulée : la vitesse monte à 2,5 m/s.
+5. Chaque seconde, le collecteur lit ces valeurs et les écrit dans la base.
+6. Tu cliques « Spike vibration +8 ». Le gateway ajoute 8 mm/s à la vibration, le collecteur la voit, dépasse le seuil, et écrit `HI_HI NORMAL→UNACK` dans l'historique en **0,6 s** (mesuré).
+7. « Clear all faults » : la vibration redescend et le collecteur écrit `UNACK → RTN_UNACK` : l'alarme est revenue à la normale **sans que personne l'ait vue**, et c'est exactement ce qu'un simple oui/non effacerait.
+
+**Pourquoi autant de boîtes plutôt qu'un seul programme ?** Parce que l'évaluation de sécurité (IEC 62443) porte sur des **zones** et des **conduits** : une zone est un groupe de choses de même niveau de risque, un conduit est le tuyau autorisé entre deux zones. Une boîte par rôle rend ces zones **réelles et testables**. On a prouvé en direct que le PLC de commande ne peut pas atteindre celui de sécurité (réseau injoignable). Dans un seul programme, cette preuve serait impossible.
+
+**Ce qui est réel et ce qui est simulé**
+
+| Réel | Simulé |
+|---|---|
+| OpenPLC, qui exécute de vrais programmes IEC 61131-3 | Le convoyeur lui-même (la physique est une formule) |
+| FUXA, PostgreSQL/TimescaleDB, le protocole OPC UA | Le câblage de terrain : le gateway invente les valeurs que les capteurs donneraient |
+| Les réseaux Docker, leur isolation, Modbus sur le fil | Le contacteur de sécurité (un modèle Python dans le gateway) et les opérateurs |
+
 ## Les tests de sécurité : comment je sais quoi attendre, et comment j'interprète
+
+![Porte ET et reset au front](img/03-securite-et-reset.png)
+
 
 **La question à se poser devant chaque test : d'où vient le résultat attendu ?** Un test qui compare deux choses écrites par la même main mesure la cohérence, pas la justesse.
 
@@ -105,6 +181,9 @@ Ports sur 127.0.0.1 seulement (1881 FUXA, 14840 OPC UA, 15432 base). **8081 et 8
 
 ## Le chemin d'une valeur
 
+![Du clic START à la ligne d'alarme](img/02-chemin-de-l-information.png)
+
+
 ```text
 FUXA boutons --OPC UA--> Gateway, boucle de 0,5 s (plant_cycle.py) :
   mode par défaut ("embedded") :              mode plcio ("modbus") :
@@ -143,6 +222,9 @@ L'ancienne preuve `ping sis-conv-001` était vide : `sis-conv-001` est un `hostn
 
 ## Les alarmes ISA-18.2
 
+![Cycle de vie d'une alarme](img/04-etats-d-alarme.png)
+
+
 États : NORMAL, UNACK, ACKED, RTN_UNACK, SHELVED, SUPPRESSED, OOS. L'état qui compte est RTN_UNACK (revenue normale, jamais vue).
 
 | Tag | Condition | Limite | Priorité | Délai |
@@ -168,7 +250,7 @@ L'ancienne preuve `ping sis-conv-001` était vide : `sis-conv-001` est un `hostn
 | Collecteur | `plant/historian/collector.py`, `alarms/store.py` | 7 tags à 1 Hz, alarmes, persistance | Persistance validée ; désactivée par défaut |
 | Historien | `plant/historian/schema.sql`, `migrations/` | `sample`, `alarm_event`, `alarm_state` | Migration appliquée le 25/10 |
 | SCADA | `plant/scada/project/` | Projet FUXA généré | Fichier d'import |
-| Orchestration | `plant/docker-compose.yml` + `docker-compose.plcio.yml` | 6 services, 3 réseaux | override = opt-in |
+| Orchestration | `plant/docker-compose.yml` (seul fichier) | 6 services, 3 réseaux | mode PLC par défaut ; embedded = opt-out (`VIGILIMEN_PLC_LINK=off`) |
 | Banc `safety.st` | `plant/tools/replay-safety.ps1`, `safety_replay.cpp`, `replay_stubs.cpp`, `replay.sh`, `scripts/safety_vectors.py` | Compile `safety_upload.st` en C (MatIEC) et rejoue 63 scans contre le modèle et contre l'exigence | Validé ; commité en local |
 | Outils | `plant/tools/` | `validate-4e`, `validate-plcio`, `validate-trips`, `prove-isolation`, `plc-ui-relay` | Lancés le 25/10 |
 
@@ -205,6 +287,9 @@ L'ancienne preuve `ping sis-conv-001` était vide : `sis-conv-001` est un `hostn
 
 ## Constats et limites
 
+![Vrai, simulé, pas encore](img/05-vrai-simule-a-venir.png)
+
+
 | Constat | Pourquoi c'est important | Statut |
 | --- | --- | --- |
 | Une seule trame Modbus sans identifiant déclenche le PLC (FF-27, 0,21 s) | Le point central de S8 : la segmentation est la seule authentification | ADR-013 |
@@ -236,7 +321,7 @@ Résultat du 25/10 : 7/7. Le script lance les FF locaux, construit, démarre, at
 powershell -ExecutionPolicy Bypass -File tools\validate-plcio.ps1
 ```
 
-Résultat du 25/10 : tout vert (la partie isolation après correction du script). Elle applique la migration, démarre avec `docker-compose.plcio.yml`, te laisse téléverser `plc-upload\conveyor_upload.st` (via `tools\plc-ui-relay.ps1 -Action start -Target control`, puis `http://127.0.0.1:8081`, `openplc` / `openplc`), lance FF-26 avec le PLC dans la boucle, redémarre le collecteur en pleine alarme, puis exécute `prove-isolation.ps1`. Pense à `tools\plc-ui-relay.ps1 -Action stop` ensuite.
+Résultat du 25/10 : tout vert (la partie isolation après correction du script). Elle applique la migration, démarre en mode PLC (le défaut du compose), te laisse téléverser `plc-upload\conveyor_upload.st` (via `tools\plc-ui-relay.ps1 -Action start -Target control`, puis `http://127.0.0.1:8081`, `openplc` / `openplc`), lance FF-26 avec le PLC dans la boucle, redémarre le collecteur en pleine alarme, puis exécute `prove-isolation.ps1`. Pense à `tools\plc-ui-relay.ps1 -Action stop` ensuite.
 
 **Passe 3 : les déclenchements de `conveyor.st`, une fois la passe 2 réussie et la pile encore dans cet état.**
 
@@ -244,7 +329,7 @@ Résultat du 25/10 : tout vert (la partie isolation après correction du script)
 powershell -ExecutionPolicy Bypass -File tools\validate-trips.ps1
 ```
 
-Résultat : 13/13 le 25/10 et le 26/10 (après reconstruction du gateway : `docker compose -f docker-compose.yml -f docker-compose.plcio.yml up -d --build gateway`).
+Résultat : 13/13 le 25/10 et le 26/10 (après reconstruction du gateway : `docker compose up -d --build gateway`).
 
 **Passe 4 : `safety.st` par exécution.**
 
