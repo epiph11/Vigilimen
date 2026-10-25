@@ -1,6 +1,6 @@
 # Vigilimen — état des lieux complet (Stations 1 à 4, liaison PLC validée dans Docker)
 
-Dernière mise à jour : 26 octobre 2026, 1 h. Même contenu que le doc du projet « MINE 360 » (`claude/VIGILIMEN-etat-des-lieux.md`). Schémas : `docs/img/01…06-*.png` (intégrés ci-dessous). Les anciens `architecture`, `chemin-valeur`, `etats-alarme` décrivent l'état d'avant la liaison PLC et restent à régénérer.
+Dernière mise à jour : 26 octobre 2026, 1 h. Même contenu que le doc du projet « MINE 360 » (`claude/VIGILIMEN-etat-des-lieux.md`). Schémas : `docs/img/01…06-*.png` (intégrés ci-dessous). Les anciens `architecture`, `chemin-valeur`, `etats-alarme` (état d'avant la liaison PLC) sont remplacés par les schémas 01, 02 et 04 et retirés du dépôt.
 
 ## En bref
 
@@ -29,8 +29,7 @@ La station CONV-001 (un convoyeur de mine simulé) tourne en local dans six cont
 | Déclenchements de `conveyor.st` dans OpenPLC (`validate-trips.ps1`, FF-27) | 13/13, et de nouveau 13/13 le 26/10 après la reconstruction du gateway (reset en impulsion). Surcharge 42 A : FAULT en 1,6 s. Un second START n'efface pas le défaut, STOP oui. Une trame Modbus forgée (palier à 96 °C, sans identifiant) déclenche le PLC en 0,21 s |
 
 **Pas encore prouvé**
-- Redémarrage du collecteur pendant qu'une alarme est SHELVED ; DELETE et TRUNCATE sur `alarm_event` (volontairement non testés).
-- Le mode par défaut du compose reste *embedded* ; passer au mode PLC par défaut est un changement à part.
+- Redémarrage du collecteur APRÈS l'échéance d'une étagère, alarme revenue normale pendant l'étagère, ACKED puis shelve (FF-28 couvre le redémarrage PENDANT SHELVED et l'expiration qui suit, et le refus de DELETE et TRUNCATE : 26/10, 3 h 36, 21 contrôles verts, mode embedded).
 
 **Reste ouvert**
 - Neuf commits faits et poussés (`056dbc7` à `f46e977`). Deux commits locaux, **non poussés** : `9634611` (le banc) et `b55c150` (le modèle sur front montant, FF-06 à 15 cas). Un petit troisième est à faire : `replay-safety.ps1` affiche maintenant ce que le conteneur a reçu. Puis `git push`.
