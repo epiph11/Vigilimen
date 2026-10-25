@@ -22,7 +22,7 @@ Runs INSIDE the gateway container (it has asyncua and gateway/modbus.py):
     docker cp scripts\\ff27_plc_trips_e2e.py vigilimen-gateway:/tmp/ff27.py
     docker exec -e VIGILIMEN_OPCUA_PASSWORD=eng1neer-demo vigilimen-gateway python3 /tmp/ff27.py
 
-Needs the plcio override and the program loaded (plant/tools/validate-plcio.ps1 does both).
+Needs the PLC link on (the compose default) and the program loaded (plant/tools/validate-plcio.ps1 does both).
 """
 
 from __future__ import annotations
@@ -115,7 +115,7 @@ async def main() -> int:
             return t is not None
 
         check("PLC link up (PlcLinkOK)", bool(await n["PlcLinkOK"].get_value()),
-              "run validate-plcio.ps1 first: the override and the program must be in place")
+              "run validate-plcio.ps1 first: the PLC mode and the program must be in place")
         if not results[-1][0]:
             return 1
         if not await reach_idle("setup"):

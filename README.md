@@ -106,7 +106,7 @@ Sprint 0 complete at gate **M0**. **Sprints 1 and 2 complete** — identity, com
 
 Phase A is closed. **S3 complete.** **S4 in progress** — the compose stack now *builds*: both Dockerfiles and the OPC UA → TimescaleDB collector exist, and `depends_on` waits on health rather than on existence. Outstanding: the FUXA mimic (built through the browser — FUXA has no headless import) and the engineering workstation VM.
 
-> **The gateway-to-PLC Modbus link works in Docker** (25 Oct). It is off by default (`VIGILIMEN_PLC_LINK`) and enabled by `plant/docker-compose.plcio.yml`; promoting it to the default is a separate, deliberate change.
+> **The gateway-to-PLC Modbus link works in Docker** (25 Oct). It has been the compose default since 26 Oct (`VIGILIMEN_PLC_LINK`, default `modbus`); the embedded model stays available with `VIGILIMEN_PLC_LINK=off`.
 
 ### What this repository deliberately does not contain
 

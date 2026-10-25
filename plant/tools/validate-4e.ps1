@@ -1,5 +1,9 @@
 <#
-Acceptance test 4e on the BASE compose file (embedded model, no PLC link).
+Acceptance test 4e on the EMBEDDED model (no PLC link, no alarm persistence): the baseline the PLC mode is compared against.
+
+The compose default is the PLC link since 26 Oct 2026, so this script opts out for itself (VIGILIMEN_PLC_LINK=off and
+VIGILIMEN_ALARM_PERSIST=off, set for this process only). The containers stay in the embedded mode afterwards; to go back:
+    Remove-Item Env:VIGILIMEN_PLC_LINK -ErrorAction SilentlyContinue ; docker compose up -d   (in a new PowerShell window)
 
     cd plant
     powershell -ExecutionPolicy Bypass -File tools\validate-4e.ps1
@@ -14,6 +18,8 @@ docs\runs\4e-<timestamp>.log. A programme that records what its own checks caugh
 worth more than one that shows a green tick of unknown provenance.
 #>
 $ErrorActionPreference = 'Continue'
+$env:VIGILIMEN_PLC_LINK = 'off'
+$env:VIGILIMEN_ALARM_PERSIST = 'off'
 $root = (Resolve-Path "$PSScriptRoot\..\..").Path
 Set-Location "$root\plant"
 $logDir = "$root\docs\runs"

@@ -101,6 +101,13 @@ services:
       # FF-22 checks that this names something Docker can resolve on net_control.
       VIGILIMEN_MODBUS_HOST: plc-control
       VIGILIMEN_MODBUS_PORT: "502"
+      # CONTROL FUNCTION (ADR-013). `modbus`: PLC-CONV-001 decides, over Modbus, and the belt will NOT run
+      # until its program is loaded and started (PlcLinkOK stays False: that is the fail-safe working).
+      # `off`: the embedded Python model plays both controllers, with no PLC involved. Use it as a
+      # zero-setup baseline or to tell a gateway fault from a PLC fault:
+      #   $env:VIGILIMEN_PLC_LINK = 'off'; docker compose up -d
+      # The mode is printed in the gateway's start-up line.
+      VIGILIMEN_PLC_LINK: ${VIGILIMEN_PLC_LINK:-modbus}
       TZ: Australia/Brisbane      # display only. Stored values are UTC (ADR-010).
     depends_on: [plc-control]
     restart: unless-stopped
@@ -176,6 +183,9 @@ services:
       VIGILIMEN_OPCUA_USER: historian
       VIGILIMEN_OPCUA_PASSWORD: h1st0r1an-demo
       VIGILIMEN_PGDSN: postgresql://vigilimen:vigilimen-local-only@historian:5432/vigilimen
+      # Alarm state in the database (ADR-019). A volume created before it needs
+      # historian/migrations/001_alarm_state.sql once; the collector says so if it is missing.
+      VIGILIMEN_ALARM_PERSIST: ${VIGILIMEN_ALARM_PERSIST:-on}
       TZ: UTC
     depends_on:
       gateway:

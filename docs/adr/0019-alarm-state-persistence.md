@@ -15,7 +15,7 @@ A second defect sat beside it. `pending()` advanced its mark *before* the insert
 
 **Persist the engine's state** (`state`, `in_condition`, `shelved_until`, `pending_since`) in a new `alarm_state` table, **written in the same transaction as the sample rows and the events that explain it**, loaded once per process at start, and saved only when it changes. The collector advances its event mark only after the commit.
 
-- **Off by default** (`VIGILIMEN_ALARM_PERSIST`), on in `docker-compose.plcio.yml`, so the existing volume and acceptance test 4e are untouched.
+- **On by default in compose since 26 Oct 2026** (`VIGILIMEN_ALARM_PERSIST`, default `on`; `off` disables it). The code default stays `off`, so a collector run outside compose is unchanged, and acceptance test 4e opts out for itself.
 - **Limits and delays are not stored.** They come from `build_conv001()`. A stored row must never override today's alarm limits.
 - **Restoring emits no events.** The transitions are already in the history.
 - **A missing table says how to fix itself.** `schema.sql` runs only on an *empty* volume, so an existing one needs `migrations/001_alarm_state.sql` once. The collector prints the command rather than crash-looping.

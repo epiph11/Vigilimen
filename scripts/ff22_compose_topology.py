@@ -20,6 +20,7 @@ would, so an opt-in override cannot quietly add a network either:
      route around a network;
   6. nothing configured for the gateway or collector names the safety controller;
   7. the service set is the expected six: a new container is a new decision;
+  9. the compose default for the control function is the PLC link, not the embedded model (ADR-013);
   8. the gateway's Modbus host is a name Docker's DNS can resolve on net_control
      (a service name, container name or alias). A container's `hostname:` is NOT
      resolvable, so the original value, plc-conv-001, would have failed at
@@ -129,6 +130,11 @@ def evaluate(c: dict) -> list[tuple[str, str, str]]:
     check("the gateway's Modbus host is resolvable by Docker DNS on net_control", gw_host in resolvable,
           f"VIGILIMEN_MODBUS_HOST={gw_host!r}; resolvable there: {sorted(resolvable)}. `hostname:` is not a DNS name")
 
+    plc_mode = str((svcs.get("gateway", {}).get("environment") or {}).get("VIGILIMEN_PLC_LINK", ""))
+    check("the compose default is the PLC link (embedded needs an explicit opt-out)",
+          plc_mode.replace(" ", "") == "${VIGILIMEN_PLC_LINK:-modbus}",
+          f"VIGILIMEN_PLC_LINK={plc_mode!r}. ADR-013: the PLC link is the default since 26 Oct 2026; a silent fall back to the embedded model would make every later check about a different plant")
+
     check("the service set is the expected six", set(svcs) == EXPECTED,
           f"unexpected: {sorted(set(svcs) - EXPECTED)}; missing: {sorted(EXPECTED - set(svcs))}")
     return out
@@ -158,6 +164,9 @@ def mutations(c: dict):
         m("the gateway pointed at a hostname, not a service", lambda d: d["services"]["gateway"]["environment"].__setitem__(
             "VIGILIMEN_MODBUS_HOST", "plc-conv-001"),
           "the gateway's Modbus host is resolvable by Docker DNS on net_control"),
+        m("the default silently falls back to the embedded model", lambda d: d["services"]["gateway"]["environment"].__setitem__(
+            "VIGILIMEN_PLC_LINK", "${VIGILIMEN_PLC_LINK:-off}"),
+          "the compose default is the PLC link (embedded needs an explicit opt-out)"),
         m("an unreviewed seventh container", lambda d: d["services"].__setitem__(
             "debug", {"image": "alpine", "networks": ["net_supervisory"]}),
           "the service set is the expected six"),

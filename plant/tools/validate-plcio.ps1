@@ -4,7 +4,7 @@ The PLC link and alarm persistence, in Docker (ADR-013, ADR-019). Run AFTER vali
     cd plant
     powershell -ExecutionPolicy Bypass -File tools\validate-plcio.ps1
 
-Does: local FFs -> migrate the historian -> bring the stack up WITH docker-compose.plcio.yml ->
+Does: local FFs -> migrate the historian -> bring the stack up in its default mode (PLC link on, alarm persistence on) ->
 you load conveyor_upload.st into PLC-CONV-001 and Start PLC (once) -> FF-26 with the PLC in
 the loop -> `docker restart vigilimen-collector` in the middle of an alarm -> FF-26 again
 (no second raise, state kept) -> Clear -> isolation proof.
@@ -23,7 +23,7 @@ $logDir = "$root\docs\runs"
 New-Item -ItemType Directory -Force $logDir | Out-Null
 $log = "$logDir\plcio-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
 Start-Transcript -Path $log | Out-Null
-$compose = @('-f', 'docker-compose.yml', '-f', 'docker-compose.plcio.yml')
+$compose = @('-f', 'docker-compose.yml')   # the PLC link and persistence are the compose defaults since 26 Oct 2026
 
 function Stop-Here($why) {
     Write-Host ""

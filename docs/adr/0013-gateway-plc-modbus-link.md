@@ -20,7 +20,7 @@ Each 0.5 s cycle the gateway writes the simulated inputs (start, stop, zero spee
 | Direction | Gateway is the Modbus **client** and opens every connection; the PLC is the server |
 | Addresses | `%QX100.0..4`, `%QW100..102` in; `%QX101.0..1`, `%QW110..112` out. Coil = byte×8+bit, register = word number (OpenPLC slave range) |
 | Source of truth | `plant/gateway/plc_io_map.py`. `conveyor.st` declares the same variables with `AT`; **FF-23** fails on any disagreement |
-| Opt-in | `VIGILIMEN_PLC_LINK=modbus`, set by `docker-compose.plcio.yml`. The default stays *embedded* until validated, so 4e keeps its meaning |
+| Default | **PLC link on** since 26 Oct 2026 (`VIGILIMEN_PLC_LINK`, default `modbus` in compose). The embedded model stays available with `VIGILIMEN_PLC_LINK=off` |
 
 Three behaviours are the substance, and **FF-24** exercises each against a fake OpenPLC:
 
@@ -39,6 +39,8 @@ Three behaviours are the substance, and **FF-24** exercises each against a fake 
 ## Consequences
 
 **Positive.** A real loop: START now waits for the 10 s horn from `conveyor.st`; the 95 °C trip, the 42 A trip and the fault-reset rule are the program's, not Python's.
+
+**Two modes, deliberately.** The embedded model is kept because it is the Python control logic FF-06 and FF-07 reason about, so it is the reference the PLC's behaviour is compared against; because it is the only zero-setup mode (in PLC mode a fresh stack has no program loaded, `PlcLinkOK` is False and the belt will not run, which is the fail-safe working but also a demo that shows nothing); and because it separates a gateway fault from a PLC fault. The cost is two modes to keep honest and the risk of running the wrong one unnoticed: the mode is printed at start-up and `PlcLinkOK` shows it. The code default of both gateway and collector stays `off`, so anything run outside compose is embedded.
 
 **Negative.** Modbus authenticates nobody (protocol-register.md). OpenPLC has **no write allow-list**, so anything on net_control can write any `%Q` variable. ADR-005 condition 3 is not met here; the segmentation is the only control, which is the S8 target and is recorded rather than fixed.
 

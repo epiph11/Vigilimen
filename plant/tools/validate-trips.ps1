@@ -4,8 +4,8 @@ FF-27: conveyor.st's 42 A and 95 degC trips in the REAL OpenPLC.
     cd plant
     powershell -ExecutionPolicy Bypass -File tools\validate-trips.ps1
 
-Needs the PLC link on and the program loaded, i.e. the state validate-plcio.ps1 leaves behind:
-  docker compose -f docker-compose.yml -f docker-compose.plcio.yml up -d
+Needs the PLC link on (the compose default) and the program loaded, i.e. the state validate-plcio.ps1 leaves behind:
+  docker compose up -d   (and, if the stack was last run embedded: Remove-Item Env:VIGILIMEN_PLC_LINK first)
   (conveyor_upload.st compiled and PLC started)
 Takes about three minutes (two 10 s horns, a fault reset, a cool-down check).
 

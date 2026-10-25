@@ -73,7 +73,7 @@ Three of the eleven are **contractual rather than technical** — vendor obligat
 
 The register first flagged **39 of 40 risks for treatment**, with 17 carrying safety consequence 5. That is a finding about the register as much as about the plant: a register that prioritises everything prioritises nothing.
 
-Most of those 5s were **inherited from what a risk enabled rather than what it achieved**. Seven risks were renoted to the consequence they reach directly, without traversing a further zone boundary or defeating a further control, and the escalation chains moved to an **attack path sheet** where they stay visible. The Extreme band fell from 17 to 11.
+Most of those 5s were **inherited from what a risk enabled rather than what it achieved**. Six risks were renoted to the consequence they reach directly (a seventh, R-20, was already rated directly and is unchanged), without traversing a further zone boundary or defeating a further control, and the escalation chains moved to an **attack path sheet** where they stay visible. The Extreme band fell from 17 to 11.
 
 **The treatment count did not move, and the workbook says so.** It is still 39 of 40, because the acceptance criteria require treatment at High as well as Extreme. What changed is the ranking underneath it: a priority score now orders the treatment plan, and R-22 — the intake — comes out top on the arithmetic rather than on the narrative. *'If everything needs treatment, what do I fund first'* has an answer that does not depend on the reader's patience.
 
