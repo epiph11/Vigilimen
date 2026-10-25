@@ -56,6 +56,8 @@ credentials
 # ---------------------------------------------------------------------------
 plant/scada/project/*
 !plant/scada/project/README.md
+!plant/scada/project/build_project.py
+!plant/scada/project/vigilimen-conv001.fuxa.json
 # FUXA writes its live project state into this directory. The README is the
 # build instruction and is tracked; the generated project is not, until it is
 # deliberately exported.
@@ -76,3 +78,9 @@ $RECYCLE.BIN/
 
 # Programme management: local only, never pushed (see pilotage/README.md)
 /pilotage/
+
+# Personal walkthrough log, local only
+/my-notes.md
+
+# Transcripts of validation runs: kept locally, commit one deliberately if it is evidence
+docs/runs/*.log

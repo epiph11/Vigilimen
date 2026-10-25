@@ -1,0 +1,709 @@
+{
+ "devices": {
+  "0": {
+   "id": "0",
+   "name": "FUXA Server",
+   "type": "FuxaServer",
+   "property": {},
+   "polling": 1000,
+   "enabled": true,
+   "tags": {
+    "t_7c641304-d0704ac5": {
+     "id": "t_7c641304-d0704ac5",
+     "name": "CONV-001 Connection Status",
+     "label": "CONV-001 Connection Status",
+     "value": 0,
+     "type": "number",
+     "memaddress": "d_bac44f27-4b1744ff",
+     "daq": {
+      "enabled": false,
+      "interval": 60,
+      "changed": false,
+      "restored": false
+     },
+     "init": "",
+     "sysType": 1,
+     "timestamp": 0
+    }
+   }
+  },
+  "d_bac44f27-4b1744ff": {
+   "id": "d_bac44f27-4b1744ff",
+   "name": "CONV-001",
+   "type": "OPCUA",
+   "enabled": true,
+   "polling": 3000,
+   "property": {
+    "address": "opc.tcp://gateway:4840/vigilimen/conv001/",
+    "port": null,
+    "slot": null,
+    "rack": null,
+    "baudrate": 9600,
+    "databits": 8,
+    "stopbits": 1,
+    "parity": "None",
+    "delay": 10,
+    "forceFC16": false,
+    "timeout": 2000
+   },
+   "tags": {
+    "t_69fbc576-28174428": {
+     "id": "t_69fbc576-28174428",
+     "name": "Running",
+     "label": "Running",
+     "type": "Boolean",
+     "address": "ns=2;i=6",
+     "daq": {
+      "enabled": false,
+      "interval": 60,
+      "changed": false,
+      "restored": false
+     },
+     "value": false,
+     "timestamp": 0
+    },
+    "t_576fe42f-a2774bdd": {
+     "id": "t_576fe42f-a2774bdd",
+     "name": "SafetyTripped",
+     "label": "SafetyTripped",
+     "type": "Boolean",
+     "address": "ns=2;i=7",
+     "daq": {
+      "enabled": false,
+      "interval": 60,
+      "changed": false,
+      "restored": false
+     },
+     "value": false,
+     "timestamp": 0
+    },
+    "t_b063281d-cd8046e1": {
+     "id": "t_b063281d-cd8046e1",
+     "name": "BeltSpeed_mps",
+     "label": "BeltSpeed_mps",
+     "type": "Double",
+     "address": "ns=2;i=8",
+     "daq": {
+      "enabled": false,
+      "interval": 60,
+      "changed": false,
+      "restored": false
+     },
+     "value": 0,
+     "timestamp": 0
+    },
+    "t_fa535891-3ceb4294": {
+     "id": "t_fa535891-3ceb4294",
+     "name": "Load_tph",
+     "label": "Load_tph",
+     "type": "Double",
+     "address": "ns=2;i=9",
+     "daq": {
+      "enabled": false,
+      "interval": 60,
+      "changed": false,
+      "restored": false
+     },
+     "value": 0,
+     "timestamp": 0
+    },
+    "t_1575227f-b66d418d": {
+     "id": "t_1575227f-b66d418d",
+     "name": "BearingTemp_C",
+     "label": "BearingTemp_C",
+     "type": "Double",
+     "address": "ns=2;i=10",
+     "daq": {
+      "enabled": false,
+      "interval": 60,
+      "changed": false,
+      "restored": false
+     },
+     "value": 0,
+     "timestamp": 0
+    },
+    "t_5cf9b42e-777f4b9b": {
+     "id": "t_5cf9b42e-777f4b9b",
+     "name": "Vibration_mms",
+     "label": "Vibration_mms",
+     "type": "Double",
+     "address": "ns=2;i=11",
+     "daq": {
+      "enabled": false,
+      "interval": 60,
+      "changed": false,
+      "restored": false
+     },
+     "value": 0,
+     "timestamp": 0
+    },
+    "t_44b20c04-dd7b4b1f": {
+     "id": "t_44b20c04-dd7b4b1f",
+     "name": "MotorCurrent_A",
+     "label": "MotorCurrent_A",
+     "type": "Double",
+     "address": "ns=2;i=12",
+     "daq": {
+      "enabled": false,
+      "interval": 60,
+      "changed": false,
+      "restored": false
+     },
+     "value": 0,
+     "timestamp": 0
+    },
+    "t_6f1159cc-274f479d": {
+     "id": "t_6f1159cc-274f479d",
+     "name": "StartCommand",
+     "label": "StartCommand",
+     "type": "Boolean",
+     "address": "ns=2;i=13",
+     "daq": {
+      "enabled": false,
+      "interval": 60,
+      "changed": false,
+      "restored": false
+     },
+     "value": false,
+     "timestamp": 0
+    },
+    "t_bc573c71-89154239": {
+     "id": "t_bc573c71-89154239",
+     "name": "StopCommand",
+     "label": "StopCommand",
+     "type": "Boolean",
+     "address": "ns=2;i=14",
+     "daq": {
+      "enabled": false,
+      "interval": 60,
+      "changed": false,
+      "restored": false
+     },
+     "value": false,
+     "timestamp": 0
+    },
+    "t_5a20fb4c-86b36bfd": {
+     "id": "t_5a20fb4c-86b36bfd",
+     "name": "FaultBearingWear",
+     "label": "FaultBearingWear",
+     "type": "Double",
+     "address": "ns=2;i=15",
+     "daq": {
+      "enabled": false,
+      "interval": 60,
+      "changed": false,
+      "restored": false
+     },
+     "value": 0,
+     "timestamp": 0
+    },
+    "t_826ed50b-00e2ff9d": {
+     "id": "t_826ed50b-00e2ff9d",
+     "name": "FaultBeltSlip",
+     "label": "FaultBeltSlip",
+     "type": "Double",
+     "address": "ns=2;i=16",
+     "daq": {
+      "enabled": false,
+      "interval": 60,
+      "changed": false,
+      "restored": false
+     },
+     "value": 0,
+     "timestamp": 0
+    },
+    "t_fcc05857-4a991645": {
+     "id": "t_fcc05857-4a991645",
+     "name": "FaultMisalignment",
+     "label": "FaultMisalignment",
+     "type": "Double",
+     "address": "ns=2;i=17",
+     "daq": {
+      "enabled": false,
+      "interval": 60,
+      "changed": false,
+      "restored": false
+     },
+     "value": 0,
+     "timestamp": 0
+    },
+    "t_3a16fdc9-10a1a10c": {
+     "id": "t_3a16fdc9-10a1a10c",
+     "name": "FaultIdlerSeizure",
+     "label": "FaultIdlerSeizure",
+     "type": "Double",
+     "address": "ns=2;i=18",
+     "daq": {
+      "enabled": false,
+      "interval": 60,
+      "changed": false,
+      "restored": false
+     },
+     "value": 0,
+     "timestamp": 0
+    },
+    "t_11811392-977ed8e8": {
+     "id": "t_11811392-977ed8e8",
+     "name": "FaultVibrationSpike",
+     "label": "FaultVibrationSpike",
+     "type": "Double",
+     "address": "ns=2;i=19",
+     "daq": {
+      "enabled": false,
+      "interval": 60,
+      "changed": false,
+      "restored": false
+     },
+     "value": 0,
+     "timestamp": 0
+    }
+   }
+  }
+ },
+ "hmi": {
+  "views": [
+   {
+    "id": "v_claude_conv001_hmi",
+    "name": "CONV-001 HMI",
+    "type": "svg",
+    "variables": {},
+    "profile": {
+     "width": 1024,
+     "height": 768,
+     "bkcolor": "#ffffffff",
+     "margin": 10,
+     "align": "topCenter",
+     "gridType": "fixed",
+     "viewRenderDelay": 0
+    },
+    "items": {
+     "VAL_0004-007bbc": {
+      "id": "VAL_0004-007bbc",
+      "type": "svg-ext-value",
+      "name": "BearingTemp_C",
+      "label": "Value",
+      "hide": false,
+      "lock": false,
+      "property": {
+       "variableId": "t_1575227f-b66d418d",
+       "ranges": [
+        {
+         "min": 20,
+         "max": 80,
+         "color": "",
+         "type": 1,
+         "stroke": ""
+        }
+       ],
+       "events": [],
+       "actions": []
+      }
+     },
+     "VAL_0007-00d889": {
+      "id": "VAL_0007-00d889",
+      "type": "svg-ext-value",
+      "name": "Vibration_mms",
+      "label": "Value",
+      "hide": false,
+      "lock": false,
+      "property": {
+       "variableId": "t_5cf9b42e-777f4b9b",
+       "ranges": [
+        {
+         "min": 20,
+         "max": 80,
+         "color": "",
+         "type": 1,
+         "stroke": ""
+        }
+       ],
+       "events": [],
+       "actions": []
+      }
+     },
+     "VAL_000a-013556": {
+      "id": "VAL_000a-013556",
+      "type": "svg-ext-value",
+      "name": "MotorCurrent_A",
+      "label": "Value",
+      "hide": false,
+      "lock": false,
+      "property": {
+       "variableId": "t_44b20c04-dd7b4b1f",
+       "ranges": [
+        {
+         "min": 20,
+         "max": 80,
+         "color": "",
+         "type": 1,
+         "stroke": ""
+        }
+       ],
+       "events": [],
+       "actions": []
+      }
+     },
+     "VAL_000d-019223": {
+      "id": "VAL_000d-019223",
+      "type": "svg-ext-value",
+      "name": "BeltSpeed_mps",
+      "label": "Value",
+      "hide": false,
+      "lock": false,
+      "property": {
+       "variableId": "t_b063281d-cd8046e1",
+       "ranges": [
+        {
+         "min": 20,
+         "max": 80,
+         "color": "",
+         "type": 1,
+         "stroke": ""
+        }
+       ],
+       "events": [],
+       "actions": []
+      }
+     },
+     "VAL_0010-01eef0": {
+      "id": "VAL_0010-01eef0",
+      "type": "svg-ext-value",
+      "name": "Load_tph",
+      "label": "Value",
+      "hide": false,
+      "lock": false,
+      "property": {
+       "variableId": "t_fa535891-3ceb4294",
+       "ranges": [
+        {
+         "min": 20,
+         "max": 80,
+         "color": "",
+         "type": 1,
+         "stroke": ""
+        }
+       ],
+       "events": [],
+       "actions": []
+      }
+     },
+     "svg_0013-024bbd": {
+      "id": "svg_0013-024bbd",
+      "type": "svg-ext-shapes",
+      "name": "Running",
+      "label": "Shapes",
+      "hide": false,
+      "lock": false,
+      "property": {
+       "variableId": "t_69fbc576-28174428",
+       "events": [],
+       "actions": [],
+       "ranges": [
+        {
+         "min": 0,
+         "max": 0,
+         "color": "#9e9e9e",
+         "stroke": "#000000",
+         "type": 2
+        },
+        {
+         "min": 1,
+         "max": 1,
+         "color": "#2e7d32",
+         "stroke": "#000000",
+         "type": 2
+        }
+       ]
+      }
+     },
+     "svg_0015-02899b": {
+      "id": "svg_0015-02899b",
+      "type": "svg-ext-shapes",
+      "name": "SafetyTripped",
+      "label": "Shapes",
+      "hide": false,
+      "lock": false,
+      "property": {
+       "variableId": "t_576fe42f-a2774bdd",
+       "events": [],
+       "actions": [],
+       "ranges": [
+        {
+         "min": 0,
+         "max": 0,
+         "color": "#9e9e9e",
+         "stroke": "#000000",
+         "type": 2
+        },
+        {
+         "min": 1,
+         "max": 1,
+         "color": "#c62828",
+         "stroke": "#000000",
+         "type": 2
+        }
+       ]
+      }
+     },
+     "svg_0017-02c779": {
+      "id": "svg_0017-02c779",
+      "type": "svg-ext-shapes",
+      "name": "VibAlarm",
+      "label": "Shapes",
+      "hide": false,
+      "lock": false,
+      "property": {
+       "variableId": "t_5cf9b42e-777f4b9b",
+       "events": [],
+       "actions": [],
+       "ranges": [
+        {
+         "min": 0,
+         "max": 4.4999,
+         "color": "#9e9e9e",
+         "stroke": "#000000",
+         "type": 2
+        },
+        {
+         "min": 4.5,
+         "max": 7.0999,
+         "color": "#f9a825",
+         "stroke": "#000000",
+         "type": 2
+        },
+        {
+         "min": 7.1,
+         "max": 1000,
+         "color": "#c62828",
+         "stroke": "#000000",
+         "type": 2
+        }
+       ]
+      }
+     },
+     "svg_0018-02e668": {
+      "id": "svg_0018-02e668",
+      "type": "svg-ext-shapes",
+      "name": "btn_START",
+      "label": "Shapes",
+      "hide": false,
+      "lock": false,
+      "property": {
+       "variableId": null,
+       "ranges": [],
+       "actions": [],
+       "events": [
+        {
+         "type": "click",
+         "action": "onSetValue",
+         "actparam": "1",
+         "actoptions": {
+          "variableId": "t_6f1159cc-274f479d"
+         }
+        },
+        {
+         "type": "click",
+         "action": "onSetValue",
+         "actparam": "0",
+         "actoptions": {
+          "variableId": "t_bc573c71-89154239"
+         }
+        }
+       ]
+      }
+     },
+     "svg_001a-032446": {
+      "id": "svg_001a-032446",
+      "type": "svg-ext-shapes",
+      "name": "btn_STOP",
+      "label": "Shapes",
+      "hide": false,
+      "lock": false,
+      "property": {
+       "variableId": null,
+       "ranges": [],
+       "actions": [],
+       "events": [
+        {
+         "type": "click",
+         "action": "onSetValue",
+         "actparam": "1",
+         "actoptions": {
+          "variableId": "t_bc573c71-89154239"
+         }
+        },
+        {
+         "type": "click",
+         "action": "onSetValue",
+         "actparam": "0",
+         "actoptions": {
+          "variableId": "t_6f1159cc-274f479d"
+         }
+        }
+       ]
+      }
+     },
+     "svg_001c-036224": {
+      "id": "svg_001c-036224",
+      "type": "svg-ext-shapes",
+      "name": "btn_SPIKE",
+      "label": "Shapes",
+      "hide": false,
+      "lock": false,
+      "property": {
+       "variableId": null,
+       "ranges": [],
+       "actions": [],
+       "events": [
+        {
+         "type": "click",
+         "action": "onSetValue",
+         "actparam": "8",
+         "actoptions": {
+          "variableId": "t_11811392-977ed8e8"
+         }
+        }
+       ]
+      }
+     },
+     "svg_001e-03a002": {
+      "id": "svg_001e-03a002",
+      "type": "svg-ext-shapes",
+      "name": "btn_MISALIGN",
+      "label": "Shapes",
+      "hide": false,
+      "lock": false,
+      "property": {
+       "variableId": null,
+       "ranges": [],
+       "actions": [],
+       "events": [
+        {
+         "type": "click",
+         "action": "onSetValue",
+         "actparam": "1",
+         "actoptions": {
+          "variableId": "t_fcc05857-4a991645"
+         }
+        }
+       ]
+      }
+     },
+     "svg_0020-03dde0": {
+      "id": "svg_0020-03dde0",
+      "type": "svg-ext-shapes",
+      "name": "btn_CLEAR",
+      "label": "Shapes",
+      "hide": false,
+      "lock": false,
+      "property": {
+       "variableId": null,
+       "ranges": [],
+       "actions": [],
+       "events": [
+        {
+         "type": "click",
+         "action": "onSetValue",
+         "actparam": "0",
+         "actoptions": {
+          "variableId": "t_5a20fb4c-86b36bfd"
+         }
+        },
+        {
+         "type": "click",
+         "action": "onSetValue",
+         "actparam": "0",
+         "actoptions": {
+          "variableId": "t_826ed50b-00e2ff9d"
+         }
+        },
+        {
+         "type": "click",
+         "action": "onSetValue",
+         "actparam": "0",
+         "actoptions": {
+          "variableId": "t_fcc05857-4a991645"
+         }
+        },
+        {
+         "type": "click",
+         "action": "onSetValue",
+         "actparam": "0",
+         "actoptions": {
+          "variableId": "t_3a16fdc9-10a1a10c"
+         }
+        },
+        {
+         "type": "click",
+         "action": "onSetValue",
+         "actparam": "0",
+         "actoptions": {
+          "variableId": "t_11811392-977ed8e8"
+         }
+        }
+       ]
+      }
+     },
+     "VAL_0025-04788b": {
+      "id": "VAL_0025-04788b",
+      "type": "svg-ext-value",
+      "name": "StartCommand",
+      "label": "Value",
+      "hide": false,
+      "lock": false,
+      "property": {
+       "variableId": "t_6f1159cc-274f479d",
+       "ranges": [
+        {
+         "min": 20,
+         "max": 80,
+         "color": "",
+         "type": 1,
+         "stroke": ""
+        }
+       ],
+       "events": [],
+       "actions": []
+      }
+     },
+     "VAL_0027-04b669": {
+      "id": "VAL_0027-04b669",
+      "type": "svg-ext-value",
+      "name": "StopCommand",
+      "label": "Value",
+      "hide": false,
+      "lock": false,
+      "property": {
+       "variableId": "t_bc573c71-89154239",
+       "ranges": [
+        {
+         "min": 20,
+         "max": 80,
+         "color": "",
+         "type": 1,
+         "stroke": ""
+        }
+       ],
+       "events": [],
+       "actions": []
+      }
+     }
+    },
+    "svgcontent": "<svg width=\"1024\" height=\"768\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:svg=\"http://www.w3.org/2000/svg\">\n <g>\n  <title>Layer 1</title>\n  <text id=\"svg_0001-001eef\" xml:space=\"preserve\" stroke-width=\"0\" fill=\"#222222\" text-anchor=\"start\" font-weight=\"bold\" font-size=\"28\" font-family=\"sans-serif\" y=\"50\" x=\"40\" >VIGILIMEN - CONV-001</text>\n  <text id=\"svg_0002-003dde\" xml:space=\"preserve\" stroke-width=\"0\" fill=\"#666666\" text-anchor=\"start\" font-weight=\"normal\" font-size=\"14\" font-family=\"sans-serif\" y=\"78\" x=\"40\" >Simulated plant. OPC UA via gateway, account engineer.</text>\n  <text id=\"svg_0003-005ccd\" xml:space=\"preserve\" stroke-width=\"0\" fill=\"#222222\" text-anchor=\"start\" font-weight=\"normal\" font-size=\"20\" font-family=\"sans-serif\" y=\"150\" x=\"40\" >Bearing temperature (degC)</text>\n  <g data-name=\"BearingTemp_C\" id=\"VAL_0004-007bbc\" type=\"svg-ext-value\">\n   <text xml:space=\"preserve\" stroke-width=\"0\" fill=\"#0d47a1\" text-anchor=\"start\" font-weight=\"bold\" font-size=\"26\" font-family=\"sans-serif\" y=\"150\" x=\"420\" id=\"VAL_0005-009aab\">##.##</text>\n  </g>\n  <text id=\"svg_0006-00b99a\" xml:space=\"preserve\" stroke-width=\"0\" fill=\"#222222\" text-anchor=\"start\" font-weight=\"normal\" font-size=\"20\" font-family=\"sans-serif\" y=\"206\" x=\"40\" >Vibration (mm/s)</text>\n  <g data-name=\"Vibration_mms\" id=\"VAL_0007-00d889\" type=\"svg-ext-value\">\n   <text xml:space=\"preserve\" stroke-width=\"0\" fill=\"#0d47a1\" text-anchor=\"start\" font-weight=\"bold\" font-size=\"26\" font-family=\"sans-serif\" y=\"206\" x=\"420\" id=\"VAL_0008-00f778\">##.##</text>\n  </g>\n  <text id=\"svg_0009-011667\" xml:space=\"preserve\" stroke-width=\"0\" fill=\"#222222\" text-anchor=\"start\" font-weight=\"normal\" font-size=\"20\" font-family=\"sans-serif\" y=\"262\" x=\"40\" >Motor current (A)</text>\n  <g data-name=\"MotorCurrent_A\" id=\"VAL_000a-013556\" type=\"svg-ext-value\">\n   <text xml:space=\"preserve\" stroke-width=\"0\" fill=\"#0d47a1\" text-anchor=\"start\" font-weight=\"bold\" font-size=\"26\" font-family=\"sans-serif\" y=\"262\" x=\"420\" id=\"VAL_000b-015445\">##.##</text>\n  </g>\n  <text id=\"svg_000c-017334\" xml:space=\"preserve\" stroke-width=\"0\" fill=\"#222222\" text-anchor=\"start\" font-weight=\"normal\" font-size=\"20\" font-family=\"sans-serif\" y=\"318\" x=\"40\" >Belt speed (m/s)</text>\n  <g data-name=\"BeltSpeed_mps\" id=\"VAL_000d-019223\" type=\"svg-ext-value\">\n   <text xml:space=\"preserve\" stroke-width=\"0\" fill=\"#0d47a1\" text-anchor=\"start\" font-weight=\"bold\" font-size=\"26\" font-family=\"sans-serif\" y=\"318\" x=\"420\" id=\"VAL_000e-01b112\">##.##</text>\n  </g>\n  <text id=\"svg_000f-01d001\" xml:space=\"preserve\" stroke-width=\"0\" fill=\"#222222\" text-anchor=\"start\" font-weight=\"normal\" font-size=\"20\" font-family=\"sans-serif\" y=\"374\" x=\"40\" >Load (t/h)</text>\n  <g data-name=\"Load_tph\" id=\"VAL_0010-01eef0\" type=\"svg-ext-value\">\n   <text xml:space=\"preserve\" stroke-width=\"0\" fill=\"#0d47a1\" text-anchor=\"start\" font-weight=\"bold\" font-size=\"26\" font-family=\"sans-serif\" y=\"374\" x=\"420\" id=\"VAL_0011-020ddf\">##.##</text>\n  </g>\n  <text id=\"svg_0012-022cce\" xml:space=\"preserve\" stroke-width=\"0\" fill=\"#222222\" text-anchor=\"start\" font-weight=\"normal\" font-size=\"20\" font-family=\"sans-serif\" y=\"477\" x=\"94\" >Running</text>\n  <ellipse data-name=\"Running\" stroke-width=\"2\" stroke=\"#000000\" fill=\"#9e9e9e\" ry=\"16\" rx=\"16\" cy=\"470\" cx=\"60\" id=\"svg_0013-024bbd\"/>\n  <text id=\"svg_0014-026aac\" xml:space=\"preserve\" stroke-width=\"0\" fill=\"#222222\" text-anchor=\"start\" font-weight=\"normal\" font-size=\"20\" font-family=\"sans-serif\" y=\"477\" x=\"334\" >Safety tripped (red = tripped)</text>\n  <ellipse data-name=\"SafetyTripped\" stroke-width=\"2\" stroke=\"#000000\" fill=\"#9e9e9e\" ry=\"16\" rx=\"16\" cy=\"470\" cx=\"300\" id=\"svg_0015-02899b\"/>\n  <text id=\"svg_0016-02a88a\" xml:space=\"preserve\" stroke-width=\"0\" fill=\"#222222\" text-anchor=\"start\" font-weight=\"normal\" font-size=\"20\" font-family=\"sans-serif\" y=\"512\" x=\"334\" >Vibration (amber &gt;= 4.5, red &gt;= 7.1 mm/s)</text>\n  <ellipse data-name=\"VibAlarm\" stroke-width=\"2\" stroke=\"#000000\" fill=\"#9e9e9e\" ry=\"16\" rx=\"16\" cy=\"505\" cx=\"300\" id=\"svg_0017-02c779\"/>\n  <rect data-name=\"btn_START\" stroke-width=\"2\" stroke=\"#000000\" fill=\"#2e7d32\" ry=\"8\" rx=\"8\" height=\"56\" width=\"170\" y=\"540\" x=\"40\" id=\"svg_0018-02e668\"/>\n  <text id=\"svg_0019-030557\" xml:space=\"preserve\" stroke-width=\"0\" fill=\"#ffffff\" text-anchor=\"middle\" font-weight=\"bold\" font-size=\"20\" font-family=\"sans-serif\" y=\"575\" x=\"125.0\" pointer-events=\"none\">START</text>\n  <rect data-name=\"btn_STOP\" stroke-width=\"2\" stroke=\"#000000\" fill=\"#c62828\" ry=\"8\" rx=\"8\" height=\"56\" width=\"170\" y=\"540\" x=\"240\" id=\"svg_001a-032446\"/>\n  <text id=\"svg_001b-034335\" xml:space=\"preserve\" stroke-width=\"0\" fill=\"#ffffff\" text-anchor=\"middle\" font-weight=\"bold\" font-size=\"20\" font-family=\"sans-serif\" y=\"575\" x=\"325.0\" pointer-events=\"none\">STOP</text>\n  <rect data-name=\"btn_SPIKE\" stroke-width=\"2\" stroke=\"#000000\" fill=\"#ef6c00\" ry=\"8\" rx=\"8\" height=\"56\" width=\"200\" y=\"540\" x=\"440\" id=\"svg_001c-036224\"/>\n  <text id=\"svg_001d-038113\" xml:space=\"preserve\" stroke-width=\"0\" fill=\"#ffffff\" text-anchor=\"middle\" font-weight=\"bold\" font-size=\"20\" font-family=\"sans-serif\" y=\"575\" x=\"540.0\" pointer-events=\"none\">Spike vibration +8</text>\n  <rect data-name=\"btn_MISALIGN\" stroke-width=\"2\" stroke=\"#000000\" fill=\"#6a1b9a\" ry=\"8\" rx=\"8\" height=\"56\" width=\"200\" y=\"540\" x=\"660\" id=\"svg_001e-03a002\"/>\n  <text id=\"svg_001f-03bef1\" xml:space=\"preserve\" stroke-width=\"0\" fill=\"#ffffff\" text-anchor=\"middle\" font-weight=\"bold\" font-size=\"20\" font-family=\"sans-serif\" y=\"575\" x=\"760.0\" pointer-events=\"none\">Misalignment 100%</text>\n  <rect data-name=\"btn_CLEAR\" stroke-width=\"2\" stroke=\"#000000\" fill=\"#455a64\" ry=\"8\" rx=\"8\" height=\"56\" width=\"200\" y=\"610\" x=\"440\" id=\"svg_0020-03dde0\"/>\n  <text id=\"svg_0021-03fccf\" xml:space=\"preserve\" stroke-width=\"0\" fill=\"#ffffff\" text-anchor=\"middle\" font-weight=\"bold\" font-size=\"20\" font-family=\"sans-serif\" y=\"645\" x=\"540.0\" pointer-events=\"none\">Clear all faults</text>\n  <text id=\"svg_0022-041bbe\" xml:space=\"preserve\" stroke-width=\"0\" fill=\"#888888\" text-anchor=\"start\" font-weight=\"normal\" font-size=\"14\" font-family=\"sans-serif\" y=\"640\" x=\"40\" >HMI holds a credential that can start the conveyor (risk R-14). Recorded, not fixed: S8 attacks it.</text>\n  <text id=\"svg_0023-043aad\" xml:space=\"preserve\" stroke-width=\"0\" fill=\"#222222\" text-anchor=\"start\" font-weight=\"normal\" font-size=\"16\" font-family=\"sans-serif\" y=\"705\" x=\"40\" >StartCommand</text>\n  <text id=\"svg_0024-04599c\" xml:space=\"preserve\" stroke-width=\"0\" fill=\"#222222\" text-anchor=\"start\" font-weight=\"normal\" font-size=\"16\" font-family=\"sans-serif\" y=\"705\" x=\"300\" >StopCommand</text>\n  <g data-name=\"StartCommand\" id=\"VAL_0025-04788b\" type=\"svg-ext-value\">\n   <text xml:space=\"preserve\" stroke-width=\"0\" fill=\"#0d47a1\" text-anchor=\"start\" font-weight=\"bold\" font-size=\"18\" font-family=\"sans-serif\" y=\"705\" x=\"190\" id=\"VAL_0026-04977a\">##</text>\n  </g>\n  <g data-name=\"StopCommand\" id=\"VAL_0027-04b669\" type=\"svg-ext-value\">\n   <text xml:space=\"preserve\" stroke-width=\"0\" fill=\"#0d47a1\" text-anchor=\"start\" font-weight=\"bold\" font-size=\"18\" font-family=\"sans-serif\" y=\"705\" x=\"450\" id=\"VAL_0028-04d558\">##</text>\n  </g>\n </g>\n</svg>"
+   }
+  ]
+ },
+ "recipes": [],
+ "ar": {
+  "enabled": false,
+  "markers": []
+ },
+ "version": "1.00",
+ "server": {
+  "id": "0",
+  "name": "FUXA Server",
+  "type": "FuxaServer",
+  "property": {},
+  "polling": 1000
+ }
+}

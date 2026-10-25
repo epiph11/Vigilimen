@@ -54,10 +54,15 @@ class Degradation:
     belt_slip: float = 0.0         # 0..1 — current up, speed down
     misalignment: float = 0.0      # 0..1 — vibration up, speed steady
     idler_seizure: float = 0.0     # 0..1 — current up, localised heat
+    vibration_spike_mms: float = 0.0   # 0..10 mm/s added to vibration ONLY.
+                                       # Not a failure mode: a test stimulus
+                                       # (S4 acceptance 4e) that moves one
+                                       # signal and nothing physically coupled.
 
     def any_active(self) -> bool:
         return any(v > 0 for v in (self.bearing_wear, self.belt_slip,
-                                   self.misalignment, self.idler_seizure))
+                                   self.misalignment, self.idler_seizure,
+                                   self.vibration_spike_mms))
 
 
 @dataclass
@@ -97,6 +102,7 @@ class Conveyor:
         v += 5.5 * self.deg.bearing_wear ** 1.5   # accelerates, not linear
         v += 4.0 * self.deg.misalignment
         v += 2.0 * self.deg.idler_seizure
+        v += self.deg.vibration_spike_mms
         v += 0.4 * (self.load_tph / DESIGN_LOAD_TPH)
         return max(0.0, v + self.rng.gauss(0, 0.12))
 
