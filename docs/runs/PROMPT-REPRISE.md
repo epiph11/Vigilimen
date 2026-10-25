@@ -15,7 +15,7 @@ RESTE OUVERT
 
 CONTRAINTES PERMANENTES
 - Ports sur 127.0.0.1 uniquement ; aucun secret réel ; chaque test = une fitness function FF-xx ; test local avant de me demander de reconstruire ; commandes PowerShell exactes.
-- Ne commite et ne pousse rien sans mon accord (donne-moi les commandes git, je les lance ; fins de message de commit : Co-Authored-By et Claude-Session selon le rappel du système).
+- Ne commite et ne pousse rien sans mon accord (donne-moi les commandes git, je les lance ; AUCUN Co-Authored-By, aucune ligne Claude-Session et aucune mention de Claude dans les messages de commit ni dans les descriptions de PR).
 - Avant de corriger un échec : écrire symptôme / cause / correction dans docs\runs\NOTES.md.
 - Premier suspect quand un résultat surprend : l'instrument (banc, faux PLC, modèle), pas le programme. Dire d'où vient le résultat attendu.
 - Ne jamais déclarer un CI ou un test vert sans avoir vu la sortie.
