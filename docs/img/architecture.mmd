@@ -1,0 +1,20 @@
+flowchart TB
+  subgraph SUP["net_supervisory"]
+    FUXA["SCADA FUXA<br/>UI 127.0.0.1:1881<br/>client OPC UA, compte engineer"]
+    COL["Collecteur<br/>OPC UA 1 Hz, compte historian<br/>moteur d'alarmes ISA-18.2"]
+    HIST["Historien TimescaleDB<br/>sample, tag, asset, alarm_event<br/>127.0.0.1:15432"]
+  end
+  subgraph BOTH["gateway : dans les deux réseaux"]
+    GW["Gateway OPC UA :4840<br/>physique + interlock en Python"]
+  end
+  subgraph CTL["net_control (internal)"]
+    PLC["PLC-CONV-001 OpenPLC<br/>conveyor.st, Modbus TCP :502<br/>UI :8081"]
+  end
+  subgraph SAF["net_safety (internal, un seul membre)"]
+    SIS["SIS-CONV-001 OpenPLC<br/>safety.st, aucune entrée réseau<br/>UI :8082"]
+  end
+  FUXA <-->|OPC UA| GW
+  GW -->|OPC UA| COL
+  COL -->|SQL| HIST
+  GW -. "non câblé (E/S non liées)" .- PLC
+  PLC -. "aucune route : le ping échoue" .- SIS

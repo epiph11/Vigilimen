@@ -1,0 +1,7 @@
+stateDiagram-v2
+  [*] --> NORMAL
+  NORMAL --> UNACK: condition vraie (après délai)
+  UNACK --> ACKED: acquitter
+  UNACK --> RTN_UNACK: revenue normale sans acquittement
+  ACKED --> NORMAL: condition revenue normale
+  RTN_UNACK --> NORMAL: acquitter
