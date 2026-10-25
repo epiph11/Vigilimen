@@ -36,12 +36,19 @@ One engineer. Thirty sprints. A hard budget of **US$333**.
 | [004](docs/adr/0004-zero-idle-by-construction.md) | Cost control by construction, not by discipline | Accepted |
 | [005](docs/adr/0005-ot-boundary-unidirectional.md) | The OT boundary is unidirectional by default | Accepted |
 | [006](docs/adr/0006-regulatory-applicability.md) | **Mining is not a SOCI sector.** What applies, what does not, and why build to it anyway | Accepted |
-| [007](docs/adr/0007-oidc-only-credentials.md) | Federated identity only — no static cloud credential exists | Accepted |
+| [007](docs/adr/0007-oidc-only-credentials.md) | Federated identity only — no static cloud credential exists (plant demo passwords: ADR-018) | Accepted |
 | [008](docs/adr/0008-entra-as-identity-authority.md) | Entra ID is the identity authority for all three clouds; authorisation stays local | Accepted |
 | [009](docs/adr/0009-compliance-framework-selection.md) | **Nominate AESCSF at SP-2.** Map IEC 62443 underneath. Essential Eight is a declared partial lens | Accepted |
 | [010](docs/adr/0010-programme-time-is-brisbane.md) | Machine time is UTC; human time is Australia/Brisbane, which has no daylight saving | Accepted |
 | [011](docs/adr/0011-safety-function-separation.md) | **The safety function is a separate controller** — own runtime, own I/O, own zone, no network input at all | Accepted |
 | [012](docs/adr/0012-fuxa-scada.md) | FUXA for SCADA — **a licence decision, not a feature comparison** | Accepted |
+| [013](docs/adr/0013-gateway-plc-modbus-link.md) | The gateway plays the field and drives PLC-CONV-001 over Modbus | Accepted — validated in Docker, 25 Oct |
+| [014](docs/adr/0014-sis-unlinked-contactor-modelled.md) | SIS-CONV-001 stays unlinked; its contactor is modelled in the gateway | Accepted |
+| [015](docs/adr/0015-openplc-v3-end-of-life.md) | OpenPLC Runtime v3 is end-of-life, and is used anyway | Accepted |
+| [016](docs/adr/0016-fault-injection-tags.md) | Fault injection is part of the gateway's address space | Accepted |
+| [017](docs/adr/0017-opcua-accounts-attribution-not-authorisation.md) | The OPC UA accounts differ in attribution, not authorisation | Accepted (known gap) |
+| [018](docs/adr/0018-demo-credentials-scope.md) | Plant demo credentials, and what ADR-007 does and does not cover | Accepted |
+| [019](docs/adr/0019-alarm-state-persistence.md) | Alarm state is stored in the historian, in the same transaction as its events | Accepted — validated in Docker, 25 Oct |
 
 ---
 
@@ -77,6 +84,12 @@ An architecture characteristic that is only written down is an aspiration. These
 | **FF-05** | Naming and tagging — **the tag is the teardown mechanism**, so a missing one means a resource that survives the window and bills | Running — caught a real gap on its first run, and the gap turned out to be in the check |
 | **FF-13** | The never-create deny-list (ADR-004) | Running — 13 rules, 11 test cases |
 | **FF-14** | Federation trust stays scoped to this repository (ADR-007) | Running — 9 checks across three clouds, each verified against a deliberately broken copy |
+| **FF-21** | `safety.st` on disk matches the independence argument FF-06 makes about the model | Running — 10 properties, 8 mutations |
+| **FF-22** | Compose topology: the SIS network has one member, ports on loopback, names resolvable | Running locally — 11 properties, 9 mutations |
+| **FF-23** | `conveyor.st` and the gateway agree on the PLC I/O contract (ADR-013) | Running locally — 12 properties, 9 mutations. Does not prove MatIEC compiles it |
+| **FF-24** | The gateway drives the PLC over Modbus and fails safe (ADR-013) | Running locally against a **fake** OpenPLC — 22 cases |
+| **FF-25** | A collector restart does not rewrite the alarm history (ADR-019) | Running locally — 19 cases |
+| **FF-26** | The running stack end to end (alarm < 2 s, restart, append-only) | Run 25 Oct: embedded 7/7, PLC in the loop 6+2+2. Needs Docker, not in CI |
 
 `python3 scripts/ff06_safety_independence.py` · `python3 scripts/ff07_alarm_state_model.py` · `python3 scripts/test_ff13.py` · `bash scripts/ff01_doc_cut_line.sh` · `bash scripts/ff03_no_static_credentials.sh` · `bash scripts/ff05_naming_and_tagging.sh` · `bash scripts/ff14_federation_scope.sh`
 
@@ -92,7 +105,7 @@ Sprint 0 complete at gate **M0**. **Sprints 1 and 2 complete** — identity, com
 
 Phase A is closed. **S3 complete.** **S4 in progress** — the compose stack now *builds*: both Dockerfiles and the OPC UA → TimescaleDB collector exist, and `depends_on` waits on health rather than on existence. Outstanding: the FUXA mimic (built through the browser — FUXA has no headless import) and the engineering workstation VM.
 
-> **The gateway does not yet read the OpenPLC runtime over Modbus.** It serves the in-process simulation, and `VIGILIMEN_MODBUS_HOST` is set in compose and unused. That is S5 work and it is named in `plant/gateway/Dockerfile` rather than left to be discovered.
+> **The gateway-to-PLC Modbus link works in Docker** (25 Oct). It is off by default (`VIGILIMEN_PLC_LINK`) and enabled by `plant/docker-compose.plcio.yml`; promoting it to the default is a separate, deliberate change.
 
 ### What this repository deliberately does not contain
 

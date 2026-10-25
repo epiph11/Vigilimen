@@ -1,7 +1,8 @@
 # ADR-007 — Federated identity only. No static cloud credential exists.
 
 **Status:** Accepted · **Date:** 14 September 2026 · **Deciders:** E. Zaré
-**Related:** ADR-001 (three clouds), ADR-004 (cost by construction)
+**Related:** ADR-001 (three clouds), ADR-004 (cost by construction), ADR-018 (plant demo credentials)
+**Scope:** credentials that reach a **cloud account**. Passwords inside the local simulated plant are a separate class, governed by ADR-018.
 
 ---
 
