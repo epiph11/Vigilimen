@@ -62,13 +62,19 @@ class PlantCycle:
         self.physics = Physics()
         self.logic = Logic()
         self.last_plc = None          # last good PlcOutputs, for the OPC UA tags
+        # The panel reset is pressed ONCE, on the first scan after start, to take the safety function out
+        # of its cold-start trip. It used to be held for ever, which was harmless while reset acted on the
+        # level and wrong once it acts on the edge (ADR-011): a held button must not be able to restart
+        # the belt after a trip. Nothing in the simulation re-arms after a trip yet; that needs a reset tag.
+        self._reset_pending = True
 
     def step(self, start: bool, stop: bool, faults: dict) -> dict:
         p, lg = self.physics, self.logic
+        reset_now, self._reset_pending = self._reset_pending, False
         i = Inputs(
             start_pressed=bool(start),
             stop_pressed=bool(stop),
-            safety_reset_pressed=True,          # panel reset, modelled as held
+            safety_reset_pressed=reset_now,     # one press on the first scan; see __init__
             zero_speed=p.zero_speed,
             bearing_temp_c=p.bearing_temp_c,
             motor_current_a=p.motor_current_a,

@@ -62,3 +62,90 @@ Follow-ups done: FF-24's fake now STORES writes at unlocated addresses (the meas
 PLC link up; START to state 3 after the horn (11.8 s); slip + seized idler trip FAULT in 1.4 s and the belt stops; **START does not clear a FAULT**, STOP does (1.2 s); one forged Modbus frame writing 96.0 degC to HR100 trips the PLC in **0.21 s**, belt stops, STOP recovers. So `conveyor.st`'s 42 A and 95 degC trips and its reset rule are proven in OpenPLC, not only in FF-24's port. The forged frame is also the S8 finding: no credential was asked for.
 
 8 commits made locally by Epiphane (056dbc7..5443d67), not pushed. FF-03 passes after my-notes.md was cleaned.
+
+## 16:40 Next item: drive safety.st by execution (ADR-014 follow-up)
+
+`scripts/safety_vectors.py` writes the PYTHON MODEL's expected outputs for 12 scenarios (59 scans). The other half, running safety.st through MatIEC's generated C in an OpenPLC container on no network, is not written yet: it needs the exact names iec2c generates (asked of Epiphane). Predicted divergence from reading both files, to be confirmed or refuted by execution, not assumed: the model resets on the reset LEVEL (`safety_reset_pressed`), safety.st only on a rising EDGE (`R_TRIG`); ADR-011 says edge. Side effect already visible: the gateway holds `safety_reset_pressed=True` forever, so the gateway's contactor MODEL auto-restarts as soon as a demand clears (scenario `reset_held_across_trip` ends energised). Inert today because nothing ever drives an e-stop input in the simulation; it would be wrong the first time something does.
+
+## 21:45 replay-safety.ps1, first run (log safety-replay-20261025-214458.log), written BEFORE the fix
+
+| Symptom (exact) | Cause | Fix |
+|---|---|---|
+| `g++`: `iec_std_lib.h: conflicting declaration 'typedef struct tm tm'`, then `tm_day` errors; also `'SIS_CONV_001' was not declared ... did you mean 'PLC_CONV_001'?` and `POUS.h` resolved to `/workdir/webserver/core/POUS.h` | **Two harness mistakes, mine.** (1) I passed `-I /workdir/webserver/core` before the generated directory, so `#include "POUS.h"` found the POUS.h of the CONV-001 program left there by the real compile, not the safety one. (2) The harness included `<iostream>`, `<string>`, `<vector>` before `POUS.h`; libstdc++ pulls in `<time.h>`, whose `struct tm` clashes with the `tm` typedef in OpenPLC's `iec_std_lib.h` (OpenPLC's own sources never include those first) | Generated directory first on the include path; the harness uses only C headers, after `POUS.h`. `iec2c` itself succeeded (the log ends with the generated file list) |
+
+## 21:46 replay-safety.ps1, second run (log safety-replay-20261025-214648.log), written BEFORE the fix
+
+| Symptom (exact) | Cause | Fix |
+|---|---|---|
+| The harness now compiles; `g++` fails only in `gen/POUS.c`: `'SIS_CONV_001' was not declared`, `'BOOL' was not declared` at line 1 | **My build line again.** MatIEC's `POUS.c` has no `#include` of its own: OpenPLC builds it by having `Res0.c` / `Config0.c` `#include "POUS.c"` after `POUS.h`. Compiling it as a separate translation unit leaves it with no types | `#include "POUS.c"` in the harness, after `POUS.h`, and `POUS.c` removed from the g++ command |
+- 21:51 Third run again ended `G++ FAILED` but the log holds NO compiler text: `$out = docker exec ...` captures stdout only and g++ writes to stderr, so the error went to the console and not to the transcript. Not a result. replay.sh now writes g++ and iec2c output to files inside the container and prints the first 40 lines itself, so the transcript always carries the cause.
+
+## 21:50 replay-safety.ps1, fourth run (log safety-replay-20261025-215030.log), written BEFORE the fix
+
+| Symptom (exact) | Cause | Fix |
+|---|---|---|
+| Compiles; the LINK fails: `undefined reference to connect_to_tcp_server(...)`, `send_tcp_message(...)`, `receive_tcp_message(...)` from `TCP_CONNECT_body__`, `TCP_SEND_body__`, `TCP_RECEIVE_body__` | OpenPLC's `iec_std_FB.h` defines the TCP function blocks inline, and they call three functions the PLC runtime provides. `safety.st` uses none of them, but the blocks are compiled into every translation unit that includes the library | `-Wl,--unresolved-symbols=ignore-all`: the functions are never called by this program. (Not three hand-written stubs: that would guess their signatures.) |
+
+## 21:55 replay-safety.ps1, fifth run (log safety-replay-20261025-215435.log), written BEFORE the fix
+
+| Symptom (exact) | Cause | Fix |
+|---|---|---|
+| `/tmp/replay/replay: error while loading shared libraries: unexpected PLT reloc type 0x00`, exit 127 | My previous fix. `--unresolved-symbols=ignore-all` lets the linker finish but leaves relocations the loader cannot resolve | Real stubs for the three functions, in a separate translation unit (`replay_stubs.cpp`) that does not include OpenPLC's headers, so the C++ signatures from the linker's own error text are used as they are, with no guess about the return type (which is not part of the symbol). The flag is removed |
+
+## 21:56 replay-safety.ps1: safety.st driven by execution for the first time (log safety-replay-20261025-215630.log)
+
+`SUMMARY 63 scans, 0 mismatches` (12 scenarios; I wrote 59 scans earlier, the true count is 63). safety.st, compiled by MatIEC and run through OpenPLC's own TON and R_TRIG, agrees with the Python model on every scan, including cold start, e-stop and pull-cord trips, belt drift, guard open, reset refused while a demand persists, and the discrepancy timer.
+
+**One result contradicts the code as I read it, and it is NOT yet explained.** Scenario `reset_held_across_trip` (reset held high on every scan, one e-stop pulse at step 2): both model and program re-energise at step 3, when the e-stop clears. The model does so by design (it resets on the reset LEVEL). But safety.st calls `Reset_Edge(CLK := Safety_Reset)` on every scan and resets only on `Reset_Edge.Q`; with the button held since step 0 there is no new rising edge at step 3, so by my reading the program should stay TRIPPED. I predicted a divergence (model level vs program edge) and the run showed none. Either R_TRIG as compiled here does not behave as an edge detector across scans in this harness, or the harness feeds it something other than I think, or my reading is wrong. Until that is settled the replay cannot be taken as evidence that safety.st implements ADR-011's "rising edge, not level". Checking: the R_TRIG body in OpenPLC's iec_std_FB.h and how the generated POUS.c calls it.
+- 22:02 R_TRIG as compiled is correct (`Q = CLK && !M; M = CLK`) and safety.st calls it on EVERY scan (POUS.c lines 36-37), so by the code `reset_held_across_trip` step 3 cannot reset. `safety_upload.st` body is byte-identical to `safety.st` (checked), so the upload is not stale. The replay still shows the program energised at step 3. Not explained. The harness now prints the edge detector's Q, its memory M, the e-stop demand and CLK on every scan, so the next run shows which of them is not what the code says.
+- 22:06 Diagnostic columns, scenario `reset_held_across_trip` (CLK held at 1 on every scan): `edge_q` = 1 and `edge_m` = 0 on EVERY scan, including the scans after the first. So the detector's memory M is 0 after each call and Q = CLK. That is not what the R_TRIG source says (`M = CLK` after computing Q). Either the library as compiled here does not latch M, or the harness reads M wrongly, or something re-initialises it. Next: an isolated R_TRIG self-test in the harness (CLK=1 on two consecutive calls, expect Q=1,0 and M=1). No safety conclusion until it runs. If the library itself is the cause, it matters beyond safety.st: conveyor.st's Start_Edge and the real OpenPLC runtime use the same block.
+- 22:09 SELFTEST: `q1=1 m1=1 q2=0 m2=1`. The R_TRIG library, compiled the way the replay compiles it, is a working edge detector. So the library is cleared. In the program, though, `RESET_EDGE.M` reads 0 after every scan while CLK is 1. Something between scans, or inside SIS_CONV_001_body__, leaves M at 0 or my diagnostic reads a different thing. Next: the generated body (POUS.c lines 1-60) to see what touches RESET_EDGE.
+
+## 22:10 Where the safety.st replay stands, in plain terms
+
+- WHY IT EXISTS: ADR-014 admitted safety.st had never been run, only read (FF-21) and modelled (FF-06). The replay runs the program MatIEC compiles from it, with the same timer and edge blocks OpenPLC uses, on 12 scenarios and compares with the Python model scan by scan.
+- RESULT: 63 scans, 0 disagreements. That is good news and is established.
+- WHY I KEEP DIGGING AT ONE SCENARIO: `reset_held_across_trip` is the stuck-reset-button case: reset held high, an e-stop pulses and clears. ADR-011 says reset must be a rising EDGE so a held or jammed button cannot restart the belt behind someone. Both model and program energise the contactor again at step 3. By the code the program should not. The diagnostic columns show the program's edge detector memory reading 0 after every scan; a stand-alone test of the same block works. So the library is cleared and the cause is unexplained.
+- WHAT IS NOT CONCLUDED: that safety.st violates ADR-011. It is also not concluded that it complies on this point. My earlier prediction (model resets on level, program on edge, so they diverge) was WRONG: the run showed no divergence.
+- DECISION FOR EPIPHANE, not for me: if it is a real property of safety.st, whether to change the program or the ADR is a safety decision.
+- 22:15 POUS.c lines 1-62 read: the generated body reproduces safety.st statement for statement (demands, TON, trip IF, `RESET_EDGE.CLK := SAFETY_RESET`, `R_TRIG_body__`, reset IF, outputs). Nothing in it touches RESET_EDGE.M. Library cleared (SELFTEST ok), upload cleared (identical to safety.st), generated code cleared. What is left is the harness itself (how it feeds or reads the instance). Still unexplained; most likely my harness. NOT a safety conclusion.
+
+## 00:30 Last bounded diagnostic on the held-reset question (Epiphane chose option 2)
+
+The harness now also prints `m_before` and `q_before`: the edge detector's memory and output as they stand BEFORE each call of the program body. Reading: if `m_before` is 0 at a scan that follows a scan where CLK was 1, then M was cleared between scans (by something outside the body, so my harness or memory layout). If `m_before` is 1 but `q_before`/`edge_q` still shows 1 after the call, the body itself is computing Q wrongly. One run, then stop: whatever it shows, the next step is documenting it, not a fourth hypothesis.
+
+## 00:45 RETRACTION: the "63 scans, 0 mismatches" result is NOT valid evidence (written before the fix)
+
+Run at 00:31 with two extra read-only columns (`m_before`, `q_before`): `SUMMARY 63 scans, 35 mismatches`, `edge_m` = 1, and the held-reset scenario now behaves as the code says it should (program stays TRIPPED at step 3, model re-energises). Reading two variables cannot change what a program does, so the harness has **undefined behaviour**: its results moved when unrelated code around them moved.
+
+Most likely cause (not yet confirmed by reading accessor.h): `SIS_CONV_001 inst;` was a LOCAL variable. MatIEC's variables are `{ value, flags }` pairs and OpenPLC's `__GET_VAR` / `__SET_VAR` look at `flags` (a FORCE bit returns a forced value and skips writes). OpenPLC keeps its instances in static storage, zeroed; a stack variable holds garbage there. The same garbage would explain `edge_m` reading 0 for scans, and the odd rows at 00:31 where contactor and tripped disagree.
+
+Consequences, stated plainly:
+ 1. The earlier claim "safety.st agrees with the model on all 63 scans" is WITHDRAWN until the harness is re-run with static, zeroed storage. It may have been matching by luck.
+ 2. The "unexplained held-reset" puzzle probably was never about safety.st: its premise (edge_m = 0) was an artefact of the harness.
+ 3. The etat-des-lieux text that quotes the 63/0 result and the "Pourquoi on creuse" section describe findings that are not established. They must be rewritten with the re-run result.
+Fix applied: `static` instance, `memset` before each cold start and before the R_TRIG self-test. Next: one clean run, then rewrite the docs from what it really shows.
+
+## 00:50 Clean run after the `static` + `memset` fix: 63 scans, 2 mismatches. My original prediction was RIGHT
+
+`SELFTEST q1=1 m1=1 q2=0 m2=1`. `SUMMARY 63 scans, 2 mismatches`. The two are `reset_held_across_trip` steps 3 and 4: model contactor 1 / tripped 0, program contactor 0 / tripped 1. `edge_m` now latches (1 after the first scan). Everything else (61 scans, 11 other scenarios) agrees.
+
+Reading: with the reset button held high and an e-stop that pulses and clears, the PROGRAM stays tripped (it needs a new rising edge, as ADR-011 requires) and the MODEL re-energises (it resets on the level). So the program follows the requirement and the model does not. The model, and the gateway's contactor model that holds `safety_reset_pressed = True`, are the defective side.
+
+Corrections to what I said earlier today:
+ * "63 scans, 0 divergence" (earlier): an artefact of the harness reading uninitialised memory. Withdrawn, as already recorded.
+ * "My prediction (model resets on level, program on edge) was wrong": WRONG about being wrong. The prediction was right; the harness hid it. I reached the wrong conclusion by trusting an instrument I had not validated.
+ * The "unexplained edge detector" puzzle: closed. It was the harness (stack garbage in the `flags` bytes). safety.st was never the problem.
+
+Still to do, and not done: (1) re-run with the new vectors that carry a SPEC column beside the MODEL column (expected from this run: 2 differ from the model, 0 from the spec; that is a prediction, not a result); (2) fix the model to reset on a rising edge, which is a change to a safety-related file and needs Epiphane's go-ahead; (3) the gateway must then send reset as a pulse.
+
+## 00:42 Replay with the SPEC column (log of Epiphane's run): 63 scans, 2 differ from the MODEL, 0 differ from the SPEC (ADR-011)
+
+SELFTEST ok. `reset_held_across_trip` steps 3 and 4: model contactor 1 / tripped 0; spec contactor 0 / tripped 1; program contactor 0 / tripped 1. So the program matches the requirement on every one of the 63 scans, and the model departs from it on exactly the two scans where the reset button is held while an e-stop clears. This confirms the prediction written at 00:30 (a prediction, now a result). Defect located in `interlock_model.SafetyFunction` (resets on the reset LEVEL) and, through it, in the gateway's contactor model, which holds `safety_reset_pressed = True`.
+
+Not done, waiting for Epiphane's decision: change `interlock_model.py` to reset on a rising edge; then re-run FF-06, FF-07, FF-21, FF-24 and the replay; then make the gateway pulse the reset instead of holding it.
+
+## 00:50 Epiphane approved the model fix (reset on a rising edge). Before the change:
+
+Files touched: `plant/sim/interlock_model.py` (SafetyFunction: remember the previous reset level and reset only on a rising edge, updated on EVERY scan including the scans that return early on a trip, as safety.st's R_TRIG is called on every scan) and `plant/gateway/plant_cycle.py` (reset becomes a single pulse on the first scan after start, instead of being held). Backups of both before-states are in /tmp of the working session only; the repository history has the originals. To be re-run locally: FF-06, FF-07, FF-21, FF-22, FF-23, FF-24, FF-25 and the vector generator. The replay itself needs Docker and is Epiphane's to run. Any FF-06 case that relied on a held reset will fail, and would be shown before being changed.
+- 00:58 Done locally (nothing committed): `SafetyFunction` now resets on a rising edge (`_reset_prev` updated on every scan, before any early return); `PlantCycle` presses the panel reset once, on the first scan. FF-06 gained two cases (15 total): a HELD reset does not restart the belt after a trip, and releasing then pressing again does. **The new case fails on the old model and passes on the new one** (checked by swapping the old file back in and restoring). FF-06, 07, 21, 22, 23, 24, 25 and FF-01 pass. The vector generator now gives model == spec on every row (63), so `SPEC_OVERRIDES` stays as the independent statement of the rule but no longer differs from the model. Not run, needs Docker: the gateway rebuild with the one-shot reset, FF-27, and the replay (prediction: 0 differ from the model, 0 from the spec).

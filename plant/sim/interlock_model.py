@@ -93,9 +93,17 @@ class SafetyFunction:
     trip_reason: str = "initial state — never energised"
     discrepancy_timer_ms: int = 0
     DISCREPANCY_LIMIT_MS: int = 500
+    # The reset level seen on the PREVIOUS scan. Reset is a rising EDGE (ADR-011), so this is updated on
+    # every scan, including the scans that return early on a trip: safety.st calls its R_TRIG every scan
+    # whatever else happens, and a model that skips the update drifts from it.
+    _reset_prev: bool = False
 
     def scan(self, i: Inputs, dt_ms: int = 100) -> Contactor:
         """One scan of the safety logic. Returns the contactor state."""
+
+        # Rising edge of the reset input. Computed first and always, before any early return.
+        reset_edge = i.safety_reset_pressed and not self._reset_prev
+        self._reset_prev = i.safety_reset_pressed
 
         # --- dual-channel evaluation ---------------------------------------
         estop_demanded = not (i.estop_ch_a and i.estop_ch_b)
@@ -133,8 +141,14 @@ class SafetyFunction:
         # someone must press reset, having looked at why it tripped. Automatic
         # restart on demand-clear is how a person who pressed an e-stop and
         # walked to the belt gets hurt by it starting again behind them.
+        #
+        # RESET IS AN EDGE, NOT A LEVEL. A button that is held down, taped down
+        # or shorted must not restart the belt when a demand clears: that is the
+        # same hazard as automatic restart wearing a different name. An earlier
+        # version of this model reset on the level and disagreed with safety.st
+        # (found by replaying the program, 26 Oct, scenario reset_held_across_trip).
         if self.tripped:
-            if i.safety_reset_pressed:
+            if reset_edge:
                 self.tripped = False
                 self.trip_reason = ""
                 return Contactor.ENERGISED

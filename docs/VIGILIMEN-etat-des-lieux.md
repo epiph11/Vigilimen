@@ -1,6 +1,6 @@
 # Vigilimen — état des lieux complet (Stations 1 à 4, liaison PLC validée dans Docker)
 
-Dernière mise à jour : 25 octobre 2026, 16 h 30. Même contenu que le doc du projet « MINE 360 » (`claude/VIGILIMEN-etat-des-lieux.md`). Schémas : `docs/img/` (à régénérer : ils décrivent l'état d'avant la liaison PLC).
+Dernière mise à jour : 26 octobre 2026, 0 h 45 (la copie du projet MINE 360 est à jour de 1 h ; elle sera resynchronisée après la correction du modèle). Même contenu que le doc du projet « MINE 360 » (`claude/VIGILIMEN-etat-des-lieux.md`). Schémas : `docs/img/` (à régénérer : ils décrivent l'état d'avant la liaison PLC).
 
 ## En bref
 
@@ -21,16 +21,70 @@ La station CONV-001 (un convoyeur de mine simulé) tourne en local dans six cont
 | Compilation de `conveyor.st` avec les variables `AT` | OK **après correction** : MatIEC refuse un bloc `VAR` qui mélange variables localisées et ordinaires. `%QW112` = registre 112 (signature lue = 1) |
 | Persistance des alarmes (ADR-019, **Accepted**) | Redémarrage du collecteur en pleine alarme : un seul `NORMAL→UNACK`, `alarm_state` conservé. Le déclencheur refuse un UPDATE sur `alarm_event` |
 | Isolation du SIS en direct (`prove-isolation.ps1`) | 7/7 : un seul membre, DNS non résolu, `Network is unreachable` par IP vers 8080 et 502, témoin positif CONNECTED |
+| CI GitHub (neuf commits poussés) | Verte sur `f46e977` (run n°6) et sur `5443d67` (run n°5) : FF-01, 02, 03, 05, 06, 07, 13, 14, 21 à 25. FF-26 et FF-27 ne tournent pas en CI (Docker) |
+| `safety.st` exécuté pour de bon (`replay-safety.ps1`) | 63 scans, 12 scénarios : **61 concordent avec le modèle Python, 2 divergent** (`reset_held_across_trip`), et là le programme respecte l'ADR-011 et le modèle non. Confirmé avec la colonne « spec » (26/10, 0 h 42) : **2 écarts avec le modèle, 0 avec l'exigence ADR-011**. Résultat obtenu après correction du banc (voir la section sur les tests de sécurité) |
 | Déclenchements de `conveyor.st` dans OpenPLC (`validate-trips.ps1`, FF-27) | 13/13. Surcharge 42 A : FAULT en 1,4 s. Un second START n'efface pas le défaut, STOP oui. Une trame Modbus forgée (palier à 96 °C, sans identifiant) déclenche le PLC en 0,21 s |
 
 **Pas encore prouvé**
-- `safety.st` n'a jamais reçu d'entrée (ADR-014) ; rejouer les 13 vecteurs de FF-06 hors réseau reste à faire.
 - Redémarrage du collecteur pendant qu'une alarme est SHELVED ; DELETE et TRUNCATE sur `alarm_event` (volontairement non testés).
 - Le mode par défaut du compose reste *embedded* ; passer au mode PLC par défaut est un changement à part.
 
 **Reste ouvert**
-- Huit commits faits en local (`056dbc7` à `5443d67`), **rien n'est poussé**. Un neuvième est à faire : FF-27, `validate-trips.ps1`, ADR 013/016, README, notes, walkthrough 1.3. La CI n'a jamais tourné sur ces commits.
+- Neuf commits faits et poussés (`056dbc7` à `f46e977`). **Un dixième est à faire** : `scripts/safety_vectors.py`, `plant/tools/safety_replay.cpp`, `replay_stubs.cpp`, `replay.sh`, `replay-safety.ps1`, et les notes.
+- **Corriger le modèle** (`interlock_model.py`) pour qu'il réinitialise sur un front montant, puis faire envoyer le reset en impulsion par le gateway. C'est un changement sur un fichier lié à la sécurité : il attend ton accord.
 - Station 5 : sept constats (F1 à F7) dans `docs/assessments/hydro-station/EVALUATION-station5.md`.
+
+## Les tests de sécurité : comment je sais quoi attendre, et comment j'interprète
+
+**La question à se poser devant chaque test : d'où vient le résultat attendu ?** Un test qui compare deux choses écrites par la même main mesure la cohérence, pas la justesse.
+
+**Trois sources d'attente, d'autorité décroissante**
+
+| Source | Rôle | Limite |
+|---|---|---|
+| **L'exigence** (ADR-011 et les règles qu'il énonce) | Elle dit ce qui doit arriver : démarrage à froid déclenché, déclenchement verrouillé, pas de redémarrage automatique, reset sur front, discordance = défaut | Écrite par le même auteur que le modèle et le programme. Ce n'est pas une norme indépendante (IEC 61511, ISO 13849) ni le résultat d'une analyse de risques menée par d'autres |
+| **Le modèle Python** (`interlock_model.py`) | Reformulation exécutable de l'exigence, qui produit les sorties attendues (`safety_vectors.py`) | Même auteur, mêmes hypothèses. S'il se trompe comme le programme, le banc conclut « d'accord » et ne prouve rien |
+| **Ma lecture du code** | Me sert à prédire un résultat avant de lancer | La plus faible. Elle m'a trompé dans ma façon de la défendre (voir plus bas) |
+
+C'est pour cela que le fichier de vecteurs porte **deux colonnes** : ce que fait le modèle, et ce que l'ADR-011 exige. Où les deux diffèrent, elles sont listées avec la raison. Un programme qui suit le modèle mais pas l'exigence est le **pire** cas, pas le meilleur.
+
+**Les 12 scénarios : ce qu'on attend, et d'où ça vient**
+
+| Scénario | Attendu | Règle | Résultat du 26/10 |
+|---|---|---|---|
+| `boot_tripped_no_reset` | Contacteur ouvert, déclenché | Un démarrage à froid n'est pas un démarrage sûr | Concorde |
+| `boot_then_reset_pulse` | S'enclenche après une impulsion de reset | Reset possible quand tout est sain | Concorde |
+| `estop_drops` | Le contacteur tombe | Arrêt d'urgence à deux canaux | Concorde |
+| `demand_clears_no_restart` | Reste déclenché quand la demande disparaît | Le déclenchement est verrouillé | Concorde |
+| `reset_after_clear` | Se réenclenche après une impulsion de reset | Un opérateur doit regarder, puis réarmer | Concorde |
+| `reset_pulse_while_demanded` | Reset refusé tant que la demande dure | On ne réarme pas sur un danger actif | Concorde |
+| `pullcord_one_channel_fault_short` | Déclenche | Un canal ouvert est une demande d'arrêt | Concorde |
+| `pullcord_discrepancy_to_fault` | Déclenche et reste déclenché | Discordance ≥ 500 ms = défaut de dispositif | Concorde |
+| `belt_drift_trips`, `guard_open_trips` | Déclenche | Ces entrées sont des demandes d'arrêt | Concorde |
+| `reset_refused_while_guard_open` | Reset refusé | Pas de réarmement garde ouverte | Concorde |
+| **`reset_held_across_trip`** | **Reste déclenché** (bouton tenu, arrêt d'urgence qui disparaît) | **ADR-011 : le reset est un front montant. Un bouton coincé ne doit pas relancer la bande** | **Le programme respecte l'exigence, le modèle non** (pas 3 et 4) |
+
+**Le cas qui compte.** Dans le dernier scénario, le modèle réinitialise sur le **niveau** du bouton, donc il réenclenche. `safety.st` exige un nouveau front, donc il reste déclenché. Ici l'oracle (le modèle) contredit l'exigence. Se contenter de « le programme égale le modèle » aurait fait conclure que le programme est défectueux, alors que c'est le modèle qui l'est. Et ce modèle, par le gateway qui maintient le reset à 1, redémarrerait seul dans la simulation le jour où un arrêt d'urgence y serait simulé.
+
+**Comment j'interprète une issue**
+
+| Ce qu'on voit | Ce que ça veut dire | Ce que je fais |
+|---|---|---|
+| Programme = modèle = exigence | Cohérent sur ce cas | Rien. Ce n'est pas une preuve de justesse |
+| Programme ≠ modèle, programme = exigence | Le modèle est défectueux | Je le dis, je propose de corriger le modèle |
+| Programme ≠ modèle, programme ≠ exigence | **Défaut possible du programme** | Je te le présente avant de toucher à quoi que ce soit. Corriger le « mauvais » côté par réflexe est une décision de sécurité, qui t'appartient |
+| Programme = modèle ≠ exigence | Le pire cas : deux erreurs identiques | Je t'alerte en premier |
+| Résultat surprenant, dans un sens ou dans l'autre | **Je soupçonne d'abord l'instrument** | Je valide le banc (mutations, test témoin) avant de conclure |
+
+**Ce que cette session m'a appris sur mes propres instruments.** Cinq erreurs de ma part ont été détectées par l'exécution, pas par la lecture : un faux PLC qui croyait qu'OpenPLC ignore les écritures non déclarées ; une preuve d'isolation (`ping`) qui ne pouvait pas échouer ; un script d'isolation qui échouait pour une raison de guillemets ; un compilateur qui refusait le mélange de variables localisées et ordinaires, invisible à FF-23 ; et un banc dont l'instance vivait sur la pile, donc remplie de restes. Ce dernier m'a fait annoncer « 0 divergence », puis « ma prédiction était fausse », deux fois à tort. **J'ai conclu sur un instrument que je n'avais pas validé.**
+
+**L'ampleur : ce que ce banc n'établit pas**
+- **Ce n'est pas une fonction de sécurité certifiée.** OpenPLC v3 n'est pas une plateforme de sécurité certifiée, aucun niveau SIL n'est revendiqué, et il n'y a eu ni analyse HAZOP, ni vérification fonctionnelle indépendante, ni test périodique du matériel.
+- **Une seule main** a écrit l'exigence, le modèle, le programme et les scénarios. Les scénarios sont ceux auxquels j'ai pensé : les défauts simultanés, la perte d'alimentation, le rebond d'un contact, le contacteur soudé (le programme n'a pas d'entrée de retour d'état du contacteur) ne sont pas couverts.
+- **Le temps** : le banc rejoue des pas de 100 ms avec une horloge simulée, pas le cycle réel du PLC, et la limite de 500 ms de la discordance n'est pas testée à sa frontière.
+- **La valeur du dispositif est ailleurs** : montrer comment on établit et conteste une séparation (réseau, programme, essais), pas démontrer qu'un convoyeur est sûr.
+
+**Ce que tu peux dire sans exagérer.** « `safety.st` compile, il est structurellement indépendant du contrôle (FF-21), isolé du réseau de commande (FF-22 et preuve en direct), et exécuté contre un modèle sur 63 scans. Une divergence réelle a été trouvée et attribuée au modèle, pas au programme. » **Ce que tu ne peux pas dire :** « vérifié », « SIL », « sûr ».
 
 ## Vue d'ensemble
 
@@ -106,7 +160,7 @@ L'ancienne preuve `ping sis-conv-001` était vide : `sis-conv-001` est un `hostn
 | Composant | Fichier | Rôle | Statut |
 | --- | --- | --- | --- |
 | Logique de commande | `plant/plc-control/conveyor.st` | Séquence, 95 °C, 42 A ; variables `AT` en bloc `VAR` séparé (ADR-013) | Compile et tourne dans OpenPLC ; déclenchements prouvés (FF-27) |
-| Logique de sécurité | `plant/plc-safety/safety.st` | Fonction de sécurité | Compile ; jamais pilotée par une entrée |
+| Logique de sécurité | `plant/plc-safety/safety.st` | Fonction de sécurité | Compile ; rejouée : 61/63 scans concordent avec le modèle, les 2 autres sont des défauts du modèle |
 | Contrat E/S | `plant/gateway/plc_io_map.py` | Table unique des adresses, `MAP_VERSION` | FF-23 |
 | Liaison PLC | `plant/gateway/plc_link.py`, `plant_cycle.py` | Client Modbus, échec sûr, signature | Validée dans Docker ; FF-24 (faux PLC) |
 | Gateway OPC UA | `plant/gateway/opcua_server.py` | ISA-95, comptes, défauts i=15..19, statut PLC i=20..22 | Mode par défaut = embedded |
@@ -115,6 +169,7 @@ L'ancienne preuve `ping sis-conv-001` était vide : `sis-conv-001` est un `hostn
 | Historien | `plant/historian/schema.sql`, `migrations/` | `sample`, `alarm_event`, `alarm_state` | Migration appliquée le 25/10 |
 | SCADA | `plant/scada/project/` | Projet FUXA généré | Fichier d'import |
 | Orchestration | `plant/docker-compose.yml` + `docker-compose.plcio.yml` | 6 services, 3 réseaux | override = opt-in |
+| Banc `safety.st` | `plant/tools/replay-safety.ps1`, `safety_replay.cpp`, `replay_stubs.cpp`, `replay.sh`, `scripts/safety_vectors.py` | Compile `safety_upload.st` en C (MatIEC) et rejoue 63 scans contre le modèle et contre l'exigence | Fonctionne ; non commité |
 | Outils | `plant/tools/` | `validate-4e`, `validate-plcio`, `validate-trips`, `prove-isolation`, `plc-ui-relay` | Lancés le 25/10 |
 
 ## Blocages rencontrés et corrections
@@ -139,6 +194,12 @@ L'ancienne preuve `ping sis-conv-001` était vide : `sis-conv-001` est un `hostn
 | Compilation : `invalid located variable declaration` sur les lignes ordinaires, puis 40 erreurs `invalid variable before ':='` | MatIEC veut un bloc `VAR` entièrement localisé ou entièrement ordinaire ; je les avais mélangés. FF-23 et FF-24 lisent le texte et ne lancent pas MatIEC | Deux blocs `VAR` ; FF-23 vérifie la forme. Compilation confirmée avec `iec2c` dans le conteneur, puis dans l'interface |
 | OpenPLC garde une écriture Modbus à une adresse qu'aucun programme ne déclare (mesuré : HR100 et coils 801 à 804 avec l'ancien programme) | Le faux PLC de FF-24 supposait le contraire | La relecture ne prouve rien sur le programme ; seule la signature le fait. FF-24, `plc_link.py` et ADR-013 corrigés |
 | `prove-isolation.ps1` : `bad character U+002D '-'`, puis trois FAIL | Windows PowerShell 5.1 retire les guillemets doubles internes passés à `docker inspect` : faux négatifs de mon script, pas de l'isolation | Adresses lues dans le JSON de `docker inspect` ; arrêt clair si une adresse manque |
+| `replay-safety.ps1` : `SIS_CONV_001 was not declared (did you mean PLC_CONV_001)` | `-I core` avant le dossier généré : `POUS.h` était celui de CONV-001, laissé par la dernière vraie compilation | Dossier généré en premier |
+| `conflicting declaration 'typedef struct tm tm'` | `<iostream>` avant `POUS.h` tire `<time.h>`, en conflit avec `iec_std_lib.h` | Banc en C pur, `POUS.h` en premier |
+| `'BOOL' was not declared` dans `POUS.c` | `POUS.c` n'a aucun `#include` : OpenPLC le fait inclure par `Res0.c` | Le banc inclut `POUS.c` |
+| `undefined reference to connect_to_tcp_server...`, puis `unexpected PLT reloc type 0x00` avec `--unresolved-symbols=ignore-all` | Les blocs TCP de la bibliothèque appellent des fonctions du runtime ; mon drapeau produisait un binaire non chargeable | Trois fonctions factices dans `replay_stubs.cpp` |
+| Banc : `SIS_CONV_001 inst;` local, donc `flags` remplis de restes de pile | Les macros d'OpenPLC lisent `flags` (bit de forçage). Résultats qui changeaient quand on ajoutait deux lignes de lecture. « 0 divergence » était un artefact | Instance `static` et `memset` avant chaque démarrage à froid |
+| Log sans message du compilateur | Le script ne capturait que la sortie standard, `g++` écrit sur l'erreur | `replay.sh` écrit et affiche lui-même les messages |
 | `git commit` : `index.lock: File exists` | Fichier vide du 5 octobre, laissé par une commande git lancée depuis mon environnement (qui ne peut pas supprimer ses verrous) | `Remove-Item .git\index.lock` après vérification qu'aucun git ne tourne |
 
 ## Constats et limites
@@ -155,7 +216,7 @@ L'ancienne preuve `ping sis-conv-001` était vide : `sis-conv-001` est un `hostn
 | Canal OPC UA `NoSecurity` | Mot de passe en clair sur le réseau Docker | Connu, ADR-018 |
 | Deux implémentations de la logique de sécurité, une seule bouclée | Dérive possible entre `safety.st` et le modèle | ADR-014 |
 | Le SCADA détient un identifiant qui peut démarrer le convoyeur (R-14) | Cible de S8 | Volontaire |
-| Huit commits locaux, rien de poussé | La CI n'a jamais exécuté FF-21 à FF-25 | `git push` à ton initiative |
+| **Le modèle réinitialise sur le niveau du reset, contre l'ADR-011 ; le gateway le maintient à 1** | **Confirmé par exécution** (2 scans). Son contacteur modélisé redémarrerait seul à la disparition d'une demande. Sans effet aujourd'hui (aucun arrêt d'urgence simulé), faux le jour où il y en aura un | À corriger, avec ton accord |
 
 ## Commandes
 
@@ -184,6 +245,14 @@ powershell -ExecutionPolicy Bypass -File tools\validate-trips.ps1
 
 Résultat du 25/10 : 13/13, environ trois minutes.
 
+**Passe 4 : `safety.st` par exécution.**
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\replay-safety.ps1
+```
+
+Résultat du 26/10 : 63 scans, 2 divergences avec le modèle (`reset_held_across_trip`). La ligne `SELFTEST` doit afficher `q1=1 m1=1 q2=0 m2=1`.
+
 Tests locaux : `python scripts\ff22_compose_topology.py` (idem 23, 24, 25, 21, 07, 06). Arrêt : `docker compose down` garde les données, `down -v` les supprime (avec l'override, passer les deux `-f`).
 
 ## Prompt de reprise
@@ -191,5 +260,5 @@ Tests locaux : `python scripts\ff22_compose_topology.py` (idem 23, 24, 25, 21, 0
 ```text
 Tu es mon architecte OT/IT. Projet : Vigilimen (sécurité OT/IT d'une mine, convoyeur CONV-001), 100 % local avec Docker.
 Lis docs/VIGILIMEN-etat-des-lieux.md, docs/runs/NOTES.md et docs/adr/0013 à 0019.
-Point de départ : 4e, la liaison PLC, la persistance, l'isolation et les déclenchements de conveyor.st sont validés dans Docker (25/10). Reste : pousser (CI jamais lancée), neuvième commit, mode PLC par défaut, safety.st piloté hors réseau. Si je te colle une sortie de validate-*.ps1, analyse-la : note symptôme, cause, correction dans NOTES.md AVANT de corriger. Chaque test = une fitness function FF-xx. Ports sur 127.0.0.1, aucun secret réel, ne commite rien sans mon accord.
+Point de départ : 4e, la liaison PLC, la persistance, l'isolation et les déclenchements de conveyor.st sont validés dans Docker (25/10). Reste : dixième commit, corriger le modèle d'interlock (reset sur front) avec mon accord, mode PLC par défaut. Pour les tests de sécurité, lis la section « Les tests de sécurité » avant d'interpréter un résultat et valide le banc avant de conclure. Si je te colle une sortie de validate-*.ps1 ou replay-safety.ps1, analyse-la : note symptôme, cause, correction dans NOTES.md AVANT de corriger. Chaque test = une fitness function FF-xx. Ports sur 127.0.0.1, aucun secret réel, ne commite rien sans mon accord.
 ```

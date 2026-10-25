@@ -79,7 +79,7 @@ An architecture characteristic that is only written down is an aspiration. These
 | **FF-01** | Governance docs ≤ 2 pages; an ADR is one decision | Running — **caught ADR-006 on its first run at 94 lines against an 80-line cap** |
 | **FF-02** | Terraform formatted and valid | Two stacks now exist. **Not yet run — see the note below** |
 | **FF-03** | No static credential shape in the tree, and every cloud login requests an OIDC token | Running |
-| **FF-06** | **The safety function is independent of the control function** (ADR-011) | Running — 13 cases, each modelling an adversary who already owns the control PLC. Verified against four deliberate mutations |
+| **FF-06** | **The safety function is independent of the control function** (ADR-011) | Running — 15 cases, most modelling an adversary who already owns the control PLC. Verified against four deliberate mutations |
 | **FF-07** | **The alarm surface behaves as ISA-18.2 describes** — shelve, suppress and out-of-service all work, and all leave an actor | Running — 20 cases. Caught its own test: an assertion whose setup had never run |
 | **FF-05** | Naming and tagging — **the tag is the teardown mechanism**, so a missing one means a resource that survives the window and bills | Running — caught a real gap on its first run, and the gap turned out to be in the check |
 | **FF-13** | The never-create deny-list (ADR-004) | Running — 13 rules, 11 test cases |

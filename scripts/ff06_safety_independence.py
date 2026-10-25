@@ -175,6 +175,27 @@ check(
     "function is worse than an inconvenient one",
 )
 
+# Reset is an EDGE, not a level (ADR-011). A button that is held, taped down or shorted must not be
+# able to restart the belt when a demand clears: that is automatic restart under another name.
+# The model reset on the LEVEL until 26 Oct, when replaying safety.st showed the program did not.
+c = running_conveyor()
+c.scan(Inputs(estop_ch_a=False, estop_ch_b=False, safety_reset_pressed=True))   # trip, button still held down
+held = c.scan(Inputs(safety_reset_pressed=True, start_pressed=True, zero_speed=False))  # demand gone, button STILL held
+check(
+    "a HELD reset button does NOT restart the belt after a trip",
+    held is False,
+    "a reset that works on the level lets a jammed or taped button restart the belt behind the person who "
+    "pressed the e-stop. This is the one case where the model and safety.st disagreed",
+)
+
+c.scan(Inputs(safety_reset_pressed=False))                                       # released
+again = c.scan(Inputs(safety_reset_pressed=True, start_pressed=True, zero_speed=False))  # pressed again
+check(
+    "releasing and pressing reset AGAIN does restart it (a new edge)",
+    again is True,
+    "the edge must still work, or operations will bypass the reset",
+)
+
 # ===========================================================================
 # 6. Scope — machine protection belongs to CONTROL, not to safety
 # ===========================================================================
