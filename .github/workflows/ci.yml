@@ -11,6 +11,12 @@
 #   FF-07  alarm state model                (ISA-18.2 — the manipulable surface)
 #   FF-13  deny-list enforcement            (ADR-004)
 #   FF-14  federation trust scope           (ADR-007)
+#   FF-21  safety.st matches the independence argument   (ADR-011)
+#   FF-22  compose topology: the SIS network has one member   (ADR-011, 013, 014)
+#   FF-23  conveyor.st and the gateway agree on the I/O contract   (ADR-013)
+#   FF-24  the gateway drives the PLC over Modbus, and fails safe   (ADR-013)
+#   FF-25  a collector restart does not rewrite the alarm history   (ADR-019)
+#   FF-26  the running stack end to end - needs Docker, NOT run here
 #
 # FF-04 onward arrive with the sprints that can first run them. A fitness
 # function written before the thing it measures exists is a stub, and stubs
@@ -69,8 +75,30 @@ jobs:
         run: python3 scripts/ff06_safety_independence.py
 
       # ---------------------------------------------------------------
+      - name: FF-21 — safety.st on disk matches the independence argument
+        run: python3 scripts/ff21_safety_st_static.py
+
+      # ---------------------------------------------------------------
       - name: FF-07 — the alarm state model behaves as ISA-18.2 describes
         run: python3 scripts/ff07_alarm_state_model.py
+
+      # ---------------------------------------------------------------
+      - name: FF-22 — compose topology (the SIS network has one member)
+        run: |
+          pip install --quiet pyyaml
+          python3 scripts/ff22_compose_topology.py
+
+      # ---------------------------------------------------------------
+      - name: FF-23 — conveyor.st and the gateway agree on the I/O contract
+        run: python3 scripts/ff23_plc_io_map.py
+
+      # ---------------------------------------------------------------
+      - name: FF-24 — the gateway drives the PLC over Modbus, and fails safe
+        run: python3 scripts/ff24_gateway_plc_link.py
+
+      # ---------------------------------------------------------------
+      - name: FF-25 — a collector restart does not rewrite the alarm history
+        run: python3 scripts/ff25_alarm_persistence.py
 
       # ---------------------------------------------------------------
       - name: FF-05 — naming and tagging standard (the teardown mechanism)
