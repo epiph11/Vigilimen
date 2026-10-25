@@ -27,6 +27,13 @@ docker exec vigilimen-plc-control mkdir -p /tmp/replay | Out-Null
 docker cp $vec vigilimen-plc-control:/tmp/replay/vectors.csv | Out-Null
 docker cp "$root\plant\plc-upload\safety_upload.st" vigilimen-plc-control:/tmp/replay/safety_upload.st | Out-Null
 docker cp "$root\plant\tools\safety_replay.cpp" vigilimen-plc-control:/tmp/replay/safety_replay.cpp | Out-Null
+
+# What the container ACTUALLY received. A stale vectors.csv in the container looks exactly like a model that
+# did not change, so show the two rows that decide it, with their timestamps, before anything is replayed.
+Write-Host "vectors written on the host at: $((Get-Item $vec).LastWriteTime)"
+Write-Host "host   : $((Select-String -Path $vec -Pattern 'reset_held_across_trip,3,').Line)"
+Write-Host "in container: $(docker exec vigilimen-plc-control grep 'reset_held_across_trip,3,' /tmp/replay/vectors.csv)"
+docker exec vigilimen-plc-control ls -l --time-style=full-iso /tmp/replay/vectors.csv
 docker cp "$root\plant\tools\replay_stubs.cpp" vigilimen-plc-control:/tmp/replay/replay_stubs.cpp | Out-Null
 docker cp "$root\plant\tools\replay.sh" vigilimen-plc-control:/tmp/replay/replay.crlf.sh | Out-Null
 # the checkout may have CRLF line endings; sh cannot run a script that has them
