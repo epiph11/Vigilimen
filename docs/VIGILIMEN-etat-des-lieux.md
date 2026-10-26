@@ -69,6 +69,11 @@ C'est une **simplification assumée**. Sur un vrai site ce seraient trois choses
 - **Il décide des alarmes.** « Cette vibration est-elle une alarme ? » est une décision qu'on veut garder avec l'historique, et qui doit survivre à un redémarrage. Il écrit l'événement et l'état dans **la même transaction** (ADR-019), pour qu'une panne en plein milieu ne perde rien.
 - **Il est dans le bon réseau.** Il n'a accès qu'au côté supervision, s'identifie avec le compte `historian` et ne fait que lire. Si la base ou le collecteur est compromis, ils n'ont aucune route vers le PLC. *Limite à connaître* : ce compte `historian` peut techniquement écrire `StartCommand` et les `Fault*` (ADR-017).
 
+**Collecteur, historien et edge : trois métiers, pas un doublon.** Dans PI, l'interface et l'archive se vivent comme un seul système ; ici aussi on peut les voir comme un « historien local » unique. Le découpage sert à isoler les pannes, pas à faire deux fois le même travail.
+- **Collecteur** (≈ interface PI) : lit le gateway, horodate à la source, calcule les alarmes. **Historien** (≈ Data Archive) : garde les données et l'historique d'alarmes. Aucun des deux n'a besoin d'Internet.
+- **Edge** (prévu en S5, **n'existe pas encore**, ≈ PI Buffer / Connector Relay) : lit le gateway en lecture seule et **publie** vers l'extérieur (MQTT), avec une file locale qui rejoue après une coupure. Il ne calcule aucune alarme.
+- **Pourquoi l'edge n'est pas fusionné avec le collecteur (s8C).** La règle CIRMP s8C exige que le système critique tienne **trois mois en autonomie** pendant que l'extérieur est restauré. Si la sortie vers le cloud faisait partie du collecteur, une panne du réseau étendu ou du broker toucherait l'historique local et les alarmes. On garde donc la chaîne locale intacte et on ajoute à côté un chemin sortant dont on accepte la panne. **Écrit** (brouillon ADR-020), **non prouvé** : FF-04 et FF-29 (prévus) puis S26 (preuve des trois mois). Détail : `docs/VIGILIMEN-technical-spec.md`, §3.
+
 **Les trois réseaux : des pièces avec des portes**
 
 | Réseau | Qui est dedans | Particularité |

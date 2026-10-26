@@ -1,0 +1,1117 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Vigilimen Technical Spec</title>
+<style>body{font:16px/1.55 system-ui,sans-serif;max-width:980px;margin:0 auto;padding:16px;color:#1b1f24;background:#fff}table{border-collapse:collapse;display:block;overflow-x:auto}td,th{border:1px solid #ccd;padding:4px 8px;vertical-align:top}th{background:#eef}code{background:#f2f2f6;padding:1px 4px}blockquote{border-left:4px solid #88a;margin:0;padding-left:12px}@media(prefers-color-scheme:dark){body{background:#14161a;color:#e6e6ea}th{background:#223}td,th{border-color:#445}code{background:#222}}</style></head><body><h1>Vigilimen — Technical Specification (reference)</h1>
+<p><strong>Status:</strong> draft v0.1 · <strong>Date:</strong> 26 October 2026 (AEST) · <strong>Draft by:</strong> Claude, for E. Zaré · <strong>Scope:</strong> the whole project, from the CONV-001 simulated plant (proven) to Sprint 29 (planned).</p>
+<blockquote>
+<p><strong>How to read this document without confusion.</strong> Every technical statement carries one of three marks:</p>
+<table>
+<thead>
+<tr>
+<th>Mark</th>
+<th>Meaning</th>
+<th>Test</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>[PROVEN]</strong></td>
+<td>A check that was actually run (fitness function, Docker run, measurement) established it</td>
+<td>The script or note is cited</td>
+</tr>
+<tr>
+<td><strong>[WRITTEN]</strong></td>
+<td>The code, ADR or config says so, but nothing exercises it against reality</td>
+<td>Readable in the repository, never executed against the real thing</td>
+</tr>
+<tr>
+<td><strong>[PLANNED]</strong></td>
+<td>Design or decision for a future sprint. It does not exist</td>
+<td>Draft ADR, delivery plan</td>
+</tr>
+</tbody>
+</table>
+<p>When in doubt between PROVEN and WRITTEN, it is WRITTEN. The <code>scripts/ff*.py</code> files and <code>docs/adr/</code> files are the numbering authority (<code>docs/adr/NUMBERING.md</code>). This document describes; it decides nothing.</p>
+</blockquote>
+<hr />
+<h2>1. The project on one page</h2>
+<p>Vigilimen is an IT/OT security portfolio. A <strong>simulated mining conveyor (CONV-001)</strong> is the System under Consideration (ADR-003) used to demonstrate, sprint by sprint, the security of a mine site: IEC 62443 segmentation, an OT DMZ, vendor remote access, passive asset inventory, a 62443-3-2 risk assessment, ATT&amp;CK for ICS scenarios, FAT/SAT, the CIRMP dossier, then IT/OT convergence on three clouds (AWS senses, Azure acts, GCP learns — ADR-001).</p>
+<p>Two ideas structure everything:</p>
+<ol>
+<li><strong>The automation protocol authenticates nobody</strong> (Modbus has no mechanism at all). Segmentation <em>is</em> the authentication (<code>protocol-register.md</code>). <strong>[WRITTEN]</strong></li>
+<li><strong>The safety function (SIS) is a separate controller and carries no cybersecurity control</strong> (ADR-011). A control that can fail a safety function makes the plant less safe. <strong>[WRITTEN]</strong>; logical independence is <strong>[PROVEN]</strong> by FF-06/FF-21; physical independence is not (see §9, D-02).</li>
+</ol>
+<p><strong>Where we are (26 Oct 2026):</strong> S0–S4 closed. The plant runs as 6 Docker containers, the control PLC is linked to the gateway over Modbus, and the alarm history survives restarts and tampering (FF-28). Next: S5 (edge, DMZ, remote access), start 16 Nov 2026.</p>
+<hr />
+<h2>2. Overview</h2>
+<h3>2.1 Context (who talks to what)</h3>
+<pre class="mermaid">flowchart LR
+  OP[Operator] --&gt;|browser, loopback| SCADA
+  ENG[Engineer] -.-&gt;|temporary relay ADR-014| PLCS
+  subgraph Plant[&quot;CONV-001 plant - Docker, single host&quot;]
+    SCADA[SCADA FUXA]
+    GW[Gateway - physics + bridge]
+    PLCC[PLC-CONV-001 OpenPLC]
+    PLCS[SIS-CONV-001 OpenPLC]
+    HIST[(Historian TimescaleDB)]
+    COL[Collector]
+  end
+  GW &lt;--&gt;|Modbus TCP| PLCC
+  SCADA --&gt;|OPC UA| GW
+  COL --&gt;|OPC UA| GW
+  COL --&gt;|SQL| HIST
+  PLCS -. no link .- GW
+  VEND[Vendor OEM] -.-&gt;|S5 planned| JUMP[Jump host]
+  CLOUD[AWS / Azure / GCP] -.-&gt;|S12+ planned| EDGE[Edge]
+</pre>
+<h3>2.2 The containers — existence and wiring <strong>[PROVEN]</strong> (FF-22); ports <strong>[WRITTEN]</strong> from <code>docker-compose.yml</code></h3>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Role</th>
+<th>Network(s)</th>
+<th>Host port (127.0.0.1)</th>
+<th>Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>plc-control</code></td>
+<td>PLC-CONV-001, OpenPLC v3: sequence + machine protection</td>
+<td><code>net_control</code></td>
+<td>8081 (UI), 15020→502 (Modbus)</td>
+<td>End-of-life (ADR-015)</td>
+</tr>
+<tr>
+<td><code>plc-safety</code></td>
+<td>SIS-CONV-001, OpenPLC v3: safety function</td>
+<td><code>net_safety</code></td>
+<td>8082 (UI)</td>
+<td><strong>Sole</strong> member of its network (ADR-014)</td>
+</tr>
+<tr>
+<td><code>gateway</code></td>
+<td>Conveyor physics + OPC UA server + Modbus client to the PLC + modelled contactor</td>
+<td><code>net_control</code>, <code>net_supervisory</code></td>
+<td>14840→4840 (OPC UA)</td>
+<td>Only service spanning two zones</td>
+</tr>
+<tr>
+<td><code>scada</code></td>
+<td>FUXA (MIT, ADR-012), OPC UA client</td>
+<td><code>net_supervisory</code></td>
+<td>1881</td>
+<td></td>
+</tr>
+<tr>
+<td><code>historian</code></td>
+<td>TimescaleDB: samples + alarm history</td>
+<td><code>net_supervisory</code></td>
+<td>15432→5432</td>
+<td></td>
+</tr>
+<tr>
+<td><code>collector</code></td>
+<td>Reads OPC UA at 1 Hz, writes the historian, evaluates alarms</td>
+<td><code>net_supervisory</code></td>
+<td>none</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>Networks: <code>net_control</code> internal, <code>net_safety</code> internal, <code>net_supervisory</code> ordinary bridge. No published port off loopback (ADR-018, FF-22). <strong>[PROVEN]</strong></p>
+<h3>2.3 Two operating modes — a frequent source of confusion</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th><strong>PLC mode</strong></th>
+<th><strong>Embedded mode</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Variable</td>
+<td><code>VIGILIMEN_PLC_LINK=modbus</code> (compose default)</td>
+<td><code>VIGILIMEN_PLC_LINK=off</code> (code default in <code>opcua_server.py</code>)</td>
+</tr>
+<tr>
+<td>Who decides "Run"</td>
+<td>The <code>conveyor.st</code> program inside OpenPLC</td>
+<td>A Python model in the gateway</td>
+</tr>
+<tr>
+<td>Use for</td>
+<td>Normal operation, FF-27</td>
+<td>Tests without a PLC, FF-26 without Modbus</td>
+</tr>
+<tr>
+<td>Trap</td>
+<td>The PLC must have its program loaded or the signature ≠ 1</td>
+<td>Results not comparable with PLC mode</td>
+</tr>
+</tbody>
+</table>
+<p>The two defaults differ (compose = <code>modbus</code>, code = <code>off</code>). <strong>[WRITTEN]</strong> After every <code>docker compose up</code>, check the mode ("linked to plc-control:502, read-back clean" in the gateway log).</p>
+<hr />
+<h2>3. Collector, historian, edge: who does what, and why three</h2>
+<p>This is the question that produced the most confusion. Short answer: <strong>three different jobs, three different failure modes, three different recipients.</strong></p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th><strong>Collector</strong></th>
+<th><strong>Historian</strong></th>
+<th><strong>Edge</strong> (planned S5)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Nature</td>
+<td>Python process (<code>plant/historian/collector.py</code>)</td>
+<td>TimescaleDB (<code>plant/historian/schema.sql</code>)</td>
+<td>Python process to be written (ADR-020) <strong>[PLANNED]</strong></td>
+</tr>
+<tr>
+<td>Verb</td>
+<td><strong>Reads</strong> the process and <strong>evaluates</strong> alarms</td>
+<td><strong>Keeps</strong> the local memory</td>
+<td><strong>Pushes</strong> off the site</td>
+</tr>
+<tr>
+<td>Input</td>
+<td>Gateway OPC UA, 1 Hz, source-timestamped</td>
+<td>SQL from the collector</td>
+<td>Gateway OPC UA (client, never writes)</td>
+</tr>
+<tr>
+<td>Output</td>
+<td>SQL rows (<code>sample</code>, <code>alarm_event</code>, <code>alarm_state</code>)</td>
+<td>Data, 5-min/1-h views, immutable alarm history</td>
+<td>MQTT messages (QoS 1) to the broker in the DMZ</td>
+</tr>
+<tr>
+<td>If the WAN drops</td>
+<td>No effect</td>
+<td>No effect</td>
+<td>Durable local queue (SQLite), replay on return</td>
+</tr>
+<tr>
+<td>If it dies</td>
+<td>No history or alarms; the plant keeps running</td>
+<td>Collector fails; the plant keeps running</td>
+<td>The cloud receives nothing; <strong>the site keeps everything</strong></td>
+</tr>
+<tr>
+<td>Needs the Internet</td>
+<td><strong>No</strong></td>
+<td><strong>No</strong></td>
+<td>Yes, by construction</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Why the edge is not merged into the collector/historian (s8C).</strong> The enhanced CIRMP rule s8C requires the critical system to <strong>operate independently for three months</strong> while external systems are restored. <strong>[WRITTEN]</strong> If the edge <em>were</em> the collector, a WAN, broker or cloud failure would reach the local history and the alarms — exactly what s8C forbids. So the local chain (gateway → collector → historian) stays <strong>untouched and with no outbound dependency</strong>, and a separate outbound path is added beside it, one we accept may fail. This separation is <strong>decided in writing</strong> (ADR-020, draft) <strong>[PLANNED]</strong>; the three-month proof is planned for S26 <strong>[PLANNED]</strong>. On the target site the collector has no route out; FF-04 (planned) will check it <strong>[PLANNED]</strong>.</p>
+<p><strong>Why a collector <em>and</em> a historian?</strong> The collector is effectively stateless: it can restart in milliseconds because alarm state is stored <em>with</em> the history in the same transaction (ADR-019, FF-25). <strong>[PROVEN]</strong> The historian is the only thing that keeps data; restarting the collector must not rewrite history. <strong>[PROVEN]</strong></p>
+<p><strong>If you know AVEVA PI.</strong> On PI, the interface and the Data Archive are usually thought of as one system, and in day-to-day use they are. The mapping here is: <strong>collector ≈ PI Interface/Connector</strong> (reads the source, stamps it, applies quality), <strong>historian ≈ PI Data Archive</strong> (stores and serves), and <strong>edge ≈ PI Buffer Subsystem + Connector Relay / PI-to-cloud</strong> (buffers and forwards off site). The difference is that PI's buffering sits <em>in front of</em> the archive on the same path, while here the outbound path is a <strong>separate branch</strong>: the local collector→historian chain is never made to depend on it. Here the collector additionally evaluates alarms (PI would do that in Notifications/Asset Framework analytics), which is why its restart behaviour matters (ADR-019). Treating collector+historian as one logical "local historian" is fine; the split is for code and failure isolation, not for a different purpose.</p>
+<p><strong>Trap to avoid:</strong> the edge is not "a second collector". It computes no alarm, stores only what it has not yet been able to send, and only publishes (no subscription: no downward command path, ADR-005). <strong>[PLANNED]</strong></p>
+<pre class="mermaid">flowchart LR
+  GW[Gateway OPC UA]
+  GW --&gt;|1 Hz| COL[Collector]
+  COL --&gt; HIST[(Historian - local memory s8C)]
+  GW --&gt;|read only| EDGE[Edge]
+  EDGE --&gt;|MQTT QoS1 TLS| BR[Broker DMZ]
+  BR -.-&gt;|S12 planned| AWS[AWS IoT Core]
+  style EDGE stroke-dasharray: 5 5
+  style BR stroke-dasharray: 5 5
+  style AWS stroke-dasharray: 5 5
+</pre>
+<p>(Dashed = planned, does not exist.)</p>
+<hr />
+<h2>4. The safety function and the contactor</h2>
+<h3>4.1 Principle (ADR-011) <strong>[WRITTEN]</strong>, logic <strong>[PROVEN]</strong> (FF-06, FF-21)</h3>
+<pre class="mermaid">flowchart LR
+  PLCC[Control PLC: run request] --&gt; AND{AND in series}
+  SIS[SIS: contactor coil energised] --&gt; AND
+  AND --&gt; M[Motor]
+</pre>
+<p><code>motor turns = safety contactor energised AND control run request</code>. The control PLC can stop the belt; it cannot start it against a trip; the SIS stops it with the PLC absent, powered down, or commanding RUN.</p>
+<h3>4.2 How it is realised in the plant</h3>
+<ul>
+<li><code>plc-safety</code> has <strong>no link of any kind</strong> (single-member internal network). <strong>[PROVEN]</strong> FF-22 + <code>tools/prove-isolation.ps1</code>.</li>
+<li>Its contactor is a Python <code>SafetyFunction</code> (<code>plant/sim/interlock_model.py</code>) inside the gateway: the "series wiring" becomes one line of code (ADR-014). <strong>[WRITTEN]</strong></li>
+<li>Engineering access to the SIS is a deliberate temporary human act: a throwaway container joins <code>net_safety</code> (<code>tools/plc-ui-relay.ps1 -Target safety -ConfirmSafety</code>) then is removed; the isolation check fails if one is left. <strong>[WRITTEN]</strong></li>
+<li><code>interlock_model.py</code> is a <strong>model</strong> of <code>safety.st</code>/<code>conveyor.st</code>, not the program. FF-21 reads <code>safety.st</code> on disk. <strong>[PROVEN]</strong> Not proven: that the program <em>running</em> in OpenPLC behaves as the model says for safety (only the control PLC has end-to-end proof: FF-27).</li>
+</ul>
+<h3>4.3 Control PLC state machine (<code>conveyor.st</code>) — trips <strong>[PROVEN]</strong> by FF-27</h3>
+<table>
+<thead>
+<tr>
+<th><code>Plc_State</code></th>
+<th>Name</th>
+<th>Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>stopped</td>
+<td></td>
+</tr>
+<tr>
+<td>1</td>
+<td>warning</td>
+<td>bearing ≥ 85 °C (alarm)</td>
+</tr>
+<tr>
+<td>2</td>
+<td>starting</td>
+<td>10 s horn</td>
+</tr>
+<tr>
+<td>3</td>
+<td>running</td>
+<td></td>
+</tr>
+<tr>
+<td>4</td>
+<td>stopping</td>
+<td></td>
+</tr>
+<tr>
+<td>5</td>
+<td>fault</td>
+<td>bearing ≥ 95 °C or current ≥ 42 A (machine trips)</td>
+</tr>
+</tbody>
+</table>
+<pre class="mermaid">stateDiagram-v2
+  [*] --&gt; Stopped
+  Stopped --&gt; Starting: Start_PB and conditions
+  Starting --&gt; Running: horn 10 s
+  Running --&gt; Stopping: Stop_PB
+  Running --&gt; Fault: 95 C or 42 A
+  Stopping --&gt; Stopped
+  Fault --&gt; Stopped: reset
+</pre>
+<p>(Summary only; exact transitions are in <code>plant/plc-control/conveyor.st</code>.) <strong>[WRITTEN]</strong></p>
+<hr />
+<h2>5. Interfaces</h2>
+<h3>5.1 Modbus contract, gateway ↔ PLC (<code>plc_io_map.py</code>, ADR-013) — <code>MAP_VERSION = 1</code></h3>
+<p>The <strong>client is the gateway</strong>; it plays the field (sensors, buttons) and reads the PLC's decisions.</p>
+<table>
+<thead>
+<tr>
+<th>Name (conveyor.st)</th>
+<th>IEC address</th>
+<th>Type</th>
+<th>Direction</th>
+<th>Scale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Start_PB</td>
+<td>%QX100.0</td>
+<td>BOOL</td>
+<td>→ PLC</td>
+<td></td>
+</tr>
+<tr>
+<td>Stop_PB</td>
+<td>%QX100.1</td>
+<td>BOOL</td>
+<td>→ PLC</td>
+<td></td>
+</tr>
+<tr>
+<td>Zero_Speed</td>
+<td>%QX100.2</td>
+<td>BOOL</td>
+<td>→ PLC</td>
+<td></td>
+</tr>
+<tr>
+<td>Upstream_Ready</td>
+<td>%QX100.3</td>
+<td>BOOL</td>
+<td>→ PLC</td>
+<td></td>
+</tr>
+<tr>
+<td>Downstream_Ready</td>
+<td>%QX100.4</td>
+<td>BOOL</td>
+<td>→ PLC</td>
+<td></td>
+</tr>
+<tr>
+<td>Bearing_Temp_x10</td>
+<td>%QW100</td>
+<td>UINT</td>
+<td>→ PLC</td>
+<td>×10 (°C)</td>
+</tr>
+<tr>
+<td>Motor_Current_x10</td>
+<td>%QW101</td>
+<td>UINT</td>
+<td>→ PLC</td>
+<td>×10 (A)</td>
+</tr>
+<tr>
+<td>Belt_Speed_x100</td>
+<td>%QW102</td>
+<td>UINT</td>
+<td>→ PLC</td>
+<td>×100 (m/s)</td>
+</tr>
+<tr>
+<td>Motor_Run</td>
+<td>%QX101.0</td>
+<td>BOOL</td>
+<td>PLC →</td>
+<td></td>
+</tr>
+<tr>
+<td>Alarm_Horn</td>
+<td>%QX101.1</td>
+<td>BOOL</td>
+<td>PLC →</td>
+<td></td>
+</tr>
+<tr>
+<td>Alarm_Word</td>
+<td>%QW110</td>
+<td>WORD</td>
+<td>PLC →</td>
+<td></td>
+</tr>
+<tr>
+<td>Plc_State</td>
+<td>%QW111</td>
+<td>UINT</td>
+<td>PLC →</td>
+<td></td>
+</tr>
+<tr>
+<td>Plc_Map_Version</td>
+<td>%QW112</td>
+<td>UINT</td>
+<td>PLC →</td>
+<td>signature</td>
+</tr>
+</tbody>
+</table>
+<p><code>conveyor.st</code> ↔ map consistency: <strong>[PROVEN]</strong> FF-23.</p>
+<p><strong>Three behaviours that are the point of <code>plc_link.py</code></strong> — <strong>[PROVEN]</strong> by FF-24 against a fake OpenPLC; <strong>[PROVEN]</strong> by FF-27 against the real one:
+1. <strong>Loss of the PLC = no run request</strong> (fail-safe); no answer means "not running".
+2. <strong>Signature first.</strong> OpenPLC v3 <em>stores</em> a Modbus write to an address no program locates and reads it back without error (measured 25 Oct). A read-back proves nothing; only <code>Plc_Map_Version</code> proves the right program is running. Not detected at run time: a program with the right signature that lacks one input (FF-23 catches that at commit).
+3. <strong>Never block the OPC UA loop</strong>: rate-limited reconnects, exchange in a worker thread.</p>
+<h3>5.2 Gateway OPC UA address space <strong>[WRITTEN]</strong> (<code>opcua_server.py</code>)</h3>
+<p>Read-only: <code>Running</code>, <code>SafetyTripped</code>, <code>BeltSpeed_mps</code>, <code>Load_tph</code>, <code>BearingTemp_C</code>, <code>Vibration_mms</code>, <code>MotorCurrent_A</code>, <code>PlcLinkOK</code> (i=20), <code>PlcState</code> (i=21), <code>PlcAlarmWord</code> (i=22).
+Writable: <code>StartCommand</code>, <code>StopCommand</code>, and the five fault-injection tags <code>FaultBearingWear</code>, <code>FaultBeltSlip</code>, <code>FaultMisalignment</code>, <code>FaultIdlerSeizure</code>, <code>FaultVibrationSpike</code> (i=15..19, ADR-016, clamped 0..1; spike 0..10 mm/s; NaN → 0).</p>
+<p><strong>Evolution rule:</strong> <strong>append at the end, never insert</strong>: asyncua numbers nodes in creation order and FUXA binds <code>ns=2;i=N</code>. <strong>[WRITTEN]</strong></p>
+<p><strong>Accounts (<code>historian</code>, <code>engineer</code>).</strong> Same role: the difference is <strong>attribution</strong>, not <strong>authorisation</strong> (ADR-017). Accepted consequence: a compromised collector can write <code>StartCommand</code>. <strong>[WRITTEN]</strong>, a known limit (see D-06).</p>
+<h3>5.3 Historian schema <strong>[WRITTEN]</strong> for the DDL, <strong>[PROVEN]</strong> for immutability (FF-28) and persistence (FF-25)</h3>
+<table>
+<thead>
+<tr>
+<th>Object</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>asset</code>, <code>tag</code></td>
+<td>Asset hierarchy and signal definitions (ISA-95)</td>
+</tr>
+<tr>
+<td><code>sample</code></td>
+<td>Hypertable, 1-day chunks, compression at 7 days, <strong>90-day retention</strong></td>
+</tr>
+<tr>
+<td><code>sample_5m</code>, <code>sample_1h</code></td>
+<td>Continuous aggregates</td>
+</tr>
+<tr>
+<td><code>alarm_event</code></td>
+<td>Transition history, <strong>append-only</strong> (triggers refuse UPDATE/DELETE/TRUNCATE), <strong>outside</strong> the hypertable to escape retention; <code>actor</code> column</td>
+</tr>
+<tr>
+<td><code>alarm_state</code></td>
+<td>Current state of each alarm, written in <strong>the same transaction</strong> as the events (ADR-019)</td>
+</tr>
+<tr>
+<td><code>sample_aest</code></td>
+<td>Display view in Brisbane time (ADR-010)</td>
+</tr>
+</tbody>
+</table>
+<p>Time rule (ADR-010): everything a machine writes is <strong>UTC</strong>; everything a human reads is <strong>Australia/Brisbane (AEST, UTC+10, no daylight saving)</strong>. Conversion at presentation only. <strong>[WRITTEN]</strong></p>
+<h3>5.4 One sample, end to end</h3>
+<pre class="mermaid">sequenceDiagram
+  participant P as Physics (gateway)
+  participant L as plc_link
+  participant C as PLC-CONV-001
+  participant O as OPC UA server
+  participant K as Collector
+  participant H as Historian
+  loop every 0.5 s cycle
+    P-&gt;&gt;L: process values + commands
+    L-&gt;&gt;C: write FC15/FC16
+    C-&gt;&gt;L: Run, horn, state, signature
+    L-&gt;&gt;P: Run accepted (if signature=1 and read-back clean)
+    P-&gt;&gt;O: publish values
+  end
+  loop 1 Hz
+    K-&gt;&gt;O: read (SourceTimestamp, StatusCode)
+    K-&gt;&gt;H: sample + alarm_event + alarm_state (1 transaction)
+  end
+</pre>
+<p>Three collector decisions <strong>[WRITTEN]</strong>: <strong>source</strong> timestamp (not insert time), <strong>quality carried</strong> (192 good / 64 uncertain / 0 bad), and the code <strong>only reads</strong> (a property of the code, not of the account).</p>
+<hr />
+<h2>6. The alarm engine (S4, ISA-18.2) — <code>plant/alarms/engine.py</code></h2>
+<p>States: <code>NORMAL</code>, <code>UNACK</code>, <code>ACKED</code>, <code>RTN_UNACK</code>, <code>SHELVED</code>, <code>SUPPRESSED</code>, <code>OOS</code>. <strong>[WRITTEN]</strong> for the definitions; transitions <strong>[PROVEN]</strong> by FF-07 (model), FF-25 (persistence across restart), FF-26 (running stack), FF-28 (restart during SHELVED, expiry, tamper refusal).</p>
+<p>Configured alarms (each has deadband and on-delay) <strong>[WRITTEN]</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Tag</th>
+<th>Condition</th>
+<th>Limit</th>
+<th>Priority</th>
+<th>On-delay</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BearingTemp_C</td>
+<td>HI / HI_HI</td>
+<td>85 / 95 °C</td>
+<td>HIGH / URGENT</td>
+<td>10 s / none</td>
+</tr>
+<tr>
+<td>Vibration_mms</td>
+<td>HI / HI_HI</td>
+<td>4.5 / 7.1</td>
+<td>LOW / HIGH</td>
+<td>30 s / none</td>
+</tr>
+<tr>
+<td>Current_A</td>
+<td>HI / HI_HI</td>
+<td>38 / 42 A</td>
+<td>LOW / HIGH</td>
+<td>5 s / none</td>
+</tr>
+<tr>
+<td>Speed_mps</td>
+<td>LO / LO_LO</td>
+<td>2.0 / 0.1</td>
+<td>LOW / HIGH</td>
+<td>15 s / none</td>
+</tr>
+</tbody>
+</table>
+<pre class="mermaid">stateDiagram-v2
+  [*] --&gt; NORMAL
+  NORMAL --&gt; UNACK: condition true (after on-delay)
+  UNACK --&gt; ACKED: operator acknowledges
+  UNACK --&gt; RTN_UNACK: condition clears
+  ACKED --&gt; NORMAL: condition clears
+  RTN_UNACK --&gt; NORMAL: operator acknowledges
+  NORMAL --&gt; SHELVED: shelve (actor, expiry)
+  SHELVED --&gt; NORMAL: expiry
+  NORMAL --&gt; SUPPRESSED: design suppression
+  NORMAL --&gt; OOS: out of service
+</pre>
+<p>(Simplified; <code>engine.py</code> is the authority.) <strong>Open decision:</strong> no event is produced when the condition clears <em>during</em> SHELVED — ISA-18.2 behaviour not verified.</p>
+<p>Why this is a "manipulable surface": S8 will shelve, suppress and take alarms out of service as an attacker would; the history records the <code>actor</code> precisely so that "who shelved it, and when" has an answer (S24).</p>
+<hr />
+<h2>7. Security zones and the target (S5 DMZ)</h2>
+<h3>7.1 Today <strong>[PROVEN]</strong> (FF-22)</h3>
+<table>
+<thead>
+<tr>
+<th>Zone / network</th>
+<th>Members</th>
+<th>Property</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>net_safety</code> (internal)</td>
+<td>plc-safety</td>
+<td>Single member; no route in or out</td>
+</tr>
+<tr>
+<td><code>net_control</code> (internal)</td>
+<td>plc-control, gateway</td>
+<td>No route off the host</td>
+</tr>
+<tr>
+<td><code>net_supervisory</code> (bridge)</td>
+<td>gateway, scada, historian, collector</td>
+<td>Ports published on 127.0.0.1 only</td>
+</tr>
+</tbody>
+</table>
+<h3>7.2 Target at S5 — design only <strong>[PLANNED]</strong> (<code>docs/architecture/dmz-target.md</code>, ADR-020, ADR-021, drafts)</h3>
+<pre class="mermaid">flowchart TB
+  subgraph SAFE[Safety zone - net_safety internal]
+    SIS[plc-safety]
+  end
+  subgraph CTRL[Control zone - net_control internal]
+    PLCC[plc-control]
+  end
+  subgraph SUP[Supervisory - net_supervisory]
+    SCADA[scada]
+    COL[collector]
+    HIST[(historian)]
+  end
+  GW[gateway - multi-homed]
+  subgraph DMZ[OT DMZ - net_dmz]
+    EDGE[edge]
+    BR[broker Mosquitto TLS]
+    JUMP[jump host OpenSSH]
+  end
+  PLCC &lt;--&gt; GW
+  GW --&gt; SUP
+  EDGE --&gt;|OPC UA read| GW
+  EDGE --&gt;|publish only| BR
+  JUMP --&gt;|access segment| HIST
+  BR -.-&gt; IT[IT / cloud]
+  VEND[Vendor] -.-&gt; JUMP
+</pre>
+<p>Key design facts established from the real compose <strong>[WRITTEN]</strong>:
+- Docker ignores published ports on <code>internal</code> networks, and a DMZ the host must reach cannot be <code>internal</code>.
+- ADR-017 means a read-only OPC UA account is impossible today; the first brokered-access target is therefore the historian via a read-only PostgreSQL role.
+- The delivery plan's "only the broker crosses" is not literally achievable: the multi-homed set is {gateway, edge, jump, historian}.
+- Forbidden: any path from IT/DMZ to <code>net_control</code>/<code>net_safety</code>; any subscription by the edge; any shell access to the SIS.</p>
+<hr />
+<h2>8. Fitness functions (FF) catalogue</h2>
+<p>Rule: <strong>the scripts in the repository are the numbering authority.</strong> 16 numbered; 13 run in CI; FF-26/27/28 need Docker and run outside CI.</p>
+<table>
+<thead>
+<tr>
+<th>FF</th>
+<th>Checks</th>
+<th>Where</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FF-01</td>
+<td>Governance documents stay under the cut line</td>
+<td><code>ff01_doc_cut_line.sh</code></td>
+<td>CI</td>
+</tr>
+<tr>
+<td>FF-02</td>
+<td>Terraform formatted and valid</td>
+<td><code>ci.yml</code> step (no script)</td>
+<td>CI</td>
+</tr>
+<tr>
+<td>FF-03</td>
+<td>No static cloud credential in the tree; workflows request OIDC</td>
+<td><code>ff03_no_static_credentials.sh</code></td>
+<td>CI</td>
+</tr>
+<tr>
+<td>FF-05</td>
+<td>Naming and tagging (tag drives teardown)</td>
+<td><code>ff05_naming_and_tagging.sh</code></td>
+<td>CI</td>
+</tr>
+<tr>
+<td>FF-06</td>
+<td>Safety independence (model)</td>
+<td><code>ff06_safety_independence.py</code></td>
+<td>CI</td>
+</tr>
+<tr>
+<td>FF-07</td>
+<td>Alarm state model is ISA-18.2-shaped</td>
+<td><code>ff07_alarm_state_model.py</code></td>
+<td>CI</td>
+</tr>
+<tr>
+<td>FF-13</td>
+<td>Terraform plan has nothing on the never-create list</td>
+<td><code>ff13_denylist.py</code></td>
+<td>CI</td>
+</tr>
+<tr>
+<td>FF-14</td>
+<td>Federation trust conditions stay narrow</td>
+<td><code>ff14_federation_scope.sh</code></td>
+<td>CI</td>
+</tr>
+<tr>
+<td>FF-21</td>
+<td><code>safety.st</code> on disk matches FF-06's argument</td>
+<td><code>ff21_safety_st_static.py</code></td>
+<td>CI</td>
+</tr>
+<tr>
+<td>FF-22</td>
+<td>Compose still draws the zones (3 networks, 6 services, loopback ports)</td>
+<td><code>ff22_compose_topology.py</code></td>
+<td>CI</td>
+</tr>
+<tr>
+<td>FF-23</td>
+<td><code>conveyor.st</code> ↔ gateway I/O map agree</td>
+<td><code>ff23_plc_io_map.py</code></td>
+<td>CI</td>
+</tr>
+<tr>
+<td>FF-24</td>
+<td>Gateway drives PLC and fails safe (fake OpenPLC)</td>
+<td><code>ff24_gateway_plc_link.py</code></td>
+<td>CI</td>
+</tr>
+<tr>
+<td>FF-25</td>
+<td>Collector restart does not rewrite alarm history</td>
+<td><code>ff25_alarm_persistence.py</code></td>
+<td>CI</td>
+</tr>
+<tr>
+<td>FF-26</td>
+<td>Running stack end to end</td>
+<td><code>ff26_stack_e2e.py</code></td>
+<td>Docker only</td>
+</tr>
+<tr>
+<td>FF-27</td>
+<td>Real OpenPLC machine-protection trips (42 A, 95 °C)</td>
+<td><code>ff27_plc_trips_e2e.py</code></td>
+<td>Docker only</td>
+</tr>
+<tr>
+<td>FF-28</td>
+<td>Alarm history survives tamper and restart during SHELVED</td>
+<td><code>ff28_alarm_durability.py</code></td>
+<td>Docker only</td>
+</tr>
+</tbody>
+</table>
+<p>Planned <strong>[PLANNED]</strong>: FF-04 (no OT container has an Internet route), FF-20 (supply chain: digests, SBOM, scan), FF-29 (WAN-outage resilience), proposed FF-30 (remote-access scenario with negative steps) and a broker ACL check. FF-22 must be extended at S5 (it freezes 3 networks and 6 services today).</p>
+<hr />
+<h2>9. Technical challenges register</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Challenge</th>
+<th>State</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>D-01</td>
+<td>OpenPLC v3 stores Modbus writes to unlocated addresses; read-back is blind</td>
+<td>Handled by signature register <strong>[PROVEN]</strong> (FF-24/27)</td>
+</tr>
+<tr>
+<td>D-02</td>
+<td>Safety physical independence cannot be shown in software; contactor is a Python model</td>
+<td>Open; witnessed test (SAT) planned S9</td>
+</tr>
+<tr>
+<td>D-03</td>
+<td>Model vs real program drift (<code>interlock_model.py</code> vs <code>.st</code>)</td>
+<td>Partly mitigated (FF-21, FF-23); safety ST not run against vectors <strong>[WRITTEN]</strong></td>
+</tr>
+<tr>
+<td>D-04</td>
+<td>MatIEC rejects VAR blocks mixing located and plain variables</td>
+<td>Worked around in <code>.st</code></td>
+</tr>
+<tr>
+<td>D-05</td>
+<td>OpenPLC lost its program after a rebuild (cause unchecked)</td>
+<td>Open; program reloaded by hand</td>
+</tr>
+<tr>
+<td>D-06</td>
+<td>ADR-017: all OPC UA accounts can write <code>StartCommand</code>/<code>Fault*</code></td>
+<td>Accepted; fix needed before the edge (Q2)</td>
+</tr>
+<tr>
+<td>D-07</td>
+<td>Docker internal networks ignore published ports; DMZ cannot be internal</td>
+<td>Design constraint for S5</td>
+</tr>
+<tr>
+<td>D-08</td>
+<td><code>net_supervisory</code> internal+relays vs routable (FF-04)</td>
+<td>Open question Q1</td>
+</tr>
+<tr>
+<td>D-09</td>
+<td>Store-and-forward correctness (dedupe, ordering, bounded queue)</td>
+<td>Planned S5, FF-29</td>
+</tr>
+<tr>
+<td>D-10</td>
+<td>Hardware MFA cannot be demonstrated in a lab</td>
+<td>Policy configured only (ADR-021)</td>
+</tr>
+<tr>
+<td>D-11</td>
+<td>ISA-18.2 behaviour when condition clears during SHELVED</td>
+<td>Open decision</td>
+</tr>
+<tr>
+<td>D-12</td>
+<td>OpenPLC is EOL (ADR-015)</td>
+<td>Accepted, recorded</td>
+</tr>
+<tr>
+<td>D-13</td>
+<td>Mode mismatch (compose <code>modbus</code> vs code <code>off</code>)</td>
+<td>Check logs after each up</td>
+</tr>
+<tr>
+<td>D-14</td>
+<td>Script overwritten from an old copy (26 Oct)</td>
+<td>Rule: re-read file and check mtime before writing</td>
+</tr>
+<tr>
+<td>D-15</td>
+<td>Documentation over-engineering</td>
+<td>FF-01 cut line</td>
+</tr>
+<tr>
+<td>D-16</td>
+<td>Cloud cost surprises</td>
+<td>ADR-004 (ephemeral windows, FF-13 deny-list)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>10. ADR catalogue</h2>
+<table>
+<thead>
+<tr>
+<th>ADR</th>
+<th>Decision</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>001</td>
+<td>Three clouds split by verb (AWS senses, Azure acts, GCP learns)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>002</td>
+<td>Modular monolith for the enterprise plane</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>003</td>
+<td>Simulated plant is the System under Consideration</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>004</td>
+<td>Cost control by construction (ephemeral cloud windows)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>005</td>
+<td>OT boundary unidirectional by default</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>006</td>
+<td>Which regulations apply to a mine (voluntary CIRMP build)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>007</td>
+<td>Federated identity only; no static cloud credential</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>008</td>
+<td>Entra ID as identity authority for all clouds</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>009</td>
+<td>Nominate AESCSF, map IEC 62443 beneath</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>010</td>
+<td>Machine time UTC; human time Australia/Brisbane</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>011</td>
+<td>Safety function is a separate controller</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>012</td>
+<td>FUXA for SCADA (licence decision)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>013</td>
+<td>Gateway plays the field, drives PLC over Modbus</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>014</td>
+<td>SIS stays unlinked; contactor modelled in gateway</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>015</td>
+<td>OpenPLC v3 is EOL and used anyway</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>016</td>
+<td>Fault injection tags in gateway address space</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>017</td>
+<td>OPC UA accounts: attribution, not authorisation</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>018</td>
+<td>Demo credentials scope</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>019</td>
+<td>Alarm state persistence</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>020</td>
+<td>Edge stack (separate 7th service, MQTT, store-and-forward)</td>
+<td><strong>Proposed</strong> (draft)</td>
+</tr>
+<tr>
+<td>021</td>
+<td>Brokered remote access (jump host, short-lived SSH certs)</td>
+<td><strong>Proposed</strong> (draft)</td>
+</tr>
+<tr>
+<td>022</td>
+<td>Diagramming tools (draw.io, Archi, Mermaid)</td>
+<td><strong>Proposed</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Planned numbers: passive-first discovery (S6), zone partitioning as consequence (S7), FAT hold-point criteria (S9) — next free numbers at write time.</p>
+<hr />
+<h2>11. Roadmap S5–S29</h2>
+<table>
+<thead>
+<tr>
+<th>Sprint</th>
+<th>Theme</th>
+<th>Key outputs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>S5</td>
+<td>Edge, OT DMZ, brokered vendor access</td>
+<td>Edge, broker, jump host, store-and-forward, WAN test, SBOM/scan; <strong>gate M1</strong></td>
+</tr>
+<tr>
+<td>S6</td>
+<td>OT network visibility and asset inventory</td>
+<td>Passive-first discovery, inventory</td>
+</tr>
+<tr>
+<td>S7</td>
+<td>IEC 62443-3-2 risk assessment (ZCR 1–7)</td>
+<td>Zones, conduits, SL-T, CRS</td>
+</tr>
+<tr>
+<td>S8</td>
+<td>ATT&amp;CK for ICS: attack, detect, measure</td>
+<td>Scenarios against the plant, detection coverage</td>
+</tr>
+<tr>
+<td>S9</td>
+<td>FAT/SAT cybersecurity validation</td>
+<td>Hold points, witnessed safety test</td>
+</tr>
+<tr>
+<td>S10</td>
+<td>Procurement and supply-chain assurance</td>
+<td></td>
+</tr>
+<tr>
+<td>S11</td>
+<td>CIRMP pack, incident response, tabletop</td>
+<td>AESCSF SP-2, OT IRP; <strong>gate M3</strong></td>
+</tr>
+<tr>
+<td>S12–S14</td>
+<td>AWS industrial data plane (IoT Core, SiteWise, lake)</td>
+<td><strong>Gate M4</strong></td>
+</tr>
+<tr>
+<td>S15–S18</td>
+<td>Azure enterprise plane (monolith, APIM, Angular, integration)</td>
+<td><strong>Gate M5</strong></td>
+</tr>
+<tr>
+<td>S19–S21</td>
+<td>ML: SageMaker, GCP warehouse, Vertex</td>
+<td><strong>Gate M6</strong></td>
+</tr>
+<tr>
+<td>S22–S23</td>
+<td>GenAI assistant + Power Platform; BI</td>
+<td><strong>Gate M7</strong></td>
+</tr>
+<tr>
+<td>S24</td>
+<td>OT SOC across IT and OT</td>
+<td></td>
+</tr>
+<tr>
+<td>S25</td>
+<td>Observability and SLOs</td>
+<td></td>
+</tr>
+<tr>
+<td>S26</td>
+<td>DR, chaos game-days, three-month independence proof (s8C)</td>
+<td></td>
+</tr>
+<tr>
+<td>S27</td>
+<td>FinOps, governance, compliance</td>
+<td></td>
+</tr>
+<tr>
+<td>S28</td>
+<td>Two demonstrations</td>
+<td></td>
+</tr>
+<tr>
+<td>S29</td>
+<td>Portfolio packaging and close</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>Cadence: 3-week roster cycles (one 56 h heavy week + two 7 h weeks), M3 early Feb 2027, runway to early 2028 (delivery plan v2.1). Gate M2 and the exact milestone dates are in <code>pilotage/delivery-plan.md</code>.</p>
+<hr />
+<h2>12. Glossary</h2>
+<table>
+<thead>
+<tr>
+<th>Term</th>
+<th>Meaning here</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>SUC</strong></td>
+<td>System under Consideration — the simulated conveyor</td>
+</tr>
+<tr>
+<td><strong>PLC / SIS</strong></td>
+<td>Programmable logic controller (control) / safety instrumented system (protection)</td>
+</tr>
+<tr>
+<td><strong>Gateway</strong></td>
+<td>Container that simulates the field and bridges Modbus ↔ OPC UA</td>
+</tr>
+<tr>
+<td><strong>Collector</strong></td>
+<td>Reads OPC UA at 1 Hz, writes the historian, evaluates alarms</td>
+</tr>
+<tr>
+<td><strong>Historian</strong></td>
+<td>TimescaleDB: local memory of samples and alarm history</td>
+</tr>
+<tr>
+<td><strong>Edge</strong></td>
+<td>(Planned) outbound publisher: OPC UA client → MQTT; never writes</td>
+</tr>
+<tr>
+<td><strong>DMZ</strong></td>
+<td>Zone between OT and IT where nothing is trusted both ways</td>
+</tr>
+<tr>
+<td><strong>Zone / conduit</strong></td>
+<td>IEC 62443 groupings of assets / the controlled paths between them</td>
+</tr>
+<tr>
+<td><strong>SL-T / SL-C / SL-A</strong></td>
+<td>Target / capability / achieved security level</td>
+</tr>
+<tr>
+<td><strong>s8C</strong></td>
+<td>CIRMP enhanced rule: critical system operates independently for three months</td>
+</tr>
+<tr>
+<td><strong>CIRMP</strong></td>
+<td>Critical Infrastructure Risk Management Program (Australia, SOCI)</td>
+</tr>
+<tr>
+<td><strong>AESCSF</strong></td>
+<td>Australian Energy Sector Cyber Security Framework</td>
+</tr>
+<tr>
+<td><strong>FF</strong></td>
+<td>Fitness function — an automated check that an architectural property still holds</td>
+</tr>
+<tr>
+<td><strong>ADR</strong></td>
+<td>Architecture Decision Record</td>
+</tr>
+<tr>
+<td><strong>FAT / SAT</strong></td>
+<td>Factory / Site acceptance test</td>
+</tr>
+<tr>
+<td><strong>ISA-18.2</strong></td>
+<td>Alarm management standard</td>
+</tr>
+<tr>
+<td><strong>TRITON</strong></td>
+<td>Malware that targeted a safety system; origin of ADR-011's rule</td>
+</tr>
+<tr>
+<td><strong>Store-and-forward</strong></td>
+<td>Local durable queue that holds messages while the WAN is down</td>
+</tr>
+<tr>
+<td><strong>Jump host</strong></td>
+<td>Hardened host in the DMZ through which vendors reach one asset</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2>13. What is not yet proven (honest list)</h2>
+<ul>
+<li>Physical independence of the safety function (D-02); the SIS program running in OpenPLC against test vectors.</li>
+<li>ISA-18.2 behaviour when a condition clears during SHELVED (D-11).</li>
+<li>Why OpenPLC lost its program after a rebuild (D-05).</li>
+<li>Everything in S5 and later: edge, broker, jump host, WAN resilience, remote-access scenarios, hardware MFA.</li>
+<li>The three-month independence claim (S26).</li>
+</ul>
+<h2>14. Open decisions for E. Zaré</h2>
+<p>Q1 net_supervisory internal + relays vs routable; Q2 edge account / ADR-017 fix; Q3 deadbands and WAN test load; ADR-021 first target and hardware key; SHELVED-clear behaviour; commit of ADR-020/021, <code>dmz-target.md</code>, <code>diagram-plan.md</code> and this spec.</p><script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script><script>mermaid.initialize({startOnLoad:true,theme:window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'default'})</script></body></html>
