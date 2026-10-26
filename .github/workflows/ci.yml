@@ -17,6 +17,8 @@
 #   FF-24  the gateway drives the PLC over Modbus, and fails safe   (ADR-013)
 #   FF-25  a collector restart does not rewrite the alarm history   (ADR-019)
 #   FF-26  the running stack end to end - needs Docker, NOT run here
+#   FF-27  conveyor.st trips in the real OpenPLC - needs Docker, NOT run here
+#   FF-28  alarm_event refuses DELETE/TRUNCATE; a restart during SHELVED keeps the shelf - needs Docker, NOT run here
 #
 # FF-04 onward arrive with the sprints that can first run them. A fitness
 # function written before the thing it measures exists is a stub, and stubs
@@ -36,11 +38,11 @@ jobs:
 
   fitness:
     name: Fitness functions
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: 1.9.8
 
@@ -114,10 +116,10 @@ jobs:
 
   adr:
     name: Structural change carries an ADR
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event_name == 'pull_request'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
