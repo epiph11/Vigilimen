@@ -15,3 +15,15 @@ Next free number: **ADR-020**. Planned, numbers assigned at write time:
 | FAT hold-point criteria | S9 | next free |
 
 Decision taken by default on 26 Oct 2026 (reversible: the alternative is to renumber the repository, which breaks every existing link).
+
+## Fitness functions (FF) : même règle (décidé le 26/10/2026)
+
+**Les scripts du dépôt (`scripts/ff*.py`, `.sh`) font foi.** Un numéro FF est donné quand le script est écrit, jamais réutilisé. Le plan de livraison a ses propres numéros FF : ses lignes sont désignées par leur intitulé.
+
+Pris au 26/10 : FF-01, 02, 03, 05, 06, 07, 13, 14, 21 à 28. Libres : FF-04, 08 à 12, 15 à 20, et à partir de FF-29.
+
+| Intitulé (plan) | Numéro dans le dépôt |
+|---|---|
+| Résilience coupure WAN (le plan dit FF-06, déjà pris par l'indépendance de la sécurité) | **FF-29** |
+| Aucun conteneur OT n'a de route Internet | FF-04 |
+| Chaîne d'approvisionnement (digests, SBOM, scan) | FF-20 |

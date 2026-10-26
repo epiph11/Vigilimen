@@ -26,8 +26,8 @@ Les données ne quittent l'OT que par une DMZ ; les fournisseurs aussi. Porte M1
 - ADR-020 : pile edge (broker MQTT, bibliothèque, chemin collecteur).
 - ADR-021 : accès distant courtié (conduit, pas VPN). Le plan l'appelle « ADR-013 » : voir `docs/adr/NUMBERING.md`, on désigne par titre.
 
-## Numérotation des FF : conflit à trancher
-Le plan nomme `FF-06` (résilience WAN), `FF-04` (aucun conteneur OT n'a de route Internet) et `FF-20` (chaîne d'approvisionnement). Dans le dépôt, **FF-06 existe déjà** (indépendance de sécurité, 15 cas) et FF-21 à FF-28 sont pris. Proposition, même règle que pour les ADR (les fichiers font foi) : résilience WAN = **FF-29**, route Internet = FF-04 et chaîne d'approvisionnement = FF-20 si libres (aucune trace dans le dépôt le 26/10, sauf une mention de FF-04).
+## Numérotation des FF : tranché le 26/10/2026
+Règle des ADR étendue aux FF (voir `docs/adr/NUMBERING.md`) : les scripts du dépôt font foi. Le plan dit `FF-06` pour la résilience WAN, mais FF-06 est pris : **résilience WAN = FF-29**. Aucun conteneur OT n'a de route Internet = **FF-04**, chaîne d'approvisionnement = **FF-20** (libres : aucune trace dans les scripts).
 
 ## Porte M1 : critères du plan, avec la preuve attendue
 | Critère | Preuve (à construire) |
