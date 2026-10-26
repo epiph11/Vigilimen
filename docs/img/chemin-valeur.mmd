@@ -1,9 +1,0 @@
-flowchart TB
-  B["FUXA boutons<br/>START, STOP, défauts"] -->|OPC UA| S1
-  subgraph G["Gateway : boucle de 0,5 s"]
-    S1["1 Lit les entrées<br/>StartCommand, StopCommand, Fault*"] --> S2["2 Logique interlock<br/>Running, SafetyTripped"] --> S3["3 Physique<br/>courant, vibration, température"] --> S4["4 Écrit les tags<br/>ns=2;i=6 à 12"]
-  end
-  S4 -->|OPC UA| E["FUXA écran<br/>valeurs, lampes, alarme"]
-  S4 -->|"OPC UA 1 Hz"| C["Collecteur"]
-  C --> SA["Table sample<br/>1 ligne/tag/seconde"]
-  C --> AF["AlarmFeed + engine<br/>seuils, délais, ISA-18.2"] --> AE["Table alarm_event<br/>append-only"]
