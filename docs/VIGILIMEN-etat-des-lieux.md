@@ -1,6 +1,6 @@
 # Vigilimen — état des lieux complet (Stations 1 à 4, liaison PLC validée dans Docker)
 
-Dernière mise à jour : 26 octobre 2026, 1 h. Même contenu que le doc du projet « MINE 360 » (`claude/VIGILIMEN-etat-des-lieux.md`). Schémas : `docs/img/01…06-*.png` (intégrés ci-dessous). Les anciens `architecture`, `chemin-valeur`, `etats-alarme` (état d'avant la liaison PLC) sont remplacés par les schémas 01, 02 et 04 et retirés du dépôt.
+Dernière mise à jour : 26 octobre 2026, 14 h. Même contenu que le doc du projet « MINE 360 » (`claude/VIGILIMEN-etat-des-lieux.md`). Schémas : `docs/img/01…06-*.png` (intégrés ci-dessous). Les anciens `architecture`, `chemin-valeur`, `etats-alarme` (état d'avant la liaison PLC) sont remplacés par les schémas 01, 02 et 04 et retirés du dépôt.
 
 ## En bref
 
@@ -23,8 +23,9 @@ La station CONV-001 (un convoyeur de mine simulé) tourne en local dans six cont
 | Liaison gateway ↔ PLC-CONV-001 en Modbus (ADR-013, **Accepted**) | `linked to plc-control:502, read-back clean`. START attend **10,4 s** (l'avertisseur de `conveyor.st`). Spike → ligne `alarm_event` en **0,60 s** |
 | Compilation de `conveyor.st` avec les variables `AT` | OK **après correction** : MatIEC refuse un bloc `VAR` qui mélange variables localisées et ordinaires. `%QW112` = registre 112 (signature lue = 1) |
 | Persistance des alarmes (ADR-019, **Accepted**) | Redémarrage du collecteur en pleine alarme : un seul `NORMAL→UNACK`, `alarm_state` conservé. Le déclencheur refuse un UPDATE sur `alarm_event` |
+| Durabilité de l'historique (FF-28, `validate-durability.ps1`) | 21 contrôles verts le 26/10 (embedded, persistance ON). DELETE (une ligne, toutes), TRUNCATE (simple et CASCADE) et UPDATE refusés par le déclencheur, 31 lignes avant et après. Auto-test du banc : sans les déclencheurs, DELETE et TRUNCATE réussissent (le test peut échouer). Redémarrage du collecteur PENDANT SHELVED : même échéance, aucun second `NORMAL→UNACK`. Expiration après le redémarrage : un seul `SHELVED→UNACK`. Limites : le shelve est fait par un script (pas d'écran opérateur), l'attendu vient de l'ADR-019 et d'ISA-18.2 |
 | Isolation du SIS en direct (`prove-isolation.ps1`) | 7/7 : un seul membre, DNS non résolu, `Network is unreachable` par IP vers 8080 et 502, témoin positif CONNECTED |
-| CI GitHub (neuf commits poussés) | Verte sur `f46e977` (run n°6) et sur `5443d67` (run n°5) : FF-01, 02, 03, 05, 06, 07, 13, 14, 21 à 25. FF-26 et FF-27 ne tournent pas en CI (Docker) |
+| CI GitHub | Verte (run n°14, commit `4547f93`, 26/10) : FF-01, 02, 03, 05, 06, 07, 13, 14, 21 à 25. Runners épinglés `ubuntu-24.04`, `checkout@v5`, `setup-terraform@v4` ; plus aucune annotation (constat sur la page Summary). FF-26, 27 et 28 ne tournent pas en CI (Docker). Le run n°9 (`e9d796c`) était déjà vert après le retrait du fichier plcio |
 | `safety.st` exécuté pour de bon (`replay-safety.ps1`) | 63 scans, 12 scénarios. **Avant la correction du modèle : 2 écarts avec le modèle (`reset_held_across_trip`), 0 avec l'exigence ADR-011**, donc le défaut était dans le modèle. **Après (26/10, 0 h 57) : 0 écart avec le modèle, 0 avec l'exigence.** Le programme respecte l'ADR-011 sur les 63 scans |
 | Déclenchements de `conveyor.st` dans OpenPLC (`validate-trips.ps1`, FF-27) | 13/13, et de nouveau 13/13 le 26/10 après la reconstruction du gateway (reset en impulsion). Surcharge 42 A : FAULT en 1,6 s. Un second START n'efface pas le défaut, STOP oui. Une trame Modbus forgée (palier à 96 °C, sans identifiant) déclenche le PLC en 0,21 s |
 
@@ -32,8 +33,10 @@ La station CONV-001 (un convoyeur de mine simulé) tourne en local dans six cont
 - Redémarrage du collecteur APRÈS l'échéance d'une étagère, alarme revenue normale pendant l'étagère, ACKED puis shelve (FF-28 couvre le redémarrage PENDANT SHELVED et l'expiration qui suit, et le refus de DELETE et TRUNCATE : 26/10, 3 h 36, 21 contrôles verts, mode embedded).
 
 **Reste ouvert**
-- Neuf commits faits et poussés (`056dbc7` à `f46e977`). Deux commits locaux, **non poussés** : `9634611` (le banc) et `b55c150` (le modèle sur front montant, FF-06 à 15 cas). Un petit troisième est à faire : `replay-safety.ps1` affiche maintenant ce que le conteneur a reçu. Puis `git push`.
-- Station 5 : sept constats (F1 à F7) dans `docs/assessments/hydro-station/EVALUATION-station5.md`.
+- Tout est commité et poussé (arbre propre au 26/10, 13 h 57). La pile locale peut être restée en embedded après `validate-durability.ps1` ou `validate-4e.ps1` : `docker compose up -d --build` pour revenir au mode PLC.
+- Station 5 (analyse hydro-station) : sept constats (F1 à F7) dans `docs/assessments/hydro-station/EVALUATION-station5.md`. F1 (classeur sans valeurs en cache) traité le 26/10 : recalculé avec LibreOffice, 283 formules identiques, résultats égaux au script `s5_recompute_register.py` ; l'aspect visuel dans Excel n'est pas vérifié.
+- Sprint S5 (edge, DMZ OT, accès distant courtié, porte M1) dès le 16/11 : cadrage dans `docs/sprints/S5-cadrage.md`. Numérotation : les fichiers du dépôt font foi (`docs/adr/NUMBERING.md`), prochain ADR libre ADR-020, résilience WAN = FF-29.
+- Anciens schémas `architecture`, `chemin-valeur`, `etats-alarme` : retirés du dépôt (commit `5dd64d4`).
 
 ## Les conteneurs : à quoi sert chacun, et comment ils s'emboîtent
 
@@ -168,7 +171,7 @@ net_supervisory
                                   (dans les deux réseaux)
 
 net_control (internal)
-  [Gateway] ==Modbus FC15/16/1/3, client== [PLC-CONV-001 :502]     (mode plcio seulement ; sinon non câblé)
+  [Gateway] ==Modbus FC15/16/1/3, client== [PLC-CONV-001 :502]     (mode PLC, le défaut ; non câblé avec `VIGILIMEN_PLC_LINK=off`)
 
 ========= aucune route entre net_control et net_safety (FF-22 sur le papier, prove-isolation.ps1 en vrai) =========
 
@@ -185,12 +188,12 @@ Ports sur 127.0.0.1 seulement (1881 FUXA, 14840 OPC UA, 15432 base). **8081 et 8
 
 ```text
 FUXA boutons --OPC UA--> Gateway, boucle de 0,5 s (plant_cycle.py) :
-  mode par défaut ("embedded") :              mode plcio ("modbus") :
+  opt-out ("embedded", PLC_LINK=off) :        mode par défaut ("modbus") :
     interlock_model joue les deux contrôleurs   entrées simulées --Modbus--> PLC-CONV-001 (séquence, 95 °C, 42 A)
                                                 run request <--Modbus-- PLC ; moteur = contacteur ET run request
   physique (courant, vibration, température) --> tags ns=2;i=6..12, status PLC i=20..22
        |-- OPC UA --> FUXA écran
-       '-- OPC UA, 1 Hz --> Collecteur --> sample + AlarmFeed/engine --> alarm_event (+ alarm_state, mode plcio)
+       '-- OPC UA, 1 Hz --> Collecteur --> sample + AlarmFeed/engine --> alarm_event (+ alarm_state, persistance ON par défaut)
 ```
 
 Avec le PLC dans la boucle, **START attend l'avertisseur de 10 s** de `conveyor.st` ; en mode embedded il est immédiat. Si le PLC ne répond pas ou que sa signature ne correspond pas, le gateway n'émet aucune demande de marche (échec sûr). Le reset du panneau est pressé **une seule fois** au premier scan après le démarrage du gateway.
@@ -233,7 +236,7 @@ L'ancienne preuve `ping sis-conv-001` était vide : `sis-conv-001` est un `hostn
 | Current_A | HI / HI_HI | 38 / 42 A | LOW / HIGH | 5 s / aucun |
 | Speed_mps | LO / LO_LO | 2,0 / 0,1 m/s | LOW / HIGH | 15 s / aucun |
 
-**Persistance (ADR-019, mode plcio).** Avant : un redémarrage du collecteur pendant une alarme acquittée la relevait en nouvel UNACK, perdait l'acquittement et écrivait deux fois l'incident. Maintenant l'état (`alarm_state`) est écrit dans **la même transaction** que les événements, chargé une fois au démarrage, et `alarm_event` est protégé par un déclencheur contre UPDATE/DELETE/TRUNCATE (pas un contrôle de sécurité : le propriétaire de la table peut le supprimer). Un volume existant demande `migrations/001_alarm_state.sql` une fois. Corrigé au passage : `pending()` avançait son repère avant l'insertion, donc un insert échoué perdait les événements.
+**Persistance (ADR-019, activée par défaut dans le compose).** Avant : un redémarrage du collecteur pendant une alarme acquittée la relevait en nouvel UNACK, perdait l'acquittement et écrivait deux fois l'incident. Maintenant l'état (`alarm_state`) est écrit dans **la même transaction** que les événements, chargé une fois au démarrage, et `alarm_event` est protégé par un déclencheur contre UPDATE/DELETE/TRUNCATE (pas un contrôle de sécurité : le propriétaire de la table peut le supprimer). Un volume existant demande `migrations/001_alarm_state.sql` une fois. Corrigé au passage : `pending()` avançait son repère avant l'insertion, donc un insert échoué perdait les événements.
 
 ## Inventaire
 
@@ -244,14 +247,14 @@ L'ancienne preuve `ping sis-conv-001` était vide : `sis-conv-001` est un `hostn
 | Modèle d'interlock | `plant/sim/interlock_model.py` | Modèle Python des deux contrôleurs ; reset sur front depuis `b55c150` | FF-06 (15 cas), banc |
 | Contrat E/S | `plant/gateway/plc_io_map.py` | Table unique des adresses, `MAP_VERSION` | FF-23 |
 | Liaison PLC | `plant/gateway/plc_link.py`, `plant_cycle.py` | Client Modbus, échec sûr, signature | Validée dans Docker ; FF-24 (faux PLC) |
-| Gateway OPC UA | `plant/gateway/opcua_server.py` | ISA-95, comptes, défauts i=15..19, statut PLC i=20..22 | Mode par défaut = embedded |
+| Gateway OPC UA | `plant/gateway/opcua_server.py` | ISA-95, comptes, défauts i=15..19, statut PLC i=20..22 | Mode PLC par défaut ; embedded = `VIGILIMEN_PLC_LINK=off` |
 | Chargement OpenPLC | `plant/plc-upload/build.py` | Génère `*_upload.st` | À rejouer après chaque édition |
-| Collecteur | `plant/historian/collector.py`, `alarms/store.py` | 7 tags à 1 Hz, alarmes, persistance | Persistance validée ; désactivée par défaut |
+| Collecteur | `plant/historian/collector.py`, `alarms/store.py` | 7 tags à 1 Hz, alarmes, persistance | Persistance validée (FF-26, FF-28) ; activée par défaut dans le compose, `off` dans le code hors compose |
 | Historien | `plant/historian/schema.sql`, `migrations/` | `sample`, `alarm_event`, `alarm_state` | Migration appliquée le 25/10 |
 | SCADA | `plant/scada/project/` | Projet FUXA généré | Fichier d'import |
 | Orchestration | `plant/docker-compose.yml` (seul fichier) | 6 services, 3 réseaux | mode PLC par défaut ; embedded = opt-out (`VIGILIMEN_PLC_LINK=off`) |
 | Banc `safety.st` | `plant/tools/replay-safety.ps1`, `safety_replay.cpp`, `replay_stubs.cpp`, `replay.sh`, `scripts/safety_vectors.py` | Compile `safety_upload.st` en C (MatIEC) et rejoue 63 scans contre le modèle et contre l'exigence | Validé ; commité en local |
-| Outils | `plant/tools/` | `validate-4e`, `validate-plcio`, `validate-trips`, `prove-isolation`, `plc-ui-relay` | Lancés le 25/10 |
+| Outils | `plant/tools/` | `validate-4e`, `validate-plcio`, `validate-trips`, `validate-durability` (FF-28), `prove-isolation`, `plc-ui-relay` | Lancés les 25 et 26/10 |
 
 ## Blocages rencontrés et corrections
 
@@ -338,12 +341,12 @@ powershell -ExecutionPolicy Bypass -File tools\replay-safety.ps1
 
 Résultat du 26/10, 0 h 57 : 63 scans, 0 écart avec le modèle, 0 avec l'exigence (2 écarts avec le modèle avant sa correction). La ligne `SELFTEST` doit afficher `q1=1 m1=1 q2=0 m2=1`, et les lignes « host » et « in container » doivent être identiques.
 
-Tests locaux : `python scripts\ff22_compose_topology.py` (idem 23, 24, 25, 21, 07, 06). Arrêt : `docker compose down` garde les données, `down -v` les supprime (avec l'override, passer les deux `-f`).
+Tests locaux : `python scripts\ff22_compose_topology.py` (idem 23, 24, 25, 21, 07, 06). Arrêt : `docker compose down` garde les données, `down -v` les supprime (un seul fichier compose).
 
 ## Prompt de reprise
 
 ```text
 Tu es mon architecte OT/IT. Projet : Vigilimen (sécurité OT/IT d'une mine, convoyeur CONV-001), 100 % local avec Docker.
 Lis docs/VIGILIMEN-etat-des-lieux.md, docs/runs/NOTES.md et docs/adr/0013 à 0019.
-Point de départ : 4e, la liaison PLC, la persistance, l'isolation, les déclenchements de conveyor.st et safety.st (rejoué, 63 scans, conforme à l'ADR-011) sont validés dans Docker (25 et 26/10). Reste : commit de replay-safety.ps1, git push, mode PLC par défaut, constats S5. Pour les tests de sécurité, lis la section « Les tests de sécurité » avant d'interpréter un résultat et valide le banc avant de conclure. Si je te colle une sortie de validate-*.ps1 ou replay-safety.ps1, analyse-la : note symptôme, cause, correction dans NOTES.md AVANT de corriger. Chaque test = une fitness function FF-xx. Ports sur 127.0.0.1, aucun secret réel, ne commite rien sans mon accord.
+Point de départ : 4e, la liaison PLC, la persistance, l'isolation, les déclenchements de conveyor.st et safety.st (rejoué, 63 scans, conforme à l'ADR-011) sont validés dans Docker (25 et 26/10). Reste : S5 (cadrage dans docs/sprints/S5-cadrage.md), tests du collecteur APRÈS l'échéance d'une étagère et alarme revenue normale pendant l'étagère, ADR-020 et ADR-021. FF-28 (docs/runs, validate-durability.ps1) est validé. Pas de trailer Claude dans les commits. Pour les tests de sécurité, lis la section « Les tests de sécurité » avant d'interpréter un résultat et valide le banc avant de conclure. Si je te colle une sortie de validate-*.ps1 ou replay-safety.ps1, analyse-la : note symptôme, cause, correction dans NOTES.md AVANT de corriger. Chaque test = une fitness function FF-xx. Ports sur 127.0.0.1, aucun secret réel, ne commite rien sans mon accord.
 ```
