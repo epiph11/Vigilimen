@@ -14,9 +14,16 @@ after-restart -> FF-28 expiry (waits for the shelf to end, about 1 minute) -> FF
 The whole run is about 3 minutes. The restart must happen inside the 1-minute shelf: if the script says
 "TOO SLOW", just run it again.
 
+With -Extended, three more scenarios run afterwards (about 6 more minutes), each from a live alarm:
+  A  restart of the collector AFTER the shelf expired      -> exactly one SHELVED->UNACK
+  B  the condition clears DURING the shelf, restart in the middle, then expiry -> SHELVED->NORMAL, never UNACK
+  C  alarm ACKNOWLEDGED, then shelved, restart, expiry      -> comes back UNACK (the acknowledgement is not kept)
+    powershell -ExecutionPolicy Bypass -File tools\validate-durability.ps1 -Extended
+
 IF ANYTHING FAILS: stop, and write SYMPTOM / CAUSE / FIX in docs\runs\NOTES.md before changing a line.
 A surprising result: suspect the instrument first (this script, FF-28, the self-test), not the collector.
 #>
+param([switch]$Extended)
 $ErrorActionPreference = 'Continue'
 $env:VIGILIMEN_PLC_LINK = 'off'
 # VIGILIMEN_ALARM_PERSIST is set AFTER step 1: ff25 asserts that persistence is OFF by default,
@@ -43,7 +50,7 @@ function Ff26($phaseArgs) {
     return $LASTEXITCODE
 }
 function Ff28($phaseArgs) {
-    $out = docker exec vigilimen-collector python /tmp/ff28.py @phaseArgs
+    $out = docker exec -e VIGILIMEN_OPCUA_USER=engineer -e VIGILIMEN_OPCUA_PASSWORD=eng1neer-demo vigilimen-collector python /tmp/ff28.py @phaseArgs
     $out | ForEach-Object { Write-Host $_ }
     $script:lastOut = $out -join "`n"
     return $LASTEXITCODE
@@ -118,6 +125,62 @@ if ($rc -ne 0) { Stop-Here "clear phase failed" }
 
 Write-Host "`n== 9. last alarm_event rows =="
 docker exec vigilimen-historian psql -U vigilimen -d vigilimen -c "SELECT event_id, ts, condition, from_state, to_state, actor, note FROM alarm_event ORDER BY event_id DESC LIMIT 8;"
+
+function Raise-Alarm($label) {
+    $rc = Ff26 @('--phase', 'alarm', '--expect-link', 'off')
+    if ($rc -ne 0) { Stop-Here "${label}: FF-26 alarm phase failed (the alarm could not be raised again)" }
+}
+function Shelve-Alarm($label, $extra) {
+    $rc = Ff28 (@('--phase', 'shelve', '--minutes', '1') + $extra)
+    if ($rc -ne 0) { Stop-Here "${label}: shelve failed" }
+    $script:since = 0; $script:until = ''
+    if ($lastOut -match 'since-event-id (\d+)') { $script:since = [int]$Matches[1] }
+    if ($lastOut -match 'shelved-until (\S+)') { $script:until = $Matches[1] }
+    if (-not $script:until) { Stop-Here "${label}: shelve did not print shelved-until" }
+}
+function Restart-Collector {
+    docker restart vigilimen-collector | Out-Null
+    Start-Sleep -Seconds 6
+    docker compose logs collector --tail 4
+}
+function Check-Phase($label, $phaseArgs) {
+    $rc = Ff28 $phaseArgs
+    if ($rc -ne 0) { Stop-Here "$label failed" }
+}
+
+if ($Extended) {
+    Write-Host "`n== A. restart AFTER the shelf expired =="
+    Raise-Alarm 'A'
+    Shelve-Alarm 'A' @()
+    docker stop vigilimen-collector | Out-Null
+    $left = ([DateTimeOffset]::Parse($until) - [DateTimeOffset]::UtcNow).TotalSeconds + 4
+    if ($left -gt 0) { Write-Host "  collector stopped; waiting $([int]$left) s for the shelf to end"; Start-Sleep -Seconds ([int]$left) }
+    docker start vigilimen-collector | Out-Null
+    Start-Sleep -Seconds 8
+    docker compose logs collector --tail 4
+    Check-Phase 'A expiry' @('--phase', 'expiry', '--since-event-id', "$since", '--shelved-until', $until, '--settle', '4')
+
+    Write-Host "`n== B. the condition clears DURING the shelf, restart in the middle =="
+    Raise-Alarm 'B'
+    Shelve-Alarm 'B' @()
+    Restart-Collector                                  # the live collector now holds the SHELVED state
+    Check-Phase 'B faults-off' @('--phase', 'faults-off', '--since-event-id', "$since", '--settle', '5')
+    Restart-Collector
+    Check-Phase 'B after-restart' @('--phase', 'after-restart', '--since-event-id', "$since", '--shelved-until', $until, '--expect-in-condition', 'false')
+    Check-Phase 'B expiry' @('--phase', 'expiry', '--since-event-id', "$since", '--shelved-until', $until, '--expect-events', 'UNACK>SHELVED,SHELVED>NORMAL', '--expect-state', 'NORMAL', '--expect-in-condition', 'false')
+    Write-Host "  OBSERVATION (not a failure): the history for this alarm holds UNACK>SHELVED then SHELVED>NORMAL. Nothing records that the condition ENDED while the alarm was shelved. Whether that is acceptable is a decision, not a test result."
+
+    Write-Host "`n== C. ACKNOWLEDGED, then shelved, restart, expiry =="
+    Raise-Alarm 'C'
+    Shelve-Alarm 'C' @('--ack-first')
+    Restart-Collector
+    Check-Phase 'C after-restart' @('--phase', 'after-restart', '--since-event-id', "$since", '--shelved-until', $until, '--expect-events', 'UNACK>ACKED,ACKED>SHELVED')
+    Check-Phase 'C expiry' @('--phase', 'expiry', '--since-event-id', "$since", '--shelved-until', $until, '--expect-events', 'UNACK>ACKED,ACKED>SHELVED,SHELVED>UNACK')
+
+    Write-Host "`n== clear what the scenarios left =="
+    $rc = Ff26 @('--phase', 'clear', '--expect-link', 'off', '--expect-append-only')
+    if ($rc -ne 0) { Stop-Here "final clear phase failed" }
+}
 
 Stop-Transcript | Out-Null
 Write-Host "FF-28 passed in Docker. Log: $log"

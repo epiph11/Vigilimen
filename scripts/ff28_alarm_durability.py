@@ -20,6 +20,17 @@ Closes the two gaps FF-26 left open (état des lieux, "Pas encore prouvé"):
     phase "expiry"            once the shelf runs out (after the restart): exactly ONE
                               SHELVED->UNACK 'shelf expired', and the shelf is cleared.
 
+    Extended scenarios (validate-durability.ps1 -Extended), each from a live alarm:
+      A  restart AFTER the shelf expired: first cycle after the restart gives one
+         SHELVED->UNACK ("shelf expired"), not zero and not two;
+      B  the condition CLEARS during the shelf, with a restart in the middle: still
+         SHELVED, in_condition False, and at expiry SHELVED->NORMAL (no UNACK);
+      C  ACKNOWLEDGED, then shelved, restart, expiry: the acknowledgement is not
+         silently kept, the alarm comes back UNACK (re-annunciation).
+    The extra phases are `faults-off` (writes the Fault* tags to 0 over OPC UA, like
+    FF-26 "Clear all faults") and the options --ack-first, --expect-events,
+    --expect-state, --expect-in-condition, --settle.
+
 WHERE THE EXPECTED RESULT COMES FROM
     The requirement is ADR-019 ("a restart does not rewrite the alarm history") and
     ISA-18.2 (a shelf is time-limited and its expiry returns an alarm that is still
@@ -43,6 +54,7 @@ WHAT THIS DOES NOT PROVE
 from __future__ import annotations
 
 import argparse
+import asyncio
 import os
 import sys
 import time
@@ -53,6 +65,10 @@ sys.path.insert(0, "/opt/vigilimen")          # collector.py, engine.py, store.p
 import psycopg                                 # noqa: E402
 
 DSN = os.environ.get("VIGILIMEN_PGDSN", "")
+OPCUA_URL = os.environ.get("VIGILIMEN_OPCUA_URL", "opc.tcp://gateway:4840/vigilimen/conv001/")
+OPCUA_USER = os.environ.get("VIGILIMEN_OPCUA_USER", "engineer")
+OPCUA_PASSWORD = os.environ.get("VIGILIMEN_OPCUA_PASSWORD", "")
+FAULTS = ["FaultBearingWear", "FaultBeltSlip", "FaultMisalignment", "FaultIdlerSeizure", "FaultVibrationSpike"]
 VIB, COND = "CONV001.Vibration_mms", "HI_HI"
 
 results: list[tuple[bool, str, str]] = []
@@ -164,17 +180,20 @@ def phase_tamper(conn) -> int:
 # --------------------------------------------------------------------------- shelve
 
 def phase_shelve(conn, args) -> int:
-    print("\nphase shelve — the operator shelves the live Vibration HI_HI for 1 minute", flush=True)
+    print("\nphase shelve — the operator shelves the live Vibration HI_HI for 1 minute"
+          + (" (after acknowledging it)" if args.ack_first else ""), flush=True)
     import collector                                   # the image's own write path
     feed = collector.AlarmFeed(persist=True)
     feed.restore(conn)
     a = feed.engine.get(VIB, COND)
-    live = a.state.value in ("UNACK", "ACKED") and a.in_condition
-    check("the alarm is live (UNACK or ACKED, in condition) before shelving", live,
+    live = a.state.value == "UNACK" and a.in_condition
+    check("the alarm is live and UNACK (in condition) before the operator acts", live,
           f"state={a.state.value} in_condition={a.in_condition}; run FF-26 --phase alarm first" if not live else a.state.value)
     if not live:
         return 1
     base = last_event_id(conn)
+    if args.ack_first:
+        feed.engine.acknowledge(VIB, COND, "ff28-operator")
     feed.engine.shelve(VIB, COND, "ff28-operator", minutes=args.minutes)
 
     alarm_rows, mark = feed.pending()
@@ -185,9 +204,11 @@ def phase_shelve(conn, args) -> int:
     conn.commit()
     feed.committed(mark, dirty)
 
-    ev = events_since(conn, base)
+    seq = _seq(events_since(conn, base))
+    want = ["UNACK>ACKED", "ACKED>SHELVED"] if args.ack_first else ["UNACK>SHELVED"]
+    check("events written by the operator, actor ff28-operator", seq == want
+          and all(e[3] == "ff28-operator" for e in events_since(conn, base)), str(seq))
     st = state_row(conn)
-    check("one event written: SHELVED, actor ff28-operator", len(ev) == 1 and ev[0][2] == "SHELVED" and ev[0][3] == "ff28-operator", str(ev))
     check("alarm_state is SHELVED with an expiry", bool(st) and st[0] == "SHELVED" and st[2] is not None, str(st))
     if st and st[2]:
         print(f"since-event-id {base}")
@@ -195,10 +216,53 @@ def phase_shelve(conn, args) -> int:
     return 0 if all(r[0] for r in results) else 1
 
 
+# --------------------------------------------------------------------------- faults off
+
+async def _faults_off() -> None:
+    from asyncua import Client
+    client = Client(OPCUA_URL, timeout=10)
+    client.set_user(OPCUA_USER)
+    client.set_password(OPCUA_PASSWORD)
+    await client.connect()
+    try:
+        ns = await client.get_namespace_index("urn:vigilimen:plant:conv001")
+        root = client.nodes.objects
+        for n in ("Enterprise", "PilbaraSite", "ProcessingArea", "ConveyingCell", "CONV001"):
+            root = await root.get_child(f"{ns}:{n}")
+        for f in FAULTS:
+            await (await root.get_child(f"{ns}:{f}")).write_value(0.0)
+    finally:
+        await client.disconnect()
+
+
+def phase_faults_off(conn, args) -> int:
+    print("\nphase faults-off — Clear all faults while the alarm is SHELVED", flush=True)
+    if not OPCUA_PASSWORD:
+        print("FF-28: VIGILIMEN_OPCUA_PASSWORD is not set (docker exec -e ...)", file=sys.stderr)
+        return 2
+    asyncio.run(_faults_off())
+    time.sleep(args.settle if args.settle else 5.0)       # a few collector cycles
+    st = state_row(conn)
+    check("the shelved alarm stays SHELVED while the condition clears", bool(st) and st[0] == "SHELVED", str(st))
+    check("alarm_state records in_condition = False", bool(st) and st[1] is False, str(st))
+    seq = _seq(events_since(conn, args.since_event_id))
+    check("no event was written for the condition clearing (hidden from the list, and today also from this log)",
+          seq == ["UNACK>SHELVED"], str(seq))
+    return 0 if all(r[0] for r in results) else 1
+
+
 # --------------------------------------------------------------------------- after restart
 
 def _parse(s: str) -> datetime:
     return datetime.fromisoformat(s).astimezone(timezone.utc)
+
+
+def _seq(ev) -> list[str]:
+    return [f"{e[1]}>{e[2]}" for e in ev]
+
+
+def _want(args, default: str) -> list[str]:
+    return [x for x in (args.expect_events or default).split(",") if x]
 
 
 def phase_after_restart(conn, args) -> int:
@@ -214,33 +278,45 @@ def phase_after_restart(conn, args) -> int:
     check("alarm_state is still SHELVED", bool(st) and st[0] == "SHELVED", str(st))
     check("shelved_until is exactly what was saved", bool(st) and st[2] is not None and st[2].astimezone(timezone.utc) == until,
           f"saved {until.isoformat()}  now {st[2].isoformat() if st and st[2] else None}")
-    ev = events_since(conn, args.since_event_id)
-    to = [e[2] for e in ev]
-    check("history for this alarm since the shelve is exactly [SHELVED]: no second NORMAL->UNACK", to == ["SHELVED"], str(to))
+    want_cond = args.expect_in_condition != "false"
+    check(f"in_condition is {want_cond} as it was before the restart", bool(st) and st[1] is want_cond, str(st))
+    seq = _seq(events_since(conn, args.since_event_id))
+    want = _want(args, "UNACK>SHELVED")
+    check(f"history for this alarm since the start is exactly {want}: no second NORMAL->UNACK", seq == want, str(seq))
     return 0 if all(r[0] for r in results) else 1
 
 
 # --------------------------------------------------------------------------- expiry
 
 def phase_expiry(conn, args) -> int:
-    print("\nphase expiry — the shelf runs out AFTER the restart", flush=True)
+    print("\nphase expiry — the shelf runs out AFTER the restart(s)", flush=True)
     until = _parse(args.shelved_until)
     wait = (until - datetime.now(timezone.utc)).total_seconds() + 6.0
+    if args.settle:
+        wait = max(wait, args.settle)
     if wait > 0:
-        print(f"  waiting {wait:.0f} s for the shelf to end", flush=True)
+        print(f"  waiting {wait:.0f} s", flush=True)
         time.sleep(wait)
     ev = events_since(conn, args.since_event_id)
-    seq = [(e[1], e[2]) for e in ev]
-    check("history is SHELVED then exactly one SHELVED->UNACK", seq == [("UNACK", "SHELVED"), ("SHELVED", "UNACK")], str(seq))
-    check("the expiry event says 'shelf expired'", bool(ev) and ev[-1][4] == "shelf expired", str(ev[-1][4] if ev else None))
+    want = _want(args, "UNACK>SHELVED,SHELVED>UNACK")
+    check(f"history is exactly {want}", _seq(ev) == want, str(_seq(ev)))
+    check("the last event says 'shelf expired'", bool(ev) and ev[-1][4] == "shelf expired", str(ev[-1][4] if ev else None))
     st = state_row(conn)
-    check("alarm_state is UNACK, in condition, shelf cleared", bool(st) and st[0] == "UNACK" and st[1] is True and st[2] is None, str(st))
+    want_state = args.expect_state or "UNACK"
+    want_cond = args.expect_in_condition != "false"
+    check(f"alarm_state is {want_state}, in_condition {want_cond}, shelf cleared",
+          bool(st) and st[0] == want_state and st[1] is want_cond and st[2] is None, str(st))
     return 0 if all(r[0] for r in results) else 1
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--phase", choices=["tamper", "shelve", "after-restart", "expiry"], required=True)
+    ap.add_argument("--phase", choices=["tamper", "shelve", "faults-off", "after-restart", "expiry"], required=True)
+    ap.add_argument("--ack-first", action="store_true")
+    ap.add_argument("--expect-events", default="", help="comma list of from>to, oldest first")
+    ap.add_argument("--expect-state", default="")
+    ap.add_argument("--expect-in-condition", default="true")
+    ap.add_argument("--settle", type=float, default=0.0)
     ap.add_argument("--minutes", type=int, default=1)
     ap.add_argument("--since-event-id", type=int, default=0)
     ap.add_argument("--shelved-until", default="")
@@ -257,6 +333,7 @@ def main() -> int:
     try:
         rc = {"tamper": lambda: phase_tamper(conn),
               "shelve": lambda: phase_shelve(conn, args),
+              "faults-off": lambda: phase_faults_off(conn, args),
               "after-restart": lambda: phase_after_restart(conn, args),
               "expiry": lambda: phase_expiry(conn, args)}[args.phase]()
     finally:

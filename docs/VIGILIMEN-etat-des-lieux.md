@@ -30,7 +30,8 @@ La station CONV-001 (un convoyeur de mine simulé) tourne en local dans six cont
 | Déclenchements de `conveyor.st` dans OpenPLC (`validate-trips.ps1`, FF-27) | 13/13, et de nouveau 13/13 le 26/10 après la reconstruction du gateway (reset en impulsion). Surcharge 42 A : FAULT en 1,6 s. Un second START n'efface pas le défaut, STOP oui. Une trame Modbus forgée (palier à 96 °C, sans identifiant) déclenche le PLC en 0,21 s |
 
 **Pas encore prouvé**
-- Redémarrage du collecteur APRÈS l'échéance d'une étagère, alarme revenue normale pendant l'étagère, ACKED puis shelve (FF-28 couvre le redémarrage PENDANT SHELVED et l'expiration qui suit, et le refus de DELETE et TRUNCATE : 26/10, 3 h 36, 21 contrôles verts, mode embedded).
+- Prouvé le 26/10 (14 h 35, embedded + persistance ON, `validate-durability.ps1 -Extended`, log `durability-20261026-143527.log`, 0 échec) : refus de DELETE et TRUNCATE (auto-test du banc inclus), redémarrage PENDANT SHELVED, expiration ensuite, scénario A (redémarrage APRÈS l'échéance : un seul `SHELVED>UNACK`), B (condition revenue pendant l'étagère : `SHELVED>NORMAL`, jamais UNACK), C (ACKED puis shelve : revient UNACK, l'acquittement n'est pas conservé).
+- **Constat B, décision ouverte (pas un échec)** : quand la condition se termine pendant SHELVED, aucun événement n'est écrit ; l'historique montre `UNACK>SHELVED` puis `SHELVED>NORMAL`. Exigence ISA-18.2 sur ce point non vérifiée.
 
 **Reste ouvert**
 - Tout est commité et poussé (arbre propre au 26/10, 13 h 57). La pile locale peut être restée en embedded après `validate-durability.ps1` ou `validate-4e.ps1` : `docker compose up -d --build` pour revenir au mode PLC.
@@ -107,6 +108,41 @@ Le `gateway` est le **seul conteneur dans deux pièces à la fois** : c'est la p
 | OpenPLC, qui exécute de vrais programmes IEC 61131-3 | Le convoyeur lui-même (la physique est une formule) |
 | FUXA, PostgreSQL/TimescaleDB, le protocole OPC UA | Le câblage de terrain : le gateway invente les valeurs que les capteurs donneraient |
 | Les réseaux Docker, leur isolation, Modbus sur le fil | Le contacteur de sécurité (un modèle Python dans le gateway) et les opérateurs |
+
+## Deux modes de fonctionnement : pourquoi le mode PLC est devenu le défaut
+
+**En une phrase.** Le convoyeur peut tourner de deux façons : soit un **programme Python** dans le gateway décide de tout (mode *embedded*), soit le **vrai programme du PLC** (`conveyor.st`, dans OpenPLC) décide, et le gateway ne fait que la physique et le pont (mode *PLC*). Depuis le 26/10, c'est le mode PLC qui démarre quand on tape `docker compose up -d`.
+
+| | Mode embedded (opt-out) | Mode PLC (défaut) |
+|---|---|---|
+| Qui décide : séquence de démarrage, arrêt sur 95 °C et 42 A | `interlock_model.py`, du Python **dans le gateway** | `conveyor.st`, un vrai programme IEC 61131-3 qui tourne **dans OpenPLC** |
+| Les deux conteneurs OpenPLC | Tournent à côté, **ne décident rien** | `plc-control` décide ; `plc-safety` reste isolé et muet dans les deux modes |
+| START | Immédiat | Attend l'avertisseur de **10 s** (mesuré 10,4 s) |
+| Si le PLC est absent ou ne porte pas le bon programme | Sans effet, il ne décide rien | La bande **ne démarre pas** (échec sûr : aucune demande de marche) |
+| Programme à charger à la main dans OpenPLC | Non | Oui, une fois : `conveyor_upload.st` |
+| Une trame Modbus forgée peut-elle déclencher le PLC ? | Sans objet | **Oui, en 0,21 s** : le point central de S8 n'existe que dans ce mode |
+| Persistance des alarmes (`alarm_state`) | Réglable séparément | Activée par défaut |
+| Comment l'obtenir | `$env:VIGILIMEN_PLC_LINK = 'off'` puis `docker compose up -d` | Rien à faire (`VIGILIMEN_PLC_LINK` vaut `modbus` par défaut) |
+
+**Pourquoi le défaut a changé (décision du 26/10)**
+1. **En embedded, ce qu'on testait n'était pas le vrai programme.** La logique de commande était une réécriture Python ; `conveyor.st` tournait à côté sans rien décider. Une évaluation de sécurité qui attaque la couche PLC (S8) n'a de sens que si le PLC décide vraiment.
+2. **Le lien est validé.** La liaison Modbus gateway-PLC (ADR-013) et les déclenchements de `conveyor.st` (FF-27, 13/13, y compris avec ce défaut) ont été prouvés dans Docker. Laisser par défaut un mode qu'on sait être le moins fidèle n'avait plus de raison d'être.
+3. **La persistance l'est aussi.** Un historique d'alarmes qui change quand un conteneur redémarre n'est pas un enregistrement (ADR-019, FF-25, FF-26, FF-28), donc elle est activée par défaut dans le compose.
+4. **Un défaut est une décision.** FF-22 vérifie maintenant que le défaut est le lien PLC, et l'étape 7 du BREAK IT du walkthrough le casse exprès pour le montrer.
+
+**Pourquoi on garde quand même le mode embedded**
+- C'est la **référence** : FF-06 et FF-07 raisonnent sur ce Python, et on peut comparer le comportement du PLC à ce qu'il aurait dû être.
+- C'est le seul mode qui marche **sans rien installer** : sans programme chargé dans OpenPLC, le mode PLC affiche `PlcLinkOK = False` et la bande ne démarre pas. Un clone neuf ou une démonstration ne montrerait rien bouger.
+- Il aide à **séparer les pannes** : si ça marche en embedded et pas en mode PLC, le défaut est dans le PLC ou le lien, pas dans le gateway.
+- Le coût est réel : deux modes à garder honnêtes, et le risque d'en lancer un sans s'en apercevoir.
+
+**Comment savoir dans quel mode on est**
+- Le journal du gateway, à son démarrage : `Control function: PLC-CONV-001 over Modbus (...)` en mode PLC (puis `plc-link: linked to plc-control:502, read-back clean`), ou `Control function: embedded Python model (no PLC link)` en embedded.
+- Le tag `PlcLinkOK` : `False` en embedded.
+- START : immédiat en embedded, environ 10 s en mode PLC.
+- Le journal du collecteur : `alarm state persistence: on` ou `off`.
+
+**Piège.** `validate-4e.ps1` et `validate-durability.ps1` passent en embedded **pour eux-mêmes** et laissent la pile dans ce mode à la fin. Pour revenir au défaut : `docker compose up -d --build` (les variables d'environnement qu'ils posent ne restent pas dans ta fenêtre PowerShell). Ensuite, regarde le journal du gateway : `program signature 0, expected 1` veut dire que le PLC ne tourne pas le programme (il faut le démarrer, voir la passe 2 du walkthrough).
 
 ## Les tests de sécurité : comment je sais quoi attendre, et comment j'interprète
 

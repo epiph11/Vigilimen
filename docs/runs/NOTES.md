@@ -204,3 +204,26 @@ Epiphane n'a pas Excel. 05-detailed-risk-assessment.xlsx recalculé et réenregi
 
 ## 26/10 14:01 Annotations CI : run #14 sans annotation (constat d Epiphane sur la page Summary)
 Le warning Node.js 20 et la notice ubuntu-latest du run #13 ont disparu après 4547f93 (ubuntu-24.04, checkout v5, setup-terraform v4). Constat visuel d Epiphane, pas relu dans les logs par moi. FF-02 vert (init + validate).
+
+## 26/10 14:30 FF-28 étendu (écrit, PAS lancé) : trois scénarios + section « Deux modes de fonctionnement » dans l'état des lieux
+Scénarios (`validate-durability.ps1 -Extended`) : A redémarrage APRÈS l'échéance ; B condition revenue normale PENDANT l'étagère, avec redémarrage au milieu ; C acquittée puis mise en étagère. Prédictions écrites AVANT l'exécution, obtenues en rejouant seulement le moteur (`engine.py`) dans un environnement séparé, donc des prédictions, pas des résultats : A un seul SHELVED->UNACK « shelf expired » ; B reste SHELVED avec in_condition False après le redémarrage, puis SHELVED->NORMAL à l'expiration (jamais UNACK) ; C UNACK->ACKED, ACKED->SHELVED, puis SHELVED->UNACK (l'acquittement n'est pas conservé).
+Observation déjà visible dans le code, à décider (pas un échec de test) : tant qu'une alarme est SHELVED, `_on_condition_start` et `_on_condition_clear` rendent la main sans événement. Dans le scénario B l'historique ne contient donc aucune ligne disant que la condition a cessé pendant l'étagère, alors que le commentaire de FF-07 dit « hidden from the LIST, never from the AUDIT ». Ce que demande ISA-18.2 là-dessus n'a pas été vérifié.
+Instrument : le banc (ff28, orchestrateur) n'a pas tourné ; il compile et les parenthèses du .ps1 sont équilibrées, rien de plus. Un résultat surprenant : suspecter d'abord ce banc (par exemple le minutage du scénario B, deux redémarrages dans une étagère d'une minute).
+
+## 26/10 14:31 validate-durability.ps1 -Extended : erreur d'analyse PowerShell, rien n'a tourné
+SYMPTÔME : `Variable reference is not valid. ':' was not followed by a valid variable name character` aux lignes 129, 133 et 137 (`"$label: ..."`). Aucun test lancé, la pile n'a pas été touchée.
+CAUSE : défaut du script que j'ai écrit : dans une chaîne entre guillemets, `$label:` est lu comme une référence de lecteur (`$env:`, `$script:`). Le script n'avait pas pu être analysé ici (pas de PowerShell dans mon environnement : seules les parenthèses étaient comptées, ce qui ne détecte pas ce genre d'erreur).
+CORRECTION : `"${label}: ..."` aux trois endroits ; recherche des autres `$nom:` dans le fichier.
+CONTRÔLE de l'instrument : PowerShell 7.4.6 (téléchargé dans mon environnement) analyse l'ancien fichier et reproduit exactement les trois erreurs (129:33, 133:33, 137:42), puis analyse le fichier corrigé sans erreur. Limite : analyse en PowerShell 7, pas en Windows PowerShell 5.1 que tu utilises, et analyse seulement : le déroulement du script n'a pas été exécuté.
+
+## 26/10 14:33 validate-durability.ps1 -Extended : arrêt à l'étape 1, ff25_alarm_persistence « failed locally »
+SYMPTÔME : FF-07 et FF-22 passent, FF-25 échoue, le script s'arrête avant toute action Docker. Reproduit chez moi : `VIGILIMEN_ALARM_PERSIST=on python scripts/ff25_alarm_persistence.py` donne 19 cas, 1 échec : « persistence is OFF unless VIGILIMEN_ALARM_PERSIST says so » ; sans la variable, 19/19.
+CAUSE : mon erreur. Le script validé dans le commit e1eefef posait VIGILIMEN_ALARM_PERSIST='on' APRÈS l'étape 1 (correction du 03:15, voir plus haut). Pour livrer les scénarios étendus j'ai réécrit le fichier à partir de MA copie de départ, sans relire la version présente sur ta machine, et je l'ai écrit par-dessus : la correction a disparu et la variable était de nouveau posée avant FF-25. Aucune vérification de date de modification n'a été demandée à l'écriture. Le même contrôle montre que ff28_alarm_durability.py n'a perdu aucune ligne autre que celles que je remplaçais volontairement.
+CORRECTION : variable reposée juste avant l'étape 2, avec le commentaire d'origine. Différence restante avec e1eefef : l'option -Extended et les trois scénarios, plus le passage des identifiants OPC UA à `docker exec` pour ff28. Fichier analysé sans erreur avec PowerShell 7.4.6 (pas 5.1) ; non exécuté.
+Leçon pour mes écritures sur ta machine : relire la version courante et garder la date de modification comme garde-fou.
+
+## 26 oct. 2026, 14 h 35 : FF-28 -Extended (log durability-20261026-143527.log)
+Résultat : étapes 1 à 9 et scénarios A, B, C tous verts, 0 échec (log complet, fin 14 h 41). Les prédictions écrites avant le lancement sont toutes confirmées.
+A : arrêt du collecteur, attente de l'échéance, redémarrage -> exactement UNACK>SHELVED, SHELVED>UNACK. B : condition retirée pendant SHELVED, deux redémarrages -> SHELVED reste, in_condition False, puis SHELVED>NORMAL. C : UNACK>ACKED, ACKED>SHELVED, redémarrage, SHELVED>UNACK.
+Limites : (1) les prédictions venaient de la lecture de engine.py, pas d'une source indépendante ; (2) l'étape 9 (psql, 8 dernières lignes) n'apparaît pas dans la transcription, sortie des commandes natives non capturée par Start-Transcript, cause non vérifiée ; (3) la pile reste en embedded après le script.
+OBSERVATION B : aucun événement quand la condition cesse pendant SHELVED. Décision à prendre, pas un test.
