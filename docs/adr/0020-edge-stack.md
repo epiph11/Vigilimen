@@ -17,15 +17,15 @@ Two facts from the current compose shape the decision. `net_supervisory` is not 
 
 > **Amendment decided 15 Nov 2026 (ADR-023 accepted).** Point 1 ("second reader of the gateway") becomes "second reader of `opcua-sup`", point 8 becomes `net_supervisory` and `net_dmz` with the cell firewall `fw-cell` between the cell and `net_supervisory`, point 9 is closed (the edge cannot write because `opcua-sup` has no writable node) and Q2 is answered by option b. The text below is the 26 Oct draft and is left unchanged until the decision.
 
-1. **`edge` is a new, seventh service. The collector and the historian stay as they are.** The local record of the plant must not depend on the edge, the broker or the WAN: that is the s8C independence argument, and the historian outage case in the collector's own header. The edge is a second reader of the gateway.
+1. **`edge` is a new service (the ninth, after `fw-cell` and `opcua-sup`). The collector and the historian stay as they are.** The local record of the plant must not depend on the edge, the broker or the WAN: that is the s8C independence argument, and the historian outage case in the collector's own header. The edge is a second reader of `opcua-sup`, the read-only supervisory OPC UA server (ADR-023). It never reads the gateway.
 2. **Broker: Eclipse Mosquitto, in the DMZ, MQTT over TLS.** Per-client user and an ACL file. TLS certificates come from a lab CA generated at start into a volume, never committed (FF-03). Credentials are demo credentials under ADR-018. Mutual TLS is deferred to S12, where the cloud side needs per-gateway X.509 anyway. *(to confirm: Mosquitto over EMQX or others; chosen for size and ACL simplicity, no comparison run)*
 3. **The edge only publishes.** Its ACL grants write on its own topic subtree and **no subscription at all**. The consumer's ACL grants read only. Control does not flow from IT to OT, by configuration that a test can check.
 4. **Client stack: Python, an OPC UA client and an MQTT client library.** Same language as the collector and the gateway. *(to confirm: the library and its version, and its current API, before writing code)*
 5. **Filtering.** The gateway is read at 1 Hz. Baseline publication is one value per tag every 10 s (0.1 Hz). A value is also published at once when it moves beyond a per-tag deadband, when its quality changes, or when it crosses an alarm limit. Deadbands come from a small table committed with the code. *(values to define, open question Q3)*
 6. **Payload.** Plain JSON, versioned: `schema` (`"1"`), `edge_id`, `site`, `asset`, `tag`, `value`, `quality`, `ts_src` (UTC, stamped at the source as the collector does), `seq` (per-edge, strictly increasing). Topic `vigilimen/v1/<site>/<asset>/<tag>`. Sparkplug B stays deferred to S12, as already recorded.
 7. **Store and forward.** A durable local queue (SQLite in WAL mode on a named volume) is the authority. Publish at QoS 1 with a fixed client identifier and a persistent session. A message leaves the queue only after the broker acknowledges it. After a reconnect, replay in `seq` order. QoS 1 is at-least-once, so the consumer deduplicates on `(edge_id, seq)`. The queue is bounded; when it is full the edge drops the oldest baseline message first, **counts every drop and logs it**. Loss must be visible, never silent.
-8. **Network.** `edge` is on `net_supervisory` and `net_dmz`, nothing else. It opens every connection (outbound only).
-9. **Accounts.** The edge uses its own OPC UA account, `edge`. Because of ADR-017 this is **attribution only**: the account can still write. See Q2.
+8. **Network.** `edge` is on `net_supervisory` and `net_dmz`, nothing else. It opens every connection (outbound only). `net_supervisory` is internal (ADR-023); the cell firewall `fw-cell` sits between the cell and `net_supervisory`, and the edge has no route to it.
+9. **Accounts.** The edge reads `opcua-sup` with its own account, `edge`. `opcua-sup` has no writable node, so the edge **cannot** write, whatever its account: read-only is a property of the address space, not of a role (ADR-023). The ADR-017 limit does not apply to this path.
 
 ## Reasoning
 
@@ -39,7 +39,7 @@ Two facts from the current compose shape the decision. `net_supervisory` is not 
 
 **Positive.** The historian is untouched. The boundary has one outbound publisher and a broker whose ACL can be tested. The WAN cut test (FF-29) has a defined success criterion: zero loss, ordered replay, drops counter at zero.
 
-**Negative.** Nine services instead of six, and FF-22 pins the set at six. Duplicates reach the consumer by design. Time-stamping depends on the gateway's clock. The lab DMZ network is not internal (a Docker constraint recorded in `dmz-target.md`), so the broker and the jump host have an Internet route a real DMZ would deny.
+**Negative.** Ten services once `edge` and the broker are added (eight today with `fw-cell` and `opcua-sup`), and FF-22 pins the set; it is extended when they arrive. Duplicates reach the consumer by design. Time-stamping depends on the gateway's clock. The lab DMZ network is not internal (a Docker constraint recorded in `dmz-target.md`), so the broker and the jump host have an Internet route a real DMZ would deny.
 
 **Limits to state in the gate report.** The WAN cut is a Docker network disconnect: it shows the replay, not the behaviour of a real radio link (that is a SAT item). The expected results are written by the author of the code.
 
@@ -47,7 +47,7 @@ Two facts from the current compose shape the decision. `net_supervisory` is not 
 
 | Property | FF |
 |---|---|
-| Topology: nine services, zones, multi-homed set, published ports | FF-22 (extended) |
+| Topology: ten services, zones, multi-homed set, published ports | FF-22 (extended) |
 | No OT container has an Internet route, static and live | FF-04 |
 | 1 h WAN cut under load: zero loss, ordered replay, drops counter zero | FF-29 |
 | Images pinned by digest, SBOM, scan | FF-20 |
@@ -55,13 +55,13 @@ Two facts from the current compose shape the decision. `net_supervisory` is not 
 
 ## Open questions (block acceptance)
 
-- **Q1.** Is `net_supervisory` OT for FF-04? If yes it becomes internal and SCADA, historian and gateway lose their loopback ports unless relays are added (as for the PLC UIs). If no, FF-04 covers `net_control` and `net_safety` only and the report says so.
+- **Q1.** *(Answered 15 Nov: yes, `net_supervisory` is internal, with host relays; see ADR-023.)* Is `net_supervisory` OT for FF-04? If yes it becomes internal and SCADA, historian and gateway lose their loopback ports unless relays are added (as for the PLC UIs). If no, FF-04 covers `net_control` and `net_safety` only and the report says so.
 - **Q2.** *(Answered 15 Nov: option b, see ADR-023, accepted.)* ADR-017 means a "read-only" edge account cannot be enforced today. Accept attribution-only for S5 and detect by behaviour (the edge never writes), or bring forward the cheapest fix listed in ADR-017 (a second OPC UA instance exposing measurements only)?
 - **Q3.** Deadband per tag and the "load" for the WAN test (message rate, duration) to be fixed before FF-29 is written.
-- **Q4.** Who plays the cloud: a host script on the published broker port, or a container? Host script proposed (keeps the service count at nine).
+- **Q4.** Who plays the cloud: a host script on the published broker port, or a container? Host script proposed (keeps the service count at ten).
 
 ---
 
 *VIGILIMEN-ADR-020 · Sprint 5 · draft*
 
-*Amendment note 30 Oct 2026: see ADR-023 (draft) for the cell firewall and the read-only supervisory OPC UA server. Services become eleven (nine plus `fw-cell` and `opcua-sup`) if accepted.*
+*Amendment note 16 Nov 2026: ADR-023 is accepted. The body above (points 1, 8, 9, Q1, Q2) now reflects it. Service count: 8 today, 10 with `edge` and the broker, 11 with `jump` (ADR-021).*
