@@ -21,7 +21,7 @@ Les données ne quittent l'OT que par une DMZ ; les fournisseurs aussi. Porte M1
 | Test de résilience : coupure WAN 1 h sous charge, zéro perte, rejeu ordonné | 3 | store and forward |
 | Chaîne d'approvisionnement : images par digest, SBOM (Syft), scan (Grype/Trivy) en CI, Dependabot | 3 | CI |
 | Version M1 : tag + DOI (Zenodo) | 1 | tout |
-| **Lot V4.1 (proposé 30/10, hors plan, à accepter ou refuser) :** ADR-023, conteneur `fw-cell` (nftables), conteneur `opcua-sup` (lecture seule), repointage edge / collecteur / SCADA, FF-31 à FF-34, mise à jour FF-22 | environ 15 | ADR-023 |
+| **Lot V4.1 (ADR-023 accepté le 15/11, intégré à S5) :** ADR-023, conteneur `fw-cell` (nftables), conteneur `opcua-sup` (lecture seule), repointage edge / collecteur / SCADA, FF-31 à FF-34, mise à jour FF-22 | environ 15 | ADR-023 |
 
 ## Décisions à écrire (numéros libres : ADR-020, ADR-021)
 - ADR-020 : pile edge (broker MQTT, bibliothèque, chemin collecteur).
@@ -39,12 +39,12 @@ Règle des ADR étendue aux FF (voir `docs/adr/NUMBERING.md`) : les scripts du d
 | Session fournisseur : ouverte seulement sur approbation, enregistrée, terminable en cours de session | scénario FAT S5, trois cas, chacun avec son pas négatif |
 | Images par digest, SBOM, tag + DOI | FF-20 en CI |
 
-## Révision proposée le 30/10/2026 (conception physique V4.1, ADR-023 en brouillon)
+## Révision du 30/10/2026, décidée le 15/11/2026 (conception physique V4.1, ADR-023 accepté)
 - Le gateway est aujourd'hui sur `net_control` ET `net_supervisory` : aucun point de politique entre la cellule et le supervisory. Proposition : `fw-cell` devant la cellule, gateway sur `net_control` seul, `opcua-sup` (lecture seule, aucun nœud de commande) pour tout ce qui ne fait que lire (edge, collecteur, vue SCADA).
-- Conséquence : la question Q2 d'ADR-020 reçoit la réponse b (le « compte lecture seule » devient une propriété de l'espace d'adressage, pas d'un rôle). Le point de départ ci-dessus sur le compte edge est donc remplacé si l'ADR-023 est accepté.
+- Conséquence : la question Q2 d'ADR-020 reçoit la réponse b (le « compte lecture seule » devient une propriété de l'espace d'adressage, pas d'un rôle). Le point de départ ci-dessus sur le compte edge est donc remplacé (ADR-023 accepté le 15/11).
 - Services : neuf deviennent onze. Ensemble multi-homed : {`fw-cell`, `edge`, `jump`, `historian`}. Détail : `docs/architecture/dmz-target.md` section 7.
 - Numéros : ADR-023 (prochain libre : 024), FF-31 à FF-34 réservés, FF-30 reste proposé.
-- Rien n'est construit. Le banc ne change pas tant que l'ADR-023 n'est pas décidé.
+- Rien n'est construit. ADR-023 est accepté : le banc change au fil de S5 (tâches t242 à t246).
 
 ## Limites à dire d'avance
 - Un jump host simulé en conteneur ne prouve pas la MFA résistante au hameçonnage : on prouve la politique et l'enregistrement, pas le facteur matériel.

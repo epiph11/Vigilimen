@@ -4,7 +4,7 @@
 
 The delivery plan's ADR table (inherited from v2.0) numbers some decisions differently (for example its ADR-013 "Brokered remote access over VPN" is, in the repository, ADR-013 "Gateway to PLC over Modbus"). The plan's rows are therefore **referred to by title**, not by number.
 
-Next free number: **ADR-024** (updated 30 Oct 2026: ADR-020 to 022 exist, ADR-023 drafted). Planned, numbers assigned at write time:
+Next free number: **ADR-024** (updated 30 Oct 2026: ADR-020 to 022 exist, ADR-023 accepted 15 Nov 2026). Planned, numbers assigned at write time:
 
 | Decision (plan title) | Sprint | Repository number |
 |---|---|---|
@@ -30,5 +30,5 @@ Pris au 26/10 : FF-01, 02, 03, 05, 06, 07, 13, 14, 21 à 28. Libres : FF-04, 08 
 
 ## Update 30 Oct 2026
 
-- **ADR-023** (cell firewall and read-only supervisory OPC UA server) is drafted, status Proposed. Next free ADR: **024**.
-- **FF-31 to FF-34** are reserved for ADR-023 (proposed, scripts not written). FF-30 stays proposed for the vendor scenarios. Taken or reserved list is otherwise unchanged.
+- **ADR-023** (cell firewall and read-only supervisory OPC UA server) is Accepted (15 Nov 2026, nothing built). Next free ADR: **024**.
+- **FF-31 to FF-34** are reserved for ADR-023 (accepted, scripts not written). FF-30 stays proposed for the vendor scenarios. Taken or reserved list is otherwise unchanged.

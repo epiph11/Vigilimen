@@ -1,6 +1,6 @@
 # ADR-023 — A cell firewall and a read-only supervisory OPC UA server separate the cell from everything that only reads
 
-**Status:** Proposed (draft of 30 October 2026, nothing built) · **Deciders:** E. Zaré
+**Status:** Accepted on 15 November 2026 (drafted 30 October 2026; nothing built) · **Deciders:** E. Zaré
 **Related:** ADR-005 (unidirectional boundary) · ADR-017 (accounts are attribution, not authorisation) · ADR-020 (edge stack, Q2) · ADR-021 (brokered access) · `docs/architecture/dmz-target.md` · physical design V4.1, section 22 · **Sprint:** 5 (gate M1)
 
 > Draft. Values marked **(placeholder)** are not decisions. SL-T values come from the S7 risk assessment, not from this ADR. This ADR resolves Q2 of ADR-020 and takes the first of the three "cheapest first" options listed in ADR-017.
