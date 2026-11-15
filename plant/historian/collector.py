@@ -241,7 +241,10 @@ async def cycle(client: Client, nodes, conn, feed: AlarmFeed) -> int:
     values: dict[str, float] = {}
     sample_ts = None
     for tag_id, node in nodes:
-        dv = await node.read_data_value()
+        # raise_on_bad_status=False: a Bad reading is DATA (stored with quality 0), not an exception.
+        # With the default, a mirror reporting BadNoCommunication would send the collector into its
+        # reconnect loop and the historian would show a gap instead of a Bad-quality row.
+        dv = await node.read_data_value(raise_on_bad_status=False)
         ts = dv.SourceTimestamp or dv.ServerTimestamp or datetime.now(timezone.utc)
         if ts.tzinfo is None:
             # asyncua returns naive UTC in some paths. Stamping it as local

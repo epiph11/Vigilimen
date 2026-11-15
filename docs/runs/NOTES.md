@@ -227,3 +227,14 @@ Résultat : étapes 1 à 9 et scénarios A, B, C tous verts, 0 échec (log compl
 A : arrêt du collecteur, attente de l'échéance, redémarrage -> exactement UNACK>SHELVED, SHELVED>UNACK. B : condition retirée pendant SHELVED, deux redémarrages -> SHELVED reste, in_condition False, puis SHELVED>NORMAL. C : UNACK>ACKED, ACKED>SHELVED, redémarrage, SHELVED>UNACK.
 Limites : (1) les prédictions venaient de la lecture de engine.py, pas d'une source indépendante ; (2) l'étape 9 (psql, 8 dernières lignes) n'apparaît pas dans la transcription, sortie des commandes natives non capturée par Start-Transcript, cause non vérifiée ; (3) la pile reste en embedded après le script.
 OBSERVATION B : aucun événement quand la condition cesse pendant SHELVED. Décision à prendre, pas un test.
+
+## 15/11 Lot V4.1, première tranche (ADR-023 accepté) : écrit et testé localement, rien lancé dans Docker
+Écrit : `plant/opcua-sup/` (serveur OPC UA en lecture seule, miroir du gateway), `plant/fw-cell/` (nftables + relais socat), compose (gateway sur net_control seul, net_supervisory internal, collecteur sur opcua-sup), FUXA à deux appareils, FF-22 mis à jour (19 propriétés, 18 mutations), FF-31 (câblage, 8 propriétés, 9 mutations), FF-33 (opcua-sup en lecture seule : statique + vivant).
+Mesuré ici (Python 3.10 hors Docker, asyncua 1.1.5) : miroir contre le vrai serveur du gateway : NodeIds i=6..12 conservés, horodatage source et statut copiés, écriture refusée pour tous les comptes, anonyme refusé ; gateway arrêté : statut BadNoCommunication en 7 s, valeur None, retour à Good en moins de 9 s après redémarrage. Jeu de règles nftables chargé dans un espace de noms réseau privé (unshare), sans trafic.
+Pas mesuré : le relais fw-cell, les rejets nftables, le démarrage de la pile, FUXA à deux appareils, FF-26 à FF-28. L'attendu vient d'ADR-023 (même auteur) : à relire comme tel.
+Reste décidé mais pas fait : canal sécurisé OPC UA (ADR-023 point 7), FF-32 et FF-34, relais hôte `supervisory-relay.ps1`.
+
+## 15/11 FF-25 échoue après le passage du collecteur à `read_data_value(raise_on_bad_status=False)`
+SYMPTÔME : `TypeError: Node.read_data_value() got an unexpected keyword argument 'raise_on_bad_status'` dans `scripts/ff25_alarm_persistence.py`, ligne 179 (faux nœud).
+CAUSE : mon changement de `historian/collector.py`. Le vrai `Node.read_data_value` d'asyncua 1.1.5 accepte l'argument (vérifié contre le vrai serveur) ; le faux nœud de FF-25 n'a pas la même signature. C'est l'instrument qui diffère, pas le collecteur. Le changement lui-même vient d'un défaut constaté : sans lui, un statut Bad lève une exception, le collecteur boucle sur la reconnexion et l'historian montre un trou au lieu d'une ligne de qualité 0.
+CORRECTION : le faux nœud prend `raise_on_bad_status=True` comme le vrai.

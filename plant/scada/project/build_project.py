@@ -7,19 +7,29 @@ Generates the FUXA project for CONV-001: plant/scada/project/vigilimen-conv001.f
 Import: FUXA editor -> gear (top right) -> Project -> Import. This REPLACES the
 whole project, so export your current one first if you have edits worth keeping.
 
-Tag addresses are OPC UA numeric NodeIds (ns=2;i=N) in gateway CREATION ORDER.
-Never insert a node before the end of gateway/opcua_server.py build(): every
-binding below would silently point at a different variable.
+TWO DEVICES since ADR-023 (accepted 15 Nov 2026):
+  CONV-001 (read)     opc.tcp://opcua-sup:4840   the seven measurements. Read-only server.
+  CONV-001 (command)  opc.tcp://fw-cell:4840     StartCommand, StopCommand and the five Fault*
+                                                 tags, relayed to the gateway (FW-CELL-002).
+The command device is the only write path to the plant (flow F9, risk R-14).
 
-Credentials are NOT in this file (FUXA does not export them). After import,
-open Connections -> CONV-001 and set user `engineer` and its password
-(see gateway/opcua_server.py) if the device shows as disconnected.
+Tag addresses are OPC UA numeric NodeIds (ns=2;i=N) in CREATION ORDER.
+  - On the gateway (command device): never insert a node before the end of
+    gateway/opcua_server.py build(); every binding below would point at another variable.
+  - On opcua-sup (read device): the seven measurements keep i=6..12 because
+    opcua-sup/opcua_sup.py creates them first, in the gateway's order. FF-31 checks both.
+
+Credentials are NOT in this file (FUXA does not export them). After import, open
+Connections and set: CONV-001 (read) user `scada`, password `sc4da-demo`;
+CONV-001 (command) user `engineer`, password `eng1neer-demo`
+(see opcua-sup/opcua_sup.py and gateway/opcua_server.py).
 """
 import json
 from pathlib import Path
 from xml.sax.saxutils import escape
 
-DEV = "d_bac44f27-4b1744ff"
+DEV = "d_bac44f27-4b1744ff"        # read device (kept: its id was already in the exported project)
+DEV_CMD = "d_cmd00000-fwcell01"    # command device, through fw-cell
 TAGS = [  # name, type, ns=2 id, tag id
     ("Running", "Boolean", 6, "t_69fbc576-28174428"),
     ("SafetyTripped", "Boolean", 7, "t_576fe42f-a2774bdd"),
@@ -37,6 +47,8 @@ TAGS = [  # name, type, ns=2 id, tag id
     ("FaultVibrationSpike", "Double", 19, "t_11811392-977ed8e8"),
 ]
 T = {n: tid for n, _, _, tid in TAGS}
+READ_TAGS = TAGS[:7]     # measurements, served by opcua-sup
+CMD_TAGS = TAGS[7:]      # commands and fault injection, served by the gateway behind fw-cell
 FAULTS = ["FaultBearingWear", "FaultBeltSlip", "FaultMisalignment", "FaultIdlerSeizure", "FaultVibrationSpike"]
 STATUS_TAG = "t_7c641304-d0704ac5"
 
@@ -46,13 +58,16 @@ devices = {
           "tags": {STATUS_TAG: {"id": STATUS_TAG, "name": "CONV-001 Connection Status", "label": "CONV-001 Connection Status",
                                 "value": 0, "type": "number", "memaddress": DEV, "daq": dict(daq), "init": "", "sysType": 1,
                                 "timestamp": 0}}},
-    DEV: {"id": DEV, "name": "CONV-001", "type": "OPCUA", "enabled": True, "polling": 3000,
-          "property": {"address": "opc.tcp://gateway:4840/vigilimen/conv001/", "port": None, "slot": None, "rack": None,
+}
+for dev_id, dev_name, url, dev_tags in (
+        (DEV, "CONV-001 (read)", "opc.tcp://opcua-sup:4840/vigilimen/conv001/", READ_TAGS),
+        (DEV_CMD, "CONV-001 (command)", "opc.tcp://fw-cell:4840/vigilimen/conv001/", CMD_TAGS)):
+    devices[dev_id] = {"id": dev_id, "name": dev_name, "type": "OPCUA", "enabled": True, "polling": 3000,
+          "property": {"address": url, "port": None, "slot": None, "rack": None,
                        "baudrate": 9600, "databits": 8, "stopbits": 1, "parity": "None", "delay": 10,
                        "forceFC16": False, "timeout": 2000},
           "tags": {tid: {"id": tid, "name": n, "label": n, "type": ty, "address": f"ns=2;i={i}", "daq": dict(daq),
-                         "value": False if ty == "Boolean" else 0, "timestamp": 0} for n, ty, i, tid in TAGS}},
-}
+                         "value": False if ty == "Boolean" else 0, "timestamp": 0} for n, ty, i, tid in dev_tags}}
 
 svg, items, k = [], {}, [0]
 def uid(p="svg"):
@@ -94,7 +109,7 @@ def button(name, label, x, y, w, fill, sets):
                                           "actoptions": {"variableId": T[t]}} for t, v in sets]}}
 
 text(40, 50, "VIGILIMEN - CONV-001", 28, weight="bold")
-text(40, 78, "Simulated plant. OPC UA via gateway, account engineer.", 14, "#666666")
+text(40, 78, "Simulated plant. Reads: opcua-sup (read-only). Commands: gateway, through fw-cell.", 14, "#666666")
 value("BearingTemp_C", 420, 150, "Bearing temperature (degC)")
 value("Vibration_mms", 420, 206, "Vibration (mm/s)")
 value("MotorCurrent_A", 420, 262, "Motor current (A)")

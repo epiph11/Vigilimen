@@ -12,9 +12,13 @@
 #  Three networks, and a container's membership is its zone. This is the
 #  provisional partition from VIGILIMEN-ARC-006 made real enough to attack:
 #
-#      net_control      PLC, gateway            no route to the outside
-#      net_supervisory  gateway, SCADA, historian
+#      net_control      PLC, gateway, fw-cell   internal: no route to the outside
+#      net_supervisory  fw-cell, opcua-sup, SCADA, historian, collector   internal (ADR-020 Q1 = a)
 #      net_safety       SIS ONLY — one member, internal, no gateway
+#
+#  ADR-023 (accepted 15 Nov 2026): the gateway is on net_control ONLY. The one door of
+#  the cell is fw-cell, the only service on both net_control and net_supervisory. What
+#  only reads (collector, SCADA read view) reads opcua-sup, which has no command node.
 #
 #  net_safety is declared `internal: true` and has exactly one container on
 #  it. That is not belt-and-braces: the safety controller's independence is
@@ -31,6 +35,8 @@ networks:
     internal: true          # no route off the host. The gateway is the only way out.
   net_supervisory:
     driver: bridge
+    internal: true          # ADR-020 Q1 = a, ADR-023. Host access to FUXA, the database and OPC UA goes
+                            # through tools/supervisory-relay.ps1, because Docker ignores `ports:` here.
   net_safety:
     driver: bridge
     internal: true          # SIS-CONV-001 is alone here, and stays alone.
@@ -78,9 +84,9 @@ services:
   # ---------------------------------------------------------------------
 
   gateway:
-    # The only container on both net_control and net_supervisory. Every
-    # north-south flow passes through it, which is what makes it a conduit
-    # in the 62443 sense rather than "a machine that happens to route".
+    # On net_control ONLY (ADR-023). Its neighbours are the PLC and fw-cell. Every north-south
+    # flow still passes through it, which makes it a conduit in the 62443 sense; the policy point
+    # in front of it is fw-cell. Readers do not connect here: they read opcua-sup.
     build:
       # Context is plant/, not plant/gateway/. The gateway imports the
       # physics and interlock models from ../sim, and a Dockerfile cannot
@@ -91,9 +97,7 @@ services:
       dockerfile: gateway/Dockerfile
     container_name: vigilimen-gateway
     hostname: gateway
-    networks: [net_control, net_supervisory]
-    ports:
-      - "127.0.0.1:14840:4840"    # OPC UA
+    networks: [net_control]
     environment:
       # A SERVICE name, not the PLC's `hostname:`. Docker's DNS answers for service
       # names, container names and network aliases, and NOT for a container's
@@ -113,6 +117,56 @@ services:
     restart: unless-stopped
 
   # ---------------------------------------------------------------------
+  # The door of the cell and the read-only supervisory server (ADR-023)
+  # ---------------------------------------------------------------------
+
+  fw-cell:
+    # Cell firewall (FW-CELL-001, -002, -DEFAULT). nftables default deny plus a TCP relay on 4840
+    # to the gateway. The ONLY service on both net_control and net_supervisory. It needs NET_ADMIN
+    # to load its rules and SETUID/SETGID to run the relay unprivileged; FF-22 allows exactly
+    # these three capabilities for this one service and for nothing else.
+    build:
+      context: .
+      dockerfile: fw-cell/Dockerfile
+    container_name: vigilimen-fw-cell
+    hostname: fw-cell
+    networks: [net_control, net_supervisory]
+    cap_drop: [ALL]
+    cap_add: [NET_ADMIN, SETUID, SETGID]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    sysctls:
+      net.ipv4.ip_forward: "0"      # nothing is routed: the cell is reachable only through the relay
+    environment:
+      FW_UPSTREAM_HOST: gateway
+      FW_F8_SOURCE: opcua-sup       # FW-CELL-001, the read path
+      FW_F9_SOURCE: scada           # FW-CELL-002, the operator command path
+    depends_on:
+      gateway:
+        condition: service_healthy
+    restart: unless-stopped
+
+  opcua-sup:
+    # Read-only supervisory OPC UA server (OT-OPC-01). No command node, no fault node: read-only is
+    # a property of the address space. It reads the gateway THROUGH fw-cell (F8) and serves the
+    # collector (F1), the SCADA read view and, later, the edge (F-01R).
+    build:
+      context: .
+      dockerfile: opcua-sup/Dockerfile
+    container_name: vigilimen-opcua-sup
+    hostname: opcua-sup
+    networks: [net_supervisory]
+    environment:
+      VIGILIMEN_UPSTREAM_URL: opc.tcp://fw-cell:4840/vigilimen/conv001/
+      VIGILIMEN_UPSTREAM_USER: opcua-sup
+      VIGILIMEN_UPSTREAM_PASSWORD: sup-m1rr0r-demo
+      TZ: UTC
+    depends_on:
+      fw-cell:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------
   # L2 / L3 — supervision and history
   # ---------------------------------------------------------------------
 
@@ -124,7 +178,7 @@ services:
     hostname: scada
     networks: [net_supervisory]
     ports:
-      - "127.0.0.1:1881:1881"
+      - "127.0.0.1:1881:1881"     # ignored by Docker while net_supervisory is internal: use tools/supervisory-relay.ps1
     volumes:
       - fuxa_data:/usr/src/app/FUXA/server/_appdata
       - ./scada/project:/usr/src/app/FUXA/server/_project
@@ -138,7 +192,7 @@ services:
     hostname: historian
     networks: [net_supervisory]
     ports:
-      - "127.0.0.1:15432:5432"
+      - "127.0.0.1:15432:5432"    # ignored by Docker while net_supervisory is internal: use tools/supervisory-relay.ps1
     environment:
       POSTGRES_DB: vigilimen
       POSTGRES_USER: vigilimen
@@ -163,7 +217,7 @@ services:
     restart: unless-stopped
 
   collector:
-    # Reads the gateway over OPC UA at 1 Hz and writes to the historian.
+    # Reads opcua-sup over OPC UA at 1 Hz (ADR-023, F1) and writes to the historian.
     # Deliberately a separate container from the gateway: the thing that
     # PERSISTS data and the thing that BRIDGES protocols fail differently,
     # and collapsing them means a historian outage takes the plant's
@@ -179,7 +233,7 @@ services:
     hostname: collector
     networks: [net_supervisory]
     environment:
-      VIGILIMEN_OPCUA_URL: opc.tcp://gateway:4840/vigilimen/conv001/
+      VIGILIMEN_OPCUA_URL: opc.tcp://opcua-sup:4840/vigilimen/conv001/
       VIGILIMEN_OPCUA_USER: historian
       VIGILIMEN_OPCUA_PASSWORD: h1st0r1an-demo
       VIGILIMEN_PGDSN: postgresql://vigilimen:vigilimen-local-only@historian:5432/vigilimen
@@ -188,7 +242,7 @@ services:
       VIGILIMEN_ALARM_PERSIST: ${VIGILIMEN_ALARM_PERSIST:-on}
       TZ: UTC
     depends_on:
-      gateway:
+      opcua-sup:
         condition: service_healthy
       historian:
         condition: service_healthy

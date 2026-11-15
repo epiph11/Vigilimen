@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-FF-22 — the compose file still draws the zones it claims to (ADR-011, ADR-013, ADR-014).
+FF-22 — the compose file still draws the zones it claims to (ADR-011, ADR-013, ADR-014, ADR-023).
 
 FF-21 reads safety.st. FF-06 reads the model. NEITHER reads docker-compose.yml,
 which is where the safety controller's isolation from the control network is
@@ -13,13 +13,19 @@ would, so an opt-in override cannot quietly add a network either:
 
   1. net_safety exists, is `internal: true`, and has exactly ONE member:
      plc-safety, and plc-safety is a member of nothing else;
-  2. net_control is internal; only plc-control and gateway are on it;
-  3. the gateway is the only service on both net_control and net_supervisory;
+  2. net_control and net_supervisory are internal (ADR-020 Q1 = a); only plc-control, gateway
+     and fw-cell are on net_control; only fw-cell, opcua-sup, scada, historian and collector
+     are on net_supervisory;
+  3. fw-cell is the only service on both net_control and net_supervisory (ADR-023): the
+     gateway is on net_control ONLY, and opcua-sup on net_supervisory only. Since ADR-023
+     fw-cell is also the only multi-homed service;
   4. every published port is bound to 127.0.0.1 (Docker's default is 0.0.0.0);
   5. no service uses host networking, privileged mode, or links/extra_hosts that
      route around a network;
   6. nothing configured for the gateway or collector names the safety controller;
-  7. the service set is the expected six: a new container is a new decision;
+  7. the service set is the expected eight: a new container is a new decision.
+     fw-cell is the only service that may add capabilities: exactly NET_ADMIN, SETUID and
+     SETGID, after dropping ALL, with ip_forward 0 (it relays, it does not route);
   9. the compose default for the control function is the PLC link, not the embedded model (ADR-013);
   8. the gateway's Modbus host is a name Docker's DNS can resolve on net_control
      (a service name, container name or alias). A container's `hostname:` is NOT
@@ -45,7 +51,8 @@ except ImportError:                                    # pragma: no cover
 
 PLANT = Path(__file__).resolve().parent.parent / "plant"
 FILES = [PLANT / "docker-compose.yml", PLANT / "docker-compose.plcio.yml"]
-EXPECTED = {"plc-control", "plc-safety", "gateway", "scada", "historian", "collector"}
+EXPECTED = {"plc-control", "plc-safety", "gateway", "scada", "historian", "collector", "fw-cell", "opcua-sup"}
+FWCELL_CAPS = {"NET_ADMIN", "SETUID", "SETGID"}
 PASS, FAIL = "PASS", "FAIL"
 
 
@@ -90,12 +97,25 @@ def evaluate(c: dict) -> list[tuple[str, str, str]]:
     check("plc-safety is on no other network", nets(svcs.get("plc-safety", {})) == {"net_safety"},
           f"networks: {sorted(nets(svcs.get('plc-safety', {})))}")
     check("net_control is internal", (netdefs.get("net_control") or {}).get("internal") is True,
-          "the control network has no route off the host; the gateway is the only way out")
-    check("only plc-control and gateway are on net_control", members("net_control") == {"plc-control", "gateway"},
+          "the control network has no route off the host; fw-cell is the only door")
+    check("net_supervisory is internal (ADR-020 Q1 = a)", (netdefs.get("net_supervisory") or {}).get("internal") is True,
+          "FF-04 reads 'no OT container has an Internet route'; a routable supervisory zone makes it false for SCADA, historian and collector")
+    check("only plc-control, gateway and fw-cell are on net_control",
+          members("net_control") == {"plc-control", "gateway", "fw-cell"},
           f"members: {sorted(members('net_control'))}")
-    check("the gateway is the only service on both net_control and net_supervisory",
-          {s for s in svcs if {"net_control", "net_supervisory"} <= nets(svcs[s])} == {"gateway"},
+    check("only fw-cell, opcua-sup, scada, historian and collector are on net_supervisory",
+          members("net_supervisory") == {"fw-cell", "opcua-sup", "scada", "historian", "collector"},
+          f"members: {sorted(members('net_supervisory'))}")
+    check("the gateway is on net_control only (ADR-023)", nets(svcs.get("gateway", {})) == {"net_control"},
+          f"networks: {sorted(nets(svcs.get('gateway', {})))}. A gateway on net_supervisory puts the readers back next to the controller")
+    check("opcua-sup is on net_supervisory only", nets(svcs.get("opcua-sup", {})) == {"net_supervisory"},
+          f"networks: {sorted(nets(svcs.get('opcua-sup', {})))}. On net_control it would be a second path into the cell")
+    check("fw-cell is the only service on both net_control and net_supervisory",
+          {s for s in svcs if {"net_control", "net_supervisory"} <= nets(svcs[s])} == {"fw-cell"},
           "a second bridge between zones is a second conduit nobody assessed")
+    check("the multi-homed set is exactly {fw-cell}",
+          {s for s in svcs if len(nets(svcs[s])) > 1} == {"fw-cell"},
+          f"multi-homed: {sorted(s for s in svcs if len(nets(svcs[s])) > 1)}. (edge, jump and historian join it when S5 builds them: FF-22 is edited then)")
 
     bad_ports = []
     for s, v in svcs.items():
@@ -107,9 +127,16 @@ def evaluate(c: dict) -> list[tuple[str, str, str]]:
 
     risky = [s for s, v in svcs.items()
              if v.get("network_mode") or v.get("privileged") or v.get("links") or v.get("extra_hosts")
-             or v.get("pid") == "host" or v.get("cap_add")]
-    check("no host networking, privileged mode, links, extra_hosts or added capabilities", not risky,
+             or v.get("pid") == "host" or (v.get("cap_add") and s != "fw-cell")]
+    check("no host networking, privileged mode, links, extra_hosts or added capabilities (except fw-cell's three)", not risky,
           f"{risky}. Each of these routes around the networks the file draws")
+    fw = svcs.get("fw-cell", {})
+    check("fw-cell drops ALL capabilities and adds exactly NET_ADMIN, SETUID, SETGID",
+          set(fw.get("cap_drop", [])) == {"ALL"} and set(fw.get("cap_add", [])) == FWCELL_CAPS,
+          f"cap_drop={fw.get('cap_drop')} cap_add={fw.get('cap_add')}. NET_ADMIN loads the rules; more than that is a reason to re-read ADR-023")
+    check("fw-cell does not forward (ip_forward 0): it relays, it does not route",
+          str((fw.get("sysctls") or {}).get("net.ipv4.ip_forward")) == "0",
+          f"sysctls={fw.get('sysctls')}. A forwarding fw-cell would let Z2 reach Z1 without the relay's rules")
 
     leak = []
     for s in ("gateway", "collector", "scada"):
@@ -135,7 +162,7 @@ def evaluate(c: dict) -> list[tuple[str, str, str]]:
           plc_mode.replace(" ", "") == "${VIGILIMEN_PLC_LINK:-modbus}",
           f"VIGILIMEN_PLC_LINK={plc_mode!r}. ADR-013: the PLC link is the default since 26 Oct 2026; a silent fall back to the embedded model would make every later check about a different plant")
 
-    check("the service set is the expected six", set(svcs) == EXPECTED,
+    check("the service set is the expected eight", set(svcs) == EXPECTED,
           f"unexpected: {sorted(set(svcs) - EXPECTED)}; missing: {sorted(EXPECTED - set(svcs))}")
     return out
 
@@ -157,7 +184,7 @@ def mutations(c: dict):
           "every published port is bound to 127.0.0.1"),
         m("plc-safety on host networking", lambda d: d["services"]["plc-safety"].__setitem__(
             "network_mode", "host"),
-          "no host networking, privileged mode, links, extra_hosts or added capabilities"),
+          "no host networking, privileged mode, links, extra_hosts or added capabilities (except fw-cell's three)"),
         m("collector told where the SIS is", lambda d: d["services"]["collector"]["environment"].__setitem__(
             "SIS_HOST", "sis-conv-001"),
           "nothing configured for gateway, collector or scada names the safety controller"),
@@ -167,12 +194,31 @@ def mutations(c: dict):
         m("the default silently falls back to the embedded model", lambda d: d["services"]["gateway"]["environment"].__setitem__(
             "VIGILIMEN_PLC_LINK", "${VIGILIMEN_PLC_LINK:-off}"),
           "the compose default is the PLC link (embedded needs an explicit opt-out)"),
-        m("an unreviewed seventh container", lambda d: d["services"].__setitem__(
+        m("an unreviewed ninth container", lambda d: d["services"].__setitem__(
             "debug", {"image": "alpine", "networks": ["net_supervisory"]}),
-          "the service set is the expected six"),
+          "the service set is the expected eight"),
         m("scada joins net_control", lambda d: d["services"]["scada"].__setitem__(
             "networks", ["net_supervisory", "net_control"]),
-          "only plc-control and gateway are on net_control"),
+          "only plc-control, gateway and fw-cell are on net_control"),
+        m("the gateway joins net_supervisory again", lambda d: d["services"]["gateway"].__setitem__(
+            "networks", ["net_control", "net_supervisory"]),
+          "the gateway is on net_control only (ADR-023)"),
+        m("opcua-sup joins net_control", lambda d: d["services"]["opcua-sup"].__setitem__(
+            "networks", ["net_supervisory", "net_control"]),
+          "opcua-sup is on net_supervisory only"),
+        m("the collector joins net_control", lambda d: d["services"]["collector"].__setitem__(
+            "networks", ["net_supervisory", "net_control"]),
+          "only plc-control, gateway and fw-cell are on net_control"),
+        m("net_supervisory no longer internal", lambda d: d["networks"]["net_supervisory"].__setitem__("internal", False),
+          "net_supervisory is internal (ADR-020 Q1 = a)"),
+        m("fw-cell removed", lambda d: d["services"].pop("fw-cell"),
+          "the service set is the expected eight"),
+        m("fw-cell gains a capability", lambda d: d["services"]["fw-cell"]["cap_add"].append("SYS_ADMIN"),
+          "fw-cell drops ALL capabilities and adds exactly NET_ADMIN, SETUID, SETGID"),
+        m("fw-cell forwards packets", lambda d: d["services"]["fw-cell"]["sysctls"].__setitem__("net.ipv4.ip_forward", "1"),
+          "fw-cell does not forward (ip_forward 0): it relays, it does not route"),
+        m("another service adds a capability", lambda d: d["services"]["opcua-sup"].__setitem__("cap_add", ["NET_ADMIN"]),
+          "no host networking, privileged mode, links, extra_hosts or added capabilities (except fw-cell's three)"),
     ]
 
 
@@ -203,8 +249,9 @@ def main() -> int:
     print("""
 FF-22 pass.
 
-What this proves: on paper, the SIS network has one member and the control
-network has two, and nothing is published beyond loopback.
+What this proves: on paper, the SIS network has one member, the control network
+has three (PLC, gateway, fw-cell), fw-cell is the only door between Z1 and Z2, and
+nothing is published beyond loopback.
 What it does not prove: that Docker enforces it. The live proof is the failed
 connection from plc-control to the SIS's IP address (plant/tools/prove-isolation.ps1).""")
     return 0

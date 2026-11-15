@@ -81,6 +81,9 @@ class PlantUserManager(UserManager):
     ACCOUNTS = {
         "historian": ("h1st0r1an-demo", UserRole.User),
         "engineer":  ("eng1neer-demo", UserRole.User),
+        # ADR-023: the supervisory mirror (opcua-sup) reads the gateway through fw-cell (flow F8).
+        # Attribution only, like the others (ADR-017): it is told apart in the logs, not stopped.
+        "opcua-sup": ("sup-m1rr0r-demo", UserRole.User),
     }
 
     def get_user(self, iserver, username=None, password=None, certificate=None):

@@ -176,7 +176,7 @@ class DV:
 
 class Node:
     def __init__(self, v): self.v = v
-    async def read_data_value(self): return DV(self.v, self.ts)
+    async def read_data_value(self, raise_on_bad_status=True): return DV(self.v, self.ts)   # same signature as asyncua's Node
 
 
 import asyncio
