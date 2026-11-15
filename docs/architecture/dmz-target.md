@@ -3,6 +3,8 @@
 **Status:** draft for E. Zaré. Nothing here is built or tested. It feeds ADR-020 (edge stack), ADR-021 (brokered remote access), the extension of FF-22 and the first P1 diagram (`docs/architecture/diagram-plan.md`, D1).
 **Source of the current state:** `plant/docker-compose.yml` as of commit 044767c (3 networks, 6 services).
 
+> **Revision proposed 30 Oct 2026 (ADR-023 draft, physical design V4.1).** Section 7 below holds the proposed changes (cell firewall `fw-cell`, read-only `opcua-sup`, zone ZS). Sections 1 to 6 are the 26 Oct draft and stay valid until ADR-023 is decided. If it is accepted, sections 1, 2, 4, 5 and 6 are rewritten from section 7.
+
 ## 1. Zones and networks
 
 | Zone | Network | `internal` | Members (target) | Change |
@@ -98,3 +100,58 @@ flowchart LR
 - One arrow per flow F1 to F7, labelled with its number, protocol, port and **the initiator** (arrowhead at the target). Conduit IDs on F4 to F7. SL-T shown as "provisional until S7".
 - A second layer or a red dashed set for the forbidden flows of section 2.
 - Title block per ADR-022 rule 4: title, sprint, date, version, legend. Save uncompressed; commit the `.drawio` with its SVG export as `docs/architecture/diagrams/S5-dmz-target.drawio`.
+
+## 7. Proposed revision (ADR-023, draft of 30 Oct 2026)
+
+Why: today the gateway is on `net_control` and `net_supervisory` at once, and any logged-in OPC UA client can write (ADR-017). Readers (edge, collector, SCADA read view) are connected to the thing that controls. Fix: one policy point in front of the cell, and a read-only server for everything that only reads.
+
+### 7.1 Zones and networks (replaces section 1 if accepted)
+
+| Zone | Network | `internal` | Members (target) | Change vs section 1 |
+|---|---|---|---|---|
+| ZS safety | `net_safety` | yes | `plc-safety` | none; **no conduit**, zone ZS in the register |
+| Z1 cell | `net_control` | yes | `plc-control`, `gateway`, `fw-cell` (cell leg) | **gateway is no longer multi-homed** |
+| Z2 supervisory | `net_supervisory` | yes (Q1 = a) | `fw-cell` (supervisory leg), `opcua-sup`, `scada`, `historian`, `collector`, `edge` | `opcua-sup` and `fw-cell` added |
+| Z3 DMZ | `net_dmz` | no (Docker constraint) | `edge` (second leg), `broker`, `jump` | none |
+| Access segment | `net_remote_historian` | yes | `jump`, `historian` | none |
+| IT / outside | host `127.0.0.1` | n/a | consumer, vendor client | none |
+
+**New services vs the 26 Oct draft:** `fw-cell` (nftables, default deny) and `opcua-sup` (OPC UA server, measurements and `Plc*` status only, no command or fault node). Nine services become eleven.
+**Multi-homed set:** {`fw-cell`, `edge`, `jump`, `historian`}. `gateway` leaves the set.
+
+### 7.2 Flows (changes only; F2, F4 to F7 unchanged)
+
+| # | From to | Protocol, port | Note |
+|---|---|---|---|
+| F1 | `collector` to `opcua-sup` | OPC UA 4840 (secure channel) | was `gateway` |
+| F3 (F-01R) | `edge` to `opcua-sup` | OPC UA 4840 (secure channel) | was `gateway`; the edge can no longer write; FW-OT-001R |
+| F8 | `opcua-sup` to `gateway`, through `fw-cell` | OPC UA 4840 | read path, conduit C1; FW-CELL-001 |
+| F9 | `scada` (operator command) to `gateway`, through `fw-cell` | OPC UA 4840 | the only write path; FW-CELL-002; stays R-14 / S8 target |
+| F10 | `fw-cell` log to `historian` or log sink | syslog or file | policy hits are evidence; FW-CELL-003 |
+| F-DENY-01R | DMZ or enterprise to Z1 | any | no route; FW-DENY-001R; NET-05 |
+
+Port numbers and the F8 to F10 numbering are proposals. Rule text and example addressing are in the V4.1 document, section 22.4 and 22.5.
+
+### 7.3 FF-22 after ADR-023 (replaces section 4 items 1, 2, 5, 6, 7 if accepted)
+
+1. The service set is exactly the eleven expected.
+2. `net_control`, `net_safety`, every `net_remote_*` and (Q1 = a) `net_supervisory` are internal.
+3. `gateway` is on exactly {`net_control`}; `plc-control` on exactly {`net_control`}.
+4. `fw-cell` is on exactly {`net_control`, `net_supervisory`}; it is the only service on both.
+5. The multi-homed set is exactly {`fw-cell`, `edge`, `jump`, `historian`}.
+6. `opcua-sup` is on exactly {`net_supervisory`}.
+7. No service is on both `net_dmz` and `net_control` or `net_safety`.
+
+Mutations to add (each must make FF-22 fail): `gateway` joins `net_supervisory`; `opcua-sup` joins `net_control`; `edge` joins `net_control`; `fw-cell` removed. New FFs proposed: FF-31 to FF-34 (ADR-023).
+
+### 7.4 Sketch delta (for the mermaid in section 5)
+
+Replace `EDGE -- F3 --> GW` and `COL -- F1 --> GW` by `EDGE -- "F3 / F-01R" --> OPS` and `COL -- "F1" --> OPS`; add `OPS["opcua-sup (read-only)"]` in the supervisory subgraph and `FWC["fw-cell (C1)"]` between it and `GW`; `OPS -- "F8" --> FWC --> GW`; `SCA -- "F9 command" --> FWC`. Remove `GW` from the supervisory subgraph.
+
+### 7.5 D1 drawing brief delta
+
+- Add the firewall C symbol (BOM-021 equivalent `fw-cell`) on the boundary between OT supervisory and OT control; label C1.
+- Add `opcua-sup` in the supervisory band; re-aim the edge and collector arrows to it (F1, F3).
+- Remove the double border from `gateway`; double border on `fw-cell`.
+- Add F8 to F10, the red dashed F-DENY-01R, and the empty zone ZS box with the label "no conduit".
+- The existing D1 draw.io file needs this update; it is not done by this note.

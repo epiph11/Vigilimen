@@ -16,6 +16,7 @@ The protocols spoken in the simulated plant, and — the only column that matter
 | **DNP3-SA** | where the device supports it | 20000 | Yes — challenge-response | Yes | No |
 | **OPC UA** | PLC ↔ historian ↔ northbound | 4840 | **Yes** — X.509 certificates, user tokens | Yes, signed | Yes, encrypted |
 | **MQTT / Sparkplug B** | edge → cloud | 8883 | TLS client certificate | TLS | TLS |
+| **OPC UA (supervisory, read-only)** *(proposed 30 Oct 2026, ADR-023)* | edge, collector, SCADA read view ↔ `opcua-sup` | 4840 | Yes, per-identity roles (secure channel, Sign and Encrypt) | Yes | Yes |
 
 ---
 
@@ -79,6 +80,12 @@ What ships enforces read/write per node, and the two accounts differ in **attrib
 ## Verification note
 
 Port numbers and the authentication properties above are standard and stable. **The S7comm characterisation is the one to re-check** against the specific firmware of any device actually deployed — Siemens has changed access-level behaviour across firmware generations, and "weak" is a summary rather than a finding.
+
+---
+
+## Update 30 Oct 2026 (proposal, ADR-023 draft)
+
+Two OPC UA instances instead of one. The **cell instance** (gateway, inside Z1) keeps the lab concession of the NoSecurity policy for the PLC link and is reachable only through the cell firewall `fw-cell`. The **supervisory instance** (`opcua-sup`, Z2) has no command or fault node and runs a secure channel with per-identity roles. The row for the PLC link is unchanged: Modbus has no authentication, which is why nothing but the gateway speaks it.
 
 ---
 

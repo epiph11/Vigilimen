@@ -5,6 +5,8 @@
 
 > The delivery plan calls this decision "brokered remote access over VPN" and numbers it ADR-013. In the repository ADR-013 is the Modbus link; this is ADR-021 (`docs/adr/NUMBERING.md`).
 > Draft. Choices marked **(to confirm)** are proposals.
+>
+> **Amendment proposed 30 Oct 2026 (ADR-023, draft).** The jump host reaches the HMI and nothing in Z1; there is no conduit from the DMZ to the cell (F-DENY-01R). The vendor scenarios map to conduits C2 (firewall A) and C3 (firewall B) and to the management zone ZM. Nothing below is changed until ADR-023 is decided.
 
 ---
 

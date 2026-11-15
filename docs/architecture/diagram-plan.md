@@ -33,7 +33,9 @@ Hours are estimates, not measured. Do them in this order; each one feeds the nex
 | D2 | **Vendor session**: request, approval, certificate, session, recording, termination, and the three refusal branches | draw.io | 1.5 | ADR-021, the remote-access FF | ADR-021 |
 | D3 | **Edge data path and store-and-forward**: online, offline, replay, queue, `seq`, drops counter | draw.io | 1.5 | ADR-020, FF-29 | ADR-020 |
 
-Total about 5 h. After S5 starts: C4-L2 refresh (the existing `c4-l2-ot.html` predates the edge and the DMZ).
+| D1 rev | **D1 revision (ADR-023 draft, 30 Oct)**: cell firewall `fw-cell` between cell and supervisory, `opcua-sup`, gateway single-homed, zone ZS with no conduit, flows F8 to F10 and F-DENY-01R | draw.io | +1 | ADR-023, FF-22, FF-31 to FF-34 | `docs/architecture/dmz-target.md` section 7.5 |
+
+Total about 6 h (5 h plus the D1 revision). The V4.1 physical design document (section 22) contains drawn versions of the zone and conduit figure and the lab plan to copy from; they are SVG illustrations, not the committed draw.io sources (ADR-022 rule 1). After S5 starts: C4-L2 refresh (the existing `c4-l2-ot.html` predates the edge and the DMZ).
 
 ## Checks before a diagram is accepted
 - Source and export both in the repository (ADR-022 rule 1).

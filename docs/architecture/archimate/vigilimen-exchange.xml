@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<model xmlns="http://www.opengroup.org/xsd/archimate/3.0/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.opengroup.org/xsd/archimate/3.0/ http://www.opengroup.org/xsd/archimate/3.1/archimate3_Diagram.xsd" identifier="id-vigilimen">
+<name xml:lang="en">Vigilimen base model</name>
+<elements>
+<element identifier="id-e01" xsi:type="BusinessActor"><name xml:lang="en">Operator</name><documentation xml:lang="en">Runs the conveyor from the SCADA</documentation></element>
+<element identifier="id-e02" xsi:type="BusinessActor"><name xml:lang="en">Vendor engineer</name><documentation xml:lang="en">Remote vendor support (S5 planned, via jump host)</documentation></element>
+<element identifier="id-e03" xsi:type="BusinessProcess"><name xml:lang="en">Operate the conveyor</name><documentation xml:lang="en">Start, stop, acknowledge alarms</documentation></element>
+<element identifier="id-e04" xsi:type="BusinessService"><name xml:lang="en">Safe conveyor operation</name><documentation xml:lang="en">What the plant owner gets</documentation></element>
+<element identifier="id-a01" xsi:type="ApplicationComponent"><name xml:lang="en">SCADA (FUXA)</name><documentation xml:lang="en">MIT licence, ADR-012. OPC UA client</documentation><properties><property propertyDefinitionRef="propid-1"><value xml:lang="en">built</value></property></properties></element>
+<element identifier="id-a02" xsi:type="ApplicationComponent"><name xml:lang="en">gateway</name><documentation xml:lang="en">Physics + OPC UA server + Modbus client + modelled contactor</documentation><properties><property propertyDefinitionRef="propid-1"><value xml:lang="en">built</value></property></properties></element>
+<element identifier="id-a03" xsi:type="ApplicationComponent"><name xml:lang="en">collector</name><documentation xml:lang="en">Reads OPC UA at 1 Hz, evaluates alarms, writes the historian</documentation><properties><property propertyDefinitionRef="propid-1"><value xml:lang="en">built</value></property></properties></element>
+<element identifier="id-a04" xsi:type="ApplicationComponent"><name xml:lang="en">historian</name><documentation xml:lang="en">TimescaleDB: local memory (s8C)</documentation><properties><property propertyDefinitionRef="propid-1"><value xml:lang="en">built</value></property></properties></element>
+<element identifier="id-a05" xsi:type="ApplicationComponent"><name xml:lang="en">edge</name><documentation xml:lang="en">PLANNED S5 (ADR-020): outbound publisher, OPC UA client to MQTT, never writes</documentation><properties><property propertyDefinitionRef="propid-1"><value xml:lang="en">planned</value></property><property propertyDefinitionRef="propid-2"><value xml:lang="en">S5</value></property></properties></element>
+<element identifier="id-a06" xsi:type="ApplicationInterface"><name xml:lang="en">OPC UA (gateway)</name><documentation xml:lang="en">Port 4840, accounts historian/engineer (ADR-017)</documentation></element>
+<element identifier="id-d01" xsi:type="DataObject"><name xml:lang="en">Alarm history</name><documentation xml:lang="en">alarm_event append-only + alarm_state (ADR-019)</documentation></element>
+<element identifier="id-t01" xsi:type="Device"><name xml:lang="en">PLC-CONV-001</name><documentation xml:lang="en">OpenPLC v3 (EOL, ADR-015): sequence + machine protection</documentation><properties><property propertyDefinitionRef="propid-1"><value xml:lang="en">built</value></property></properties></element>
+<element identifier="id-t02" xsi:type="Device"><name xml:lang="en">SIS-CONV-001</name><documentation xml:lang="en">OpenPLC v3: safety function, no link (ADR-014)</documentation><properties><property propertyDefinitionRef="propid-1"><value xml:lang="en">built</value></property></properties></element>
+<element identifier="id-t03" xsi:type="Node"><name xml:lang="en">Docker host</name><documentation xml:lang="en">Single host running 6 containers</documentation></element>
+<element identifier="id-t04" xsi:type="Artifact"><name xml:lang="en">conveyor.st</name><documentation xml:lang="en">Control program</documentation></element>
+<element identifier="id-t05" xsi:type="Artifact"><name xml:lang="en">safety.st</name><documentation xml:lang="en">Safety program</documentation></element>
+<element identifier="id-t06" xsi:type="CommunicationNetwork"><name xml:lang="en">net_control</name><documentation xml:lang="en">internal</documentation></element>
+<element identifier="id-t07" xsi:type="CommunicationNetwork"><name xml:lang="en">net_supervisory</name><documentation xml:lang="en">bridge today</documentation></element>
+<element identifier="id-t08" xsi:type="CommunicationNetwork"><name xml:lang="en">net_safety</name><documentation xml:lang="en">internal, single member</documentation></element>
+<element identifier="id-t09" xsi:type="TechnologyService"><name xml:lang="en">Modbus TCP</name><documentation xml:lang="en">No authentication: segmentation is the authentication</documentation></element>
+<element identifier="id-t10" xsi:type="TechnologyService"><name xml:lang="en">OPC UA</name><documentation xml:lang="en">Certificates and user tokens</documentation></element>
+<element identifier="id-t11" xsi:type="Equipment"><name xml:lang="en">Motor contactor</name><documentation xml:lang="en">Series AND of control run request and safety coil (ADR-011). Modelled in the gateway</documentation></element>
+<element identifier="id-m01" xsi:type="Driver"><name xml:lang="en">s8C three-month independence</name><documentation xml:lang="en">Enhanced CIRMP</documentation></element>
+<element identifier="id-m02" xsi:type="Driver"><name xml:lang="en">WHS duty</name><documentation xml:lang="en">Safety-critical OT is a WHS matter (ADR-006)</documentation></element>
+<element identifier="id-m03" xsi:type="Goal"><name xml:lang="en">Local autonomy</name><documentation xml:lang="en">Site operates without external systems</documentation></element>
+<element identifier="id-m04" xsi:type="Goal"><name xml:lang="en">Safe operation</name><documentation xml:lang="en">Protective function always works</documentation></element>
+<element identifier="id-m05" xsi:type="Principle"><name xml:lang="en">Segmentation is the authentication</name><documentation xml:lang="en">protocol-register.md</documentation></element>
+<element identifier="id-m06" xsi:type="Requirement"><name xml:lang="en">Local chain has no outbound dependency</name><documentation xml:lang="en">Collector and historian never depend on edge, broker or WAN (ADR-020)</documentation></element>
+<element identifier="id-m07" xsi:type="Requirement"><name xml:lang="en">SIS stays unlinked</name><documentation xml:lang="en">ADR-014, FF-22</documentation></element>
+<element identifier="id-m08" xsi:type="Constraint"><name xml:lang="en">No security control inside a protective function</name><documentation xml:lang="en">ADR-011 (TRITON lesson)</documentation></element>
+</elements><relationships>
+<relationship identifier="id-r01" source="id-e01" target="id-e03" xsi:type="Assignment"></relationship>
+<relationship identifier="id-r02" source="id-e03" target="id-e04" xsi:type="Realization"></relationship>
+<relationship identifier="id-r03" source="id-a01" target="id-e03" xsi:type="Serving"></relationship>
+<relationship identifier="id-r04" source="id-a02" target="id-a01" xsi:type="Serving"></relationship>
+<relationship identifier="id-r05" source="id-a02" target="id-a03" xsi:type="Serving"></relationship>
+<relationship identifier="id-r06" source="id-a02" target="id-a03" xsi:type="Flow"><name xml:lang="en">OPC UA samples</name></relationship>
+<relationship identifier="id-r07" source="id-a03" target="id-a04" xsi:type="Flow"><name xml:lang="en">SQL</name></relationship>
+<relationship identifier="id-r08" source="id-a02" target="id-a05" xsi:type="Flow"><name xml:lang="en">OPC UA (read only)</name><documentation xml:lang="en">planned</documentation></relationship>
+<relationship identifier="id-r09" source="id-a04" target="id-d01" xsi:type="Access"></relationship>
+<relationship identifier="id-r10" source="id-a02" target="id-a06" xsi:type="Composition"></relationship>
+<relationship identifier="id-r11" source="id-a02" target="id-t06" xsi:type="Association"></relationship>
+<relationship identifier="id-r12" source="id-a02" target="id-t07" xsi:type="Association"></relationship>
+<relationship identifier="id-r13" source="id-a01" target="id-t07" xsi:type="Association"></relationship>
+<relationship identifier="id-r14" source="id-a03" target="id-t07" xsi:type="Association"></relationship>
+<relationship identifier="id-r15" source="id-a04" target="id-t07" xsi:type="Association"></relationship>
+<relationship identifier="id-r16" source="id-t01" target="id-t06" xsi:type="Association"></relationship>
+<relationship identifier="id-r17" source="id-t02" target="id-t08" xsi:type="Association"></relationship>
+<relationship identifier="id-r18" source="id-t01" target="id-t04" xsi:type="Assignment"></relationship>
+<relationship identifier="id-r19" source="id-t02" target="id-t05" xsi:type="Assignment"></relationship>
+<relationship identifier="id-r20" source="id-t01" target="id-t11" xsi:type="Association"></relationship>
+<relationship identifier="id-r21" source="id-t02" target="id-t11" xsi:type="Association"></relationship>
+<relationship identifier="id-r22" source="id-a02" target="id-t01" xsi:type="Flow"><name xml:lang="en">Modbus TCP, client = gateway</name><documentation xml:lang="en">FC15/16 write, FC1/3 read (ADR-013)</documentation></relationship>
+<relationship identifier="id-r23" source="id-m01" target="id-m03" xsi:type="Association"></relationship>
+<relationship identifier="id-r24" source="id-m02" target="id-m04" xsi:type="Association"></relationship>
+<relationship identifier="id-r25" source="id-m06" target="id-m03" xsi:type="Realization"></relationship>
+<relationship identifier="id-r26" source="id-m07" target="id-m04" xsi:type="Realization"></relationship>
+<relationship identifier="id-r27" source="id-m05" target="id-m04" xsi:type="Realization"></relationship>
+<relationship identifier="id-r28" source="id-a03" target="id-m06" xsi:type="Realization"></relationship>
+<relationship identifier="id-r29" source="id-a04" target="id-m06" xsi:type="Realization"></relationship>
+<relationship identifier="id-r30" source="id-t02" target="id-m07" xsi:type="Realization"></relationship>
+<relationship identifier="id-r31" source="id-m08" target="id-t02" xsi:type="Association"></relationship>
+</relationships><propertyDefinitions>
+<propertyDefinition identifier="propid-1" type="string"><name>status</name></propertyDefinition>
+<propertyDefinition identifier="propid-2" type="string"><name>sprint</name></propertyDefinition>
+</propertyDefinitions><views><diagrams>
+<view identifier="id-view1" xsi:type="Diagram"><name xml:lang="en">Plant layers</name>
+<node identifier="id-v1-e01" elementRef="id-e01" xsi:type="Element" x="20" y="20" w="160" h="55"/>
+<node identifier="id-v1-e03" elementRef="id-e03" xsi:type="Element" x="230" y="20" w="160" h="55"/>
+<node identifier="id-v1-e04" elementRef="id-e04" xsi:type="Element" x="440" y="20" w="160" h="55"/>
+<node identifier="id-v1-a01" elementRef="id-a01" xsi:type="Element" x="20" y="150" w="160" h="55"/>
+<node identifier="id-v1-a02" elementRef="id-a02" xsi:type="Element" x="230" y="150" w="160" h="55"/>
+<node identifier="id-v1-a03" elementRef="id-a03" xsi:type="Element" x="440" y="150" w="160" h="55"/>
+<node identifier="id-v1-a04" elementRef="id-a04" xsi:type="Element" x="650" y="150" w="160" h="55"/>
+<node identifier="id-v1-a05" elementRef="id-a05" xsi:type="Element" x="20" y="270" w="160" h="55"/>
+<node identifier="id-v1-a06" elementRef="id-a06" xsi:type="Element" x="440" y="270" w="160" h="55"/>
+<node identifier="id-v1-d01" elementRef="id-d01" xsi:type="Element" x="650" y="270" w="160" h="55"/>
+<node identifier="id-v1-t01" elementRef="id-t01" xsi:type="Element" x="230" y="420" w="160" h="55"/>
+<node identifier="id-v1-t02" elementRef="id-t02" xsi:type="Element" x="440" y="420" w="160" h="55"/>
+<node identifier="id-v1-t03" elementRef="id-t03" xsi:type="Element" x="650" y="420" w="160" h="55"/>
+<node identifier="id-v1-t04" elementRef="id-t04" xsi:type="Element" x="230" y="540" w="160" h="55"/>
+<node identifier="id-v1-t05" elementRef="id-t05" xsi:type="Element" x="440" y="540" w="160" h="55"/>
+<node identifier="id-v1-t09" elementRef="id-t09" xsi:type="Element" x="230" y="660" w="160" h="55"/>
+<node identifier="id-v1-t10" elementRef="id-t10" xsi:type="Element" x="440" y="660" w="160" h="55"/>
+<node identifier="id-v1-t06" elementRef="id-t06" xsi:type="Element" x="650" y="660" w="160" h="55"/>
+<node identifier="id-v1-t07" elementRef="id-t07" xsi:type="Element" x="860" y="660" w="160" h="55"/>
+<node identifier="id-v1-t08" elementRef="id-t08" xsi:type="Element" x="1070" y="660" w="160" h="55"/>
+<connection identifier="id-v1-r01" relationshipRef="id-r01" xsi:type="Relationship" source="id-v1-e01" target="id-v1-e03"/>
+<connection identifier="id-v1-r02" relationshipRef="id-r02" xsi:type="Relationship" source="id-v1-e03" target="id-v1-e04"/>
+<connection identifier="id-v1-r03" relationshipRef="id-r03" xsi:type="Relationship" source="id-v1-a01" target="id-v1-e03"/>
+<connection identifier="id-v1-r04" relationshipRef="id-r04" xsi:type="Relationship" source="id-v1-a02" target="id-v1-a01"/>
+<connection identifier="id-v1-r05" relationshipRef="id-r05" xsi:type="Relationship" source="id-v1-a02" target="id-v1-a03"/>
+<connection identifier="id-v1-r06" relationshipRef="id-r06" xsi:type="Relationship" source="id-v1-a02" target="id-v1-a03"/>
+<connection identifier="id-v1-r07" relationshipRef="id-r07" xsi:type="Relationship" source="id-v1-a03" target="id-v1-a04"/>
+<connection identifier="id-v1-r08" relationshipRef="id-r08" xsi:type="Relationship" source="id-v1-a02" target="id-v1-a05"/>
+<connection identifier="id-v1-r09" relationshipRef="id-r09" xsi:type="Relationship" source="id-v1-a04" target="id-v1-d01"/>
+<connection identifier="id-v1-r10" relationshipRef="id-r10" xsi:type="Relationship" source="id-v1-a02" target="id-v1-a06"/>
+<connection identifier="id-v1-r18" relationshipRef="id-r18" xsi:type="Relationship" source="id-v1-t01" target="id-v1-t04"/>
+<connection identifier="id-v1-r19" relationshipRef="id-r19" xsi:type="Relationship" source="id-v1-t02" target="id-v1-t05"/>
+<connection identifier="id-v1-r22" relationshipRef="id-r22" xsi:type="Relationship" source="id-v1-a02" target="id-v1-t01"/>
+</view>
+<view identifier="id-view2" xsi:type="Diagram"><name xml:lang="en">Safety separation</name>
+<node identifier="id-v2-t04" elementRef="id-t04" xsi:type="Element" x="20" y="20" w="160" h="55"/>
+<node identifier="id-v2-t01" elementRef="id-t01" xsi:type="Element" x="210" y="20" w="160" h="55"/>
+<node identifier="id-v2-t11" elementRef="id-t11" xsi:type="Element" x="400" y="20" w="160" h="55"/>
+<node identifier="id-v2-t02" elementRef="id-t02" xsi:type="Element" x="590" y="20" w="160" h="55"/>
+<node identifier="id-v2-t05" elementRef="id-t05" xsi:type="Element" x="780" y="20" w="160" h="55"/>
+<node identifier="id-v2-a02" elementRef="id-a02" xsi:type="Element" x="210" y="130" w="160" h="55"/>
+<node identifier="id-v2-m08" elementRef="id-m08" xsi:type="Element" x="590" y="130" w="160" h="55"/>
+<connection identifier="id-v2-r18" relationshipRef="id-r18" xsi:type="Relationship" source="id-v2-t01" target="id-v2-t04"/>
+<connection identifier="id-v2-r19" relationshipRef="id-r19" xsi:type="Relationship" source="id-v2-t02" target="id-v2-t05"/>
+<connection identifier="id-v2-r20" relationshipRef="id-r20" xsi:type="Relationship" source="id-v2-t01" target="id-v2-t11"/>
+<connection identifier="id-v2-r21" relationshipRef="id-r21" xsi:type="Relationship" source="id-v2-t02" target="id-v2-t11"/>
+<connection identifier="id-v2-r22" relationshipRef="id-r22" xsi:type="Relationship" source="id-v2-a02" target="id-v2-t01"/>
+<connection identifier="id-v2-r31" relationshipRef="id-r31" xsi:type="Relationship" source="id-v2-m08" target="id-v2-t02"/>
+</view>
+<view identifier="id-view3" xsi:type="Diagram"><name xml:lang="en">Motivation</name>
+<node identifier="id-v3-m01" elementRef="id-m01" xsi:type="Element" x="20" y="20" w="160" h="55"/>
+<node identifier="id-v3-m02" elementRef="id-m02" xsi:type="Element" x="210" y="20" w="160" h="55"/>
+<node identifier="id-v3-m05" elementRef="id-m05" xsi:type="Element" x="400" y="20" w="160" h="55"/>
+<node identifier="id-v3-m03" elementRef="id-m03" xsi:type="Element" x="20" y="130" w="160" h="55"/>
+<node identifier="id-v3-m04" elementRef="id-m04" xsi:type="Element" x="210" y="130" w="160" h="55"/>
+<node identifier="id-v3-m06" elementRef="id-m06" xsi:type="Element" x="20" y="240" w="160" h="55"/>
+<node identifier="id-v3-m07" elementRef="id-m07" xsi:type="Element" x="210" y="240" w="160" h="55"/>
+<node identifier="id-v3-m08" elementRef="id-m08" xsi:type="Element" x="400" y="240" w="160" h="55"/>
+<node identifier="id-v3-a03" elementRef="id-a03" xsi:type="Element" x="20" y="350" w="160" h="55"/>
+<node identifier="id-v3-a04" elementRef="id-a04" xsi:type="Element" x="210" y="350" w="160" h="55"/>
+<node identifier="id-v3-t02" elementRef="id-t02" xsi:type="Element" x="400" y="350" w="160" h="55"/>
+<connection identifier="id-v3-r07" relationshipRef="id-r07" xsi:type="Relationship" source="id-v3-a03" target="id-v3-a04"/>
+<connection identifier="id-v3-r23" relationshipRef="id-r23" xsi:type="Relationship" source="id-v3-m01" target="id-v3-m03"/>
+<connection identifier="id-v3-r24" relationshipRef="id-r24" xsi:type="Relationship" source="id-v3-m02" target="id-v3-m04"/>
+<connection identifier="id-v3-r25" relationshipRef="id-r25" xsi:type="Relationship" source="id-v3-m06" target="id-v3-m03"/>
+<connection identifier="id-v3-r26" relationshipRef="id-r26" xsi:type="Relationship" source="id-v3-m07" target="id-v3-m04"/>
+<connection identifier="id-v3-r27" relationshipRef="id-r27" xsi:type="Relationship" source="id-v3-m05" target="id-v3-m04"/>
+<connection identifier="id-v3-r28" relationshipRef="id-r28" xsi:type="Relationship" source="id-v3-a03" target="id-v3-m06"/>
+<connection identifier="id-v3-r29" relationshipRef="id-r29" xsi:type="Relationship" source="id-v3-a04" target="id-v3-m06"/>
+<connection identifier="id-v3-r30" relationshipRef="id-r30" xsi:type="Relationship" source="id-v3-t02" target="id-v3-m07"/>
+<connection identifier="id-v3-r31" relationshipRef="id-r31" xsi:type="Relationship" source="id-v3-m08" target="id-v3-t02"/>
+</view>
+</diagrams></views></model>

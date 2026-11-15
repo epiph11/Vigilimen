@@ -35,6 +35,8 @@ The two accounts therefore differ in **who the audit trail would blame**, which 
 
 **Detection value.** Because nothing distinguishes the two accounts' actions, an S24 detector has to work from *behaviour*: the collector has never written a node, so its first write is the signal.
 
+**Update 30 Oct 2026:** the first option below is proposed in ADR-023 (draft): a read-only `opcua-sup` for everything that only reads, behind a cell firewall. This ADR stays valid for the operator command path.
+
 **Options when this is fixed, cheapest first:** a second OPC UA server instance that exposes only measurements to the historian; a node-level ruleset with a test that asserts both a permitted write succeeds and a forbidden one fails; or federation to the identity authority.
 
 ---

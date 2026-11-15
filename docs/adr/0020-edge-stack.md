@@ -15,6 +15,8 @@ Two facts from the current compose shape the decision. `net_supervisory` is not 
 
 ## Decision
 
+> **Amendment proposed 30 Oct 2026 (ADR-023, draft).** If ADR-023 is accepted: point 1 ("second reader of the gateway") becomes "second reader of `opcua-sup`", point 8 becomes `net_supervisory` and `net_dmz` with the cell firewall `fw-cell` between the cell and `net_supervisory`, point 9 is closed (the edge cannot write because `opcua-sup` has no writable node) and Q2 is answered by option b. The text below is the 26 Oct draft and is left unchanged until the decision.
+
 1. **`edge` is a new, seventh service. The collector and the historian stay as they are.** The local record of the plant must not depend on the edge, the broker or the WAN: that is the s8C independence argument, and the historian outage case in the collector's own header. The edge is a second reader of the gateway.
 2. **Broker: Eclipse Mosquitto, in the DMZ, MQTT over TLS.** Per-client user and an ACL file. TLS certificates come from a lab CA generated at start into a volume, never committed (FF-03). Credentials are demo credentials under ADR-018. Mutual TLS is deferred to S12, where the cloud side needs per-gateway X.509 anyway. *(to confirm: Mosquitto over EMQX or others; chosen for size and ACL simplicity, no comparison run)*
 3. **The edge only publishes.** Its ACL grants write on its own topic subtree and **no subscription at all**. The consumer's ACL grants read only. Control does not flow from IT to OT, by configuration that a test can check.
@@ -54,10 +56,12 @@ Two facts from the current compose shape the decision. `net_supervisory` is not 
 ## Open questions (block acceptance)
 
 - **Q1.** Is `net_supervisory` OT for FF-04? If yes it becomes internal and SCADA, historian and gateway lose their loopback ports unless relays are added (as for the PLC UIs). If no, FF-04 covers `net_control` and `net_safety` only and the report says so.
-- **Q2.** ADR-017 means a "read-only" edge account cannot be enforced today. Accept attribution-only for S5 and detect by behaviour (the edge never writes), or bring forward the cheapest fix listed in ADR-017 (a second OPC UA instance exposing measurements only)?
+- **Q2.** *(Proposed answer, 30 Oct: option b, see ADR-023.)* ADR-017 means a "read-only" edge account cannot be enforced today. Accept attribution-only for S5 and detect by behaviour (the edge never writes), or bring forward the cheapest fix listed in ADR-017 (a second OPC UA instance exposing measurements only)?
 - **Q3.** Deadband per tag and the "load" for the WAN test (message rate, duration) to be fixed before FF-29 is written.
 - **Q4.** Who plays the cloud: a host script on the published broker port, or a container? Host script proposed (keeps the service count at nine).
 
 ---
 
 *VIGILIMEN-ADR-020 · Sprint 5 · draft*
+
+*Amendment note 30 Oct 2026: see ADR-023 (draft) for the cell firewall and the read-only supervisory OPC UA server. Services become eleven (nine plus `fw-cell` and `opcua-sup`) if accepted.*

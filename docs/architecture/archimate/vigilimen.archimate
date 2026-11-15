@@ -1,0 +1,300 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<archimate:model xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:archimate="http://www.archimatetool.com/archimate" name="Vigilimen base model" id="id-vigilimen" version="5.0.0">
+  <folder name="Strategy" id="id-7448b9e3754d40baaacd121e491f9f18" type="strategy"/>
+  <folder name="Business" id="id-221cdc4e915849278ec93722abe2c153" type="business">
+    <element xsi:type="archimate:BusinessActor" name="Operator" id="id-e01">
+      <documentation>Runs the conveyor from the SCADA</documentation>
+    </element>
+    <element xsi:type="archimate:BusinessActor" name="Vendor engineer" id="id-e02">
+      <documentation>Remote vendor support (S5 planned, via jump host)</documentation>
+    </element>
+    <element xsi:type="archimate:BusinessProcess" name="Operate the conveyor" id="id-e03">
+      <documentation>Start, stop, acknowledge alarms</documentation>
+    </element>
+    <element xsi:type="archimate:BusinessService" name="Safe conveyor operation" id="id-e04">
+      <documentation>What the plant owner gets</documentation>
+    </element>
+  </folder>
+  <folder name="Application" id="id-9cb13198d7bc41d99cd69d9402aecbb1" type="application">
+    <element xsi:type="archimate:ApplicationComponent" name="SCADA (FUXA)" id="id-a01">
+      <documentation>MIT licence, ADR-012. OPC UA client</documentation>
+      <property key="status" value="built"/>
+    </element>
+    <element xsi:type="archimate:ApplicationComponent" name="gateway" id="id-a02">
+      <documentation>Physics + OPC UA server + Modbus client + modelled contactor</documentation>
+      <property key="status" value="built"/>
+    </element>
+    <element xsi:type="archimate:ApplicationComponent" name="collector" id="id-a03">
+      <documentation>Reads OPC UA at 1 Hz, evaluates alarms, writes the historian</documentation>
+      <property key="status" value="built"/>
+    </element>
+    <element xsi:type="archimate:ApplicationComponent" name="historian" id="id-a04">
+      <documentation>TimescaleDB: local memory (s8C)</documentation>
+      <property key="status" value="built"/>
+    </element>
+    <element xsi:type="archimate:ApplicationComponent" name="edge" id="id-a05">
+      <documentation>PLANNED S5 (ADR-020): outbound publisher, OPC UA client to MQTT, never writes</documentation>
+      <property key="status" value="planned"/>
+      <property key="sprint" value="S5"/>
+    </element>
+    <element xsi:type="archimate:ApplicationInterface" name="OPC UA (gateway)" id="id-a06">
+      <documentation>Port 4840, accounts historian/engineer (ADR-017)</documentation>
+    </element>
+    <element xsi:type="archimate:DataObject" name="Alarm history" id="id-d01">
+      <documentation>alarm_event append-only + alarm_state (ADR-019)</documentation>
+    </element>
+  </folder>
+  <folder name="Technology &amp; Physical" id="id-a0e56b6057ec4801bc35765d568fa11d" type="technology">
+    <element xsi:type="archimate:Device" name="PLC-CONV-001" id="id-t01">
+      <documentation>OpenPLC v3 (EOL, ADR-015): sequence + machine protection</documentation>
+      <property key="status" value="built"/>
+    </element>
+    <element xsi:type="archimate:Device" name="SIS-CONV-001" id="id-t02">
+      <documentation>OpenPLC v3: safety function, no link (ADR-014)</documentation>
+      <property key="status" value="built"/>
+    </element>
+    <element xsi:type="archimate:Node" name="Docker host" id="id-t03">
+      <documentation>Single host running 6 containers</documentation>
+    </element>
+    <element xsi:type="archimate:Artifact" name="conveyor.st" id="id-t04">
+      <documentation>Control program</documentation>
+    </element>
+    <element xsi:type="archimate:Artifact" name="safety.st" id="id-t05">
+      <documentation>Safety program</documentation>
+    </element>
+    <element xsi:type="archimate:CommunicationNetwork" name="net_control" id="id-t06">
+      <documentation>internal</documentation>
+    </element>
+    <element xsi:type="archimate:CommunicationNetwork" name="net_supervisory" id="id-t07">
+      <documentation>bridge today</documentation>
+    </element>
+    <element xsi:type="archimate:CommunicationNetwork" name="net_safety" id="id-t08">
+      <documentation>internal, single member</documentation>
+    </element>
+    <element xsi:type="archimate:TechnologyService" name="Modbus TCP" id="id-t09">
+      <documentation>No authentication: segmentation is the authentication</documentation>
+    </element>
+    <element xsi:type="archimate:TechnologyService" name="OPC UA" id="id-t10">
+      <documentation>Certificates and user tokens</documentation>
+    </element>
+    <element xsi:type="archimate:Equipment" name="Motor contactor" id="id-t11">
+      <documentation>Series AND of control run request and safety coil (ADR-011). Modelled in the gateway</documentation>
+    </element>
+  </folder>
+  <folder name="Motivation" id="id-8a9e1144239e4d3f8dabea523f0b5ca1" type="motivation">
+    <element xsi:type="archimate:Driver" name="s8C three-month independence" id="id-m01">
+      <documentation>Enhanced CIRMP</documentation>
+    </element>
+    <element xsi:type="archimate:Driver" name="WHS duty" id="id-m02">
+      <documentation>Safety-critical OT is a WHS matter (ADR-006)</documentation>
+    </element>
+    <element xsi:type="archimate:Goal" name="Local autonomy" id="id-m03">
+      <documentation>Site operates without external systems</documentation>
+    </element>
+    <element xsi:type="archimate:Goal" name="Safe operation" id="id-m04">
+      <documentation>Protective function always works</documentation>
+    </element>
+    <element xsi:type="archimate:Principle" name="Segmentation is the authentication" id="id-m05">
+      <documentation>protocol-register.md</documentation>
+    </element>
+    <element xsi:type="archimate:Requirement" name="Local chain has no outbound dependency" id="id-m06">
+      <documentation>Collector and historian never depend on edge, broker or WAN (ADR-020)</documentation>
+    </element>
+    <element xsi:type="archimate:Requirement" name="SIS stays unlinked" id="id-m07">
+      <documentation>ADR-014, FF-22</documentation>
+    </element>
+    <element xsi:type="archimate:Constraint" name="No security control inside a protective function" id="id-m08">
+      <documentation>ADR-011 (TRITON lesson)</documentation>
+    </element>
+  </folder>
+  <folder name="Implementation &amp; Migration" id="id-d6bb900ef9854a4184c3f70b60ad7540" type="implementation_migration"/>
+  <folder name="Other" id="id-124d58362b9b47c0a76e1fbbb0270073" type="other"/>
+  <folder name="Relations" id="id-5ba2fd9a66b046e3827388362070ace8" type="relations">
+    <element xsi:type="archimate:AssignmentRelationship" id="id-r01" source="id-e01" target="id-e03"/>
+    <element xsi:type="archimate:RealizationRelationship" id="id-r02" source="id-e03" target="id-e04"/>
+    <element xsi:type="archimate:ServingRelationship" id="id-r03" source="id-a01" target="id-e03"/>
+    <element xsi:type="archimate:ServingRelationship" id="id-r04" source="id-a02" target="id-a01"/>
+    <element xsi:type="archimate:ServingRelationship" id="id-r05" source="id-a02" target="id-a03"/>
+    <element xsi:type="archimate:FlowRelationship" name="OPC UA samples" id="id-r06" source="id-a02" target="id-a03"/>
+    <element xsi:type="archimate:FlowRelationship" name="SQL" id="id-r07" source="id-a03" target="id-a04"/>
+    <element xsi:type="archimate:FlowRelationship" name="OPC UA (read only)" id="id-r08" source="id-a02" target="id-a05">
+      <documentation>planned</documentation>
+    </element>
+    <element xsi:type="archimate:AccessRelationship" id="id-r09" source="id-a04" target="id-d01"/>
+    <element xsi:type="archimate:CompositionRelationship" id="id-r10" source="id-a02" target="id-a06"/>
+    <element xsi:type="archimate:AssociationRelationship" id="id-r11" source="id-a02" target="id-t06"/>
+    <element xsi:type="archimate:AssociationRelationship" id="id-r12" source="id-a02" target="id-t07"/>
+    <element xsi:type="archimate:AssociationRelationship" id="id-r13" source="id-a01" target="id-t07"/>
+    <element xsi:type="archimate:AssociationRelationship" id="id-r14" source="id-a03" target="id-t07"/>
+    <element xsi:type="archimate:AssociationRelationship" id="id-r15" source="id-a04" target="id-t07"/>
+    <element xsi:type="archimate:AssociationRelationship" id="id-r16" source="id-t01" target="id-t06"/>
+    <element xsi:type="archimate:AssociationRelationship" id="id-r17" source="id-t02" target="id-t08"/>
+    <element xsi:type="archimate:AssignmentRelationship" id="id-r18" source="id-t01" target="id-t04"/>
+    <element xsi:type="archimate:AssignmentRelationship" id="id-r19" source="id-t02" target="id-t05"/>
+    <element xsi:type="archimate:AssociationRelationship" id="id-r20" source="id-t01" target="id-t11"/>
+    <element xsi:type="archimate:AssociationRelationship" id="id-r21" source="id-t02" target="id-t11"/>
+    <element xsi:type="archimate:FlowRelationship" name="Modbus TCP, client = gateway" id="id-r22" source="id-a02" target="id-t01">
+      <documentation>FC15/16 write, FC1/3 read (ADR-013)</documentation>
+    </element>
+    <element xsi:type="archimate:AssociationRelationship" id="id-r23" source="id-m01" target="id-m03"/>
+    <element xsi:type="archimate:AssociationRelationship" id="id-r24" source="id-m02" target="id-m04"/>
+    <element xsi:type="archimate:RealizationRelationship" id="id-r25" source="id-m06" target="id-m03"/>
+    <element xsi:type="archimate:RealizationRelationship" id="id-r26" source="id-m07" target="id-m04"/>
+    <element xsi:type="archimate:RealizationRelationship" id="id-r27" source="id-m05" target="id-m04"/>
+    <element xsi:type="archimate:RealizationRelationship" id="id-r28" source="id-a03" target="id-m06"/>
+    <element xsi:type="archimate:RealizationRelationship" id="id-r29" source="id-a04" target="id-m06"/>
+    <element xsi:type="archimate:RealizationRelationship" id="id-r30" source="id-t02" target="id-m07"/>
+    <element xsi:type="archimate:AssociationRelationship" id="id-r31" source="id-m08" target="id-t02"/>
+  </folder>
+  <folder name="Views" id="id-cf64368c329a4c019268b6e65379a6ba" type="diagrams">
+    <element xsi:type="archimate:ArchimateDiagramModel" name="Plant layers" id="id-view1">
+      <child xsi:type="archimate:DiagramObject" id="id-v1-e01" archimateElement="id-e01">
+        <bounds x="20" y="20" width="160" height="55"/>
+        <sourceConnection xsi:type="archimate:Connection" id="id-v1-r01" source="id-v1-e01" target="id-v1-e03" archimateRelationship="id-r01"/>
+      </child>
+      <child xsi:type="archimate:DiagramObject" id="id-v1-e03" targetConnections="id-v1-r01 id-v1-r03" archimateElement="id-e03">
+        <bounds x="230" y="20" width="160" height="55"/>
+        <sourceConnection xsi:type="archimate:Connection" id="id-v1-r02" source="id-v1-e03" target="id-v1-e04" archimateRelationship="id-r02"/>
+      </child>
+      <child xsi:type="archimate:DiagramObject" id="id-v1-e04" targetConnections="id-v1-r02" archimateElement="id-e04">
+        <bounds x="440" y="20" width="160" height="55"/>
+      </child>
+      <child xsi:type="archimate:DiagramObject" id="id-v1-a01" targetConnections="id-v1-r04" archimateElement="id-a01">
+        <bounds x="20" y="150" width="160" height="55"/>
+        <sourceConnection xsi:type="archimate:Connection" id="id-v1-r03" source="id-v1-a01" target="id-v1-e03" archimateRelationship="id-r03"/>
+      </child>
+      <child xsi:type="archimate:DiagramObject" id="id-v1-a02" archimateElement="id-a02">
+        <bounds x="230" y="150" width="160" height="55"/>
+        <sourceConnection xsi:type="archimate:Connection" id="id-v1-r04" source="id-v1-a02" target="id-v1-a01" archimateRelationship="id-r04"/>
+        <sourceConnection xsi:type="archimate:Connection" id="id-v1-r05" source="id-v1-a02" target="id-v1-a03" archimateRelationship="id-r05"/>
+        <sourceConnection xsi:type="archimate:Connection" id="id-v1-r06" source="id-v1-a02" target="id-v1-a03" archimateRelationship="id-r06"/>
+        <sourceConnection xsi:type="archimate:Connection" id="id-v1-r08" source="id-v1-a02" target="id-v1-a05" archimateRelationship="id-r08"/>
+        <sourceConnection xsi:type="archimate:Connection" id="id-v1-r10" source="id-v1-a02" target="id-v1-a06" archimateRelationship="id-r10"/>
+        <sourceConnection xsi:type="archimate:Connection" id="id-v1-r22" source="id-v1-a02" target="id-v1-t01" archimateRelationship="id-r22"/>
+      </child>
+      <child xsi:type="archimate:DiagramObject" id="id-v1-a03" targetConnections="id-v1-r05 id-v1-r06" archimateElement="id-a03">
+        <bounds x="492" y="150" width="160" height="55"/>
+        <sourceConnection xsi:type="archimate:Connection" id="id-v1-r07" source="id-v1-a03" target="id-v1-a04" archimateRelationship="id-r07"/>
+      </child>
+      <child xsi:type="archimate:DiagramObject" id="id-v1-a04" targetConnections="id-v1-r07" archimateElement="id-a04">
+        <bounds x="756" y="150" width="160" height="55"/>
+        <sourceConnection xsi:type="archimate:Connection" id="id-v1-r09" source="id-v1-a04" target="id-v1-d01" archimateRelationship="id-r09"/>
+      </child>
+      <child xsi:type="archimate:DiagramObject" id="id-v1-a05" targetConnections="id-v1-r08" archimateElement="id-a05">
+        <bounds x="20" y="270" width="160" height="55"/>
+      </child>
+      <child xsi:type="archimate:DiagramObject" id="id-v1-a06" targetConnections="id-v1-r10" archimateElement="id-a06">
+        <bounds x="492" y="270" width="160" height="55"/>
+      </child>
+      <child xsi:type="archimate:DiagramObject" id="id-v1-d01" targetConnections="id-v1-r09" archimateElement="id-d01">
+        <bounds x="756" y="264" width="160" height="55"/>
+      </child>
+      <child xsi:type="archimate:DiagramObject" id="id-v1-t01" targetConnections="id-v1-r22" archimateElement="id-t01">
+        <bounds x="230" y="420" width="160" height="55"/>
+        <sourceConnection xsi:type="archimate:Connection" id="id-v1-r18" source="id-v1-t01" target="id-v1-t04" archimateRelationship="id-r18"/>
+      </child>
+      <child xsi:type="archimate:DiagramObject" id="id-v1-t02" archimateElement="id-t02">
+        <bounds x="440" y="420" width="160" height="55"/>
+        <sourceConnection xsi:type="archimate:Connection" id="id-v1-r19" source="id-v1-t02" target="id-v1-t05" archimateRelationship="id-r19"/>
+      </child>
+      <child xsi:type="archimate:DiagramObject" id="id-v1-t03" archimateElement="id-t03">
+        <bounds x="650" y="420" width="160" height="55"/>
+      </child>
+      <child xsi:type="archimate:DiagramObject" id="id-v1-t04" targetConnections="id-v1-r18" archimateElement="id-t04">
+        <bounds x="230" y="540" width="160" height="55"/>
+      </child>
+      <child xsi:type="archimate:DiagramObject" id="id-v1-t05" targetConnections="id-v1-r19" archimateElement="id-t05">
+        <bounds x="440" y="540" width="160" height="55"/>
+      </child>
+      <child xsi:type="archimate:DiagramObject" id="id-v1-t09" archimateElement="id-t09">
+        <bounds x="230" y="660" width="160" height="55"/>
+      </child>
+      <child xsi:type="archimate:DiagramObject" id="id-v1-t10" archimateElement="id-t10">
+        <bounds x="440" y="660" width="160" height="55"/>
+      </child>
+      <child xsi:type="archimate:DiagramObject" id="id-v1-t06" archimateElement="id-t06">
+        <bounds x="650" y="660" width="160" height="55"/>
+      </child>
+      <child xsi:type="archimate:DiagramObject" id="id-v1-t07" archimateElement="id-t07">
+        <bounds x="860" y="660" width="160" height="55"/>
+      </child>
+      <child xsi:type="archimate:DiagramObject" id="id-v1-t08" archimateElement="id-t08">
+        <bounds x="1070" y="660" width="160" height="55"/>
+      </child>
+    </element>
+    <element xsi:type="archimate:ArchimateDiagramModel" name="Safety separation" id="id-view2">
+      <child xsi:type="archimate:DiagramObject" id="id-v2-t04" targetConnections="id-v2-r18" archimateElement="id-t04">
+        <bounds x="20" y="20" width="160" height="55"/>
+      </child>
+      <child xsi:type="archimate:DiagramObject" id="id-v2-t01" targetConnections="id-v2-r22" archimateElement="id-t01">
+        <bounds x="210" y="20" width="160" height="55"/>
+        <sourceConnection xsi:type="archimate:Connection" id="id-v2-r18" source="id-v2-t01" target="id-v2-t04" archimateRelationship="id-r18"/>
+        <sourceConnection xsi:type="archimate:Connection" id="id-v2-r20" source="id-v2-t01" target="id-v2-t11" archimateRelationship="id-r20"/>
+      </child>
+      <child xsi:type="archimate:DiagramObject" id="id-v2-t11" targetConnections="id-v2-r20 id-v2-r21" archimateElement="id-t11">
+        <bounds x="400" y="20" width="160" height="55"/>
+      </child>
+      <child xsi:type="archimate:DiagramObject" id="id-v2-t02" targetConnections="id-v2-r31" archimateElement="id-t02">
+        <bounds x="590" y="20" width="160" height="55"/>
+        <sourceConnection xsi:type="archimate:Connection" id="id-v2-r19" source="id-v2-t02" target="id-v2-t05" archimateRelationship="id-r19"/>
+        <sourceConnection xsi:type="archimate:Connection" id="id-v2-r21" source="id-v2-t02" target="id-v2-t11" archimateRelationship="id-r21"/>
+      </child>
+      <child xsi:type="archimate:DiagramObject" id="id-v2-t05" targetConnections="id-v2-r19" archimateElement="id-t05">
+        <bounds x="780" y="20" width="160" height="55"/>
+      </child>
+      <child xsi:type="archimate:DiagramObject" id="id-v2-a02" archimateElement="id-a02">
+        <bounds x="210" y="130" width="160" height="55"/>
+        <sourceConnection xsi:type="archimate:Connection" id="id-v2-r22" source="id-v2-a02" target="id-v2-t01" archimateRelationship="id-r22"/>
+      </child>
+      <child xsi:type="archimate:DiagramObject" id="id-v2-m08" archimateElement="id-m08">
+        <bounds x="590" y="130" width="160" height="55"/>
+        <sourceConnection xsi:type="archimate:Connection" id="id-v2-r31" source="id-v2-m08" target="id-v2-t02" archimateRelationship="id-r31"/>
+      </child>
+    </element>
+    <element xsi:type="archimate:ArchimateDiagramModel" name="Motivation" id="id-view3">
+      <child xsi:type="archimate:DiagramObject" id="id-v3-m01" archimateElement="id-m01">
+        <bounds x="20" y="20" width="160" height="55"/>
+        <sourceConnection xsi:type="archimate:Connection" id="id-v3-r23" source="id-v3-m01" target="id-v3-m03" archimateRelationship="id-r23"/>
+      </child>
+      <child xsi:type="archimate:DiagramObject" id="id-v3-m02" archimateElement="id-m02">
+        <bounds x="210" y="20" width="160" height="55"/>
+        <sourceConnection xsi:type="archimate:Connection" id="id-v3-r24" source="id-v3-m02" target="id-v3-m04" archimateRelationship="id-r24"/>
+      </child>
+      <child xsi:type="archimate:DiagramObject" id="id-v3-m05" archimateElement="id-m05">
+        <bounds x="400" y="20" width="160" height="55"/>
+        <sourceConnection xsi:type="archimate:Connection" id="id-v3-r27" source="id-v3-m05" target="id-v3-m04" archimateRelationship="id-r27"/>
+      </child>
+      <child xsi:type="archimate:DiagramObject" id="id-v3-m03" targetConnections="id-v3-r23 id-v3-r25" archimateElement="id-m03">
+        <bounds x="20" y="130" width="160" height="55"/>
+      </child>
+      <child xsi:type="archimate:DiagramObject" id="id-v3-m04" targetConnections="id-v3-r24 id-v3-r26 id-v3-r27" archimateElement="id-m04">
+        <bounds x="210" y="130" width="160" height="55"/>
+      </child>
+      <child xsi:type="archimate:DiagramObject" id="id-v3-m06" targetConnections="id-v3-r28 id-v3-r29" archimateElement="id-m06">
+        <bounds x="20" y="240" width="160" height="55"/>
+        <sourceConnection xsi:type="archimate:Connection" id="id-v3-r25" source="id-v3-m06" target="id-v3-m03" archimateRelationship="id-r25"/>
+      </child>
+      <child xsi:type="archimate:DiagramObject" id="id-v3-m07" targetConnections="id-v3-r30" archimateElement="id-m07">
+        <bounds x="210" y="240" width="160" height="55"/>
+        <sourceConnection xsi:type="archimate:Connection" id="id-v3-r26" source="id-v3-m07" target="id-v3-m04" archimateRelationship="id-r26"/>
+      </child>
+      <child xsi:type="archimate:DiagramObject" id="id-v3-m08" archimateElement="id-m08">
+        <bounds x="400" y="240" width="160" height="55"/>
+        <sourceConnection xsi:type="archimate:Connection" id="id-v3-r31" source="id-v3-m08" target="id-v3-t02" archimateRelationship="id-r31"/>
+      </child>
+      <child xsi:type="archimate:DiagramObject" id="id-v3-a03" archimateElement="id-a03">
+        <bounds x="20" y="350" width="160" height="55"/>
+        <sourceConnection xsi:type="archimate:Connection" id="id-v3-r07" source="id-v3-a03" target="id-v3-a04" archimateRelationship="id-r07"/>
+        <sourceConnection xsi:type="archimate:Connection" id="id-v3-r28" source="id-v3-a03" target="id-v3-m06" archimateRelationship="id-r28"/>
+      </child>
+      <child xsi:type="archimate:DiagramObject" id="id-v3-a04" targetConnections="id-v3-r07" archimateElement="id-a04">
+        <bounds x="210" y="350" width="160" height="55"/>
+        <sourceConnection xsi:type="archimate:Connection" id="id-v3-r29" source="id-v3-a04" target="id-v3-m06" archimateRelationship="id-r29"/>
+      </child>
+      <child xsi:type="archimate:DiagramObject" id="id-v3-t02" targetConnections="id-v3-r31" archimateElement="id-t02">
+        <bounds x="400" y="350" width="160" height="55"/>
+        <sourceConnection xsi:type="archimate:Connection" id="id-v3-r30" source="id-v3-t02" target="id-v3-m07" archimateRelationship="id-r30"/>
+      </child>
+    </element>
+  </folder>
+</archimate:model>

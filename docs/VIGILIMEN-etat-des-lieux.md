@@ -391,3 +391,9 @@ Tu es mon architecte OT/IT. Projet : Vigilimen (sécurité OT/IT d'une mine, con
 Lis docs/VIGILIMEN-etat-des-lieux.md, docs/runs/NOTES.md et docs/adr/0013 à 0019.
 Point de départ : 4e, la liaison PLC, la persistance, l'isolation, les déclenchements de conveyor.st et safety.st (rejoué, 63 scans, conforme à l'ADR-011) sont validés dans Docker (25 et 26/10). Reste : S5 (cadrage dans docs/sprints/S5-cadrage.md), tests du collecteur APRÈS l'échéance d'une étagère et alarme revenue normale pendant l'étagère, ADR-020 et ADR-021. FF-28 (docs/runs, validate-durability.ps1) est validé. Pas de trailer Claude dans les commits. Pour les tests de sécurité, lis la section « Les tests de sécurité » avant d'interpréter un résultat et valide le banc avant de conclure. Si je te colle une sortie de validate-*.ps1 ou replay-safety.ps1, analyse-la : note symptôme, cause, correction dans NOTES.md AVANT de corriger. Chaque test = une fitness function FF-xx. Ports sur 127.0.0.1, aucun secret réel, ne commite rien sans mon accord.
 ```
+
+---
+
+## Mise à jour du 30 octobre 2026 : conception physique V4.1 (proposée)
+
+Rien n'a changé dans le banc. Une révision de conception est **proposée, non décidée** (ADR-023, brouillon) : un pare-feu de cellule `fw-cell` entre la cellule et le supervisory, un serveur OPC UA `opcua-sup` en lecture seule pour tout ce qui ne fait que lire (edge, collecteur, vue SCADA), le gateway sur `net_control` seul, et une zone ZS pour le SIS sans conduit. Neuf services (cible S5) deviendraient onze. Elle répondrait à Q2 d'ADR-020. Détail : `docs/architecture/dmz-target.md` section 7, spec technique annexe C, et le document `Vigilimen_Sprint5_Architecture_V4_1_Illustrated` (section 22). Le PDF et le HTML de cet état des lieux ne sont pas régénérés.
