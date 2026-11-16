@@ -282,3 +282,8 @@ CORRECTION : le faux nœud prend `raise_on_bad_status=True` comme le vrai.
 - FF-32 live: not run yet (script written 16 Nov).
 - Layout defect found on screen: "Clear all faults" button overlapped the R-14 footnote. Footnote moved to y=750 in build_project.py; JSON regenerated; needs a re-import to show.
 - Not proven: that FUXA's command path is refused when the credentials are wrong (not tried); the 4e latency from a button press was not timed on screen.
+
+## 16/11/2026 - ArchiMate model updated for ADR-023 (opened in Archi once, layout reworked)
+- Model edited by script (lxml), not in Archi: new opcua-sup, its interface, fw-cell (device), net_dmz, requirement m09; readers re-pointed to opcua-sup (r05, r06, r08); r12 (gateway on net_supervisory) removed; F8/F9 flows, 12 new relations. Archi loaded the file without error (seen on screen).
+- Symptom: first layout overlapped (fw-cell on "Operate the conveyor", opcua-sup on "Safe conveyor operation") and the association lines to the networks crossed everything. Cause: new boxes placed by guessed coordinates in free-looking spots without computing overlaps. Fix: Plant layers relaid out by layer with no network lines; new view "Network membership" carries networks and associations; box-overlap check added to the validation (no overlaps in the final layout, lines not checked).
+- vigilimen-exchange.xml not regenerated (stale).
