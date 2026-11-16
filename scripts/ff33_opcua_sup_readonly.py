@@ -155,16 +155,23 @@ def report(title: str, rows) -> int:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--url", default=None, help="run the LIVE part against this opcua-sup endpoint")
+    ap.add_argument("--live-only", action="store_true",
+                    help="skip the static part (the source file is not inside the container); needs --url")
     a = ap.parse_args()
-    text = SRC.read_text(encoding="utf-8")
-
-    failed = report("FF-33 - opcua-sup is read-only\n\n  STATIC (plant/opcua-sup/opcua_sup.py)", static(text))
-    print("\n  self-test - each mutation of the source must be caught:")
-    unseen = 0
-    for label, mutated, must in static_mutations(text):
-        caught = any(s == FAIL and n == must for s, n, _ in static(mutated))
-        print(f"  {PASS if caught else FAIL}  caught: {label}")
-        unseen += 0 if caught else 1
+    failed = unseen = 0
+    if a.live_only:
+        if not a.url:
+            print("FF-33: --live-only needs --url", file=sys.stderr)
+            return 2
+        print("FF-33 - opcua-sup is read-only (LIVE only; run the static part on the laptop)")
+    else:
+        text = SRC.read_text(encoding="utf-8")
+        failed = report("FF-33 - opcua-sup is read-only\n\n  STATIC (plant/opcua-sup/opcua_sup.py)", static(text))
+        print("\n  self-test - each mutation of the source must be caught:")
+        for label, mutated, must in static_mutations(text):
+            caught = any(s == FAIL and n == must for s, n, _ in static(mutated))
+            print(f"  {PASS if caught else FAIL}  caught: {label}")
+            unseen += 0 if caught else 1
 
     live_failed = 0
     if a.url:
@@ -176,7 +183,7 @@ def main() -> int:
     if failed or unseen or live_failed:
         print("\nFF-33 FAIL")
         return 1
-    print("\nFF-33 pass" + ("" if a.url else " (STATIC only)") + ".")
+    print("\nFF-33 pass" + (" (LIVE only)" if a.live_only else "" if a.url else " (STATIC only)") + ".")
     return 0
 
 

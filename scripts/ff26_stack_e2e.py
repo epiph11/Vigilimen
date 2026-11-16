@@ -20,6 +20,7 @@ drives the real stack the way the HMI would:
 It is NOT run in CI. It is how a person proves, once per change, that the Docker
 build matches what FF-07, FF-23, FF-24 and FF-25 believed.
 
+    # ADR-023: the collector reaches fw-cell only under docker-compose.ff26.yml (test identity for F9).
     docker cp scripts\\ff26_stack_e2e.py vigilimen-collector:/tmp/ff26.py
     docker exec -e VIGILIMEN_OPCUA_USER=engineer -e VIGILIMEN_OPCUA_PASSWORD=eng1neer-demo `
         vigilimen-collector python /tmp/ff26.py --phase all --expect-link modbus
@@ -41,7 +42,9 @@ from datetime import timezone
 import psycopg
 from asyncua import Client
 
-URL = os.environ.get("VIGILIMEN_OPCUA_URL", "opc.tcp://gateway:4840/vigilimen/conv001/")
+# ADR-023: measurements are read from opcua-sup (read-only); commands and faults are written through fw-cell.
+URL = os.environ.get("VIGILIMEN_OPCUA_URL", "opc.tcp://opcua-sup:4840/vigilimen/conv001/")
+CMD_URL = os.environ.get("VIGILIMEN_CMD_URL", "opc.tcp://fw-cell:4840/vigilimen/conv001/")
 USER = os.environ.get("VIGILIMEN_OPCUA_USER", "engineer")
 PASSWORD = os.environ.get("VIGILIMEN_OPCUA_PASSWORD", "")
 DSN = os.environ.get("VIGILIMEN_PGDSN", "")
@@ -56,14 +59,22 @@ def check(name: str, ok: bool, detail: str = "") -> None:
     print(f"  {'PASS' if ok else 'FAIL'}  {name}" + (f"   [{detail}]" if detail else ""), flush=True)
 
 
-async def node_map(client: Client) -> dict:
+async def _folder(client: Client):
     ns = await client.get_namespace_index("urn:vigilimen:plant:conv001")
     root = client.nodes.objects
     for n in ("Enterprise", "PilbaraSite", "ProcessingArea", "ConveyingCell", "CONV001"):
         root = await root.get_child(f"{ns}:{n}")
-    names = ["Running", "BeltSpeed_mps", "Vibration_mms", "StartCommand", "StopCommand",
-             "PlcLinkOK", "PlcState"] + FAULTS
-    return {n: await root.get_child(f"{ns}:{n}") for n in names}
+    return ns, root
+
+
+async def node_map(rd: Client, cmd: Client) -> dict:
+    """Measurements from the read client (opcua-sup), commands and faults from the command client (fw-cell)."""
+    ns, r = await _folder(rd)
+    t = {n: await r.get_child(f"{ns}:{n}") for n in ("Running", "BeltSpeed_mps", "Vibration_mms", "PlcLinkOK", "PlcState")}
+    ns, c = await _folder(cmd)
+    for n in ["StartCommand", "StopCommand"] + FAULTS:
+        t[n] = await c.get_child(f"{ns}:{n}")
+    return t
 
 
 async def wait_for(pred, timeout_s: float, every_s: float = 0.25):
@@ -211,13 +222,17 @@ async def main() -> int:
         return 2
 
     print(f"FF-26 — stack end to end (phase={args.phase}, link={args.expect_link})")
-    client = Client(URL, timeout=10)
-    client.set_user(USER)
-    client.set_password(PASSWORD)
+    client = Client(URL, timeout=10)           # read path: opcua-sup
+    client.set_user(os.environ.get("VIGILIMEN_READ_USER", "historian"))
+    client.set_password(os.environ.get("VIGILIMEN_READ_PASSWORD", "h1st0r1an-demo"))
+    cmd = Client(CMD_URL, timeout=10)          # command path: fw-cell F9
+    cmd.set_user(USER)
+    cmd.set_password(PASSWORD)
     await client.connect()
+    await cmd.connect()
     conn = psycopg.connect(DSN)
     try:
-        t = await node_map(client)
+        t = await node_map(client, cmd)
         rc = 0
         if args.phase in ("alarm", "all"):
             rc |= await phase_alarm(t, conn, args)
@@ -228,6 +243,7 @@ async def main() -> int:
     finally:
         conn.close()
         await client.disconnect()
+        await cmd.disconnect()
 
     failed = [r for r in results if not r[0]]
     print(f"\n{len(results)} checks, {len(failed)} failed")

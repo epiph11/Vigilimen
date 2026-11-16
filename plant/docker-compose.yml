@@ -173,7 +173,11 @@ services:
   scada:
     # FUXA, MIT-licensed. The licence is the decision, not the features —
     # see ADR-012.
-    image: frangoteam/fuxa:latest
+    # Built from scada/Dockerfile: FUXA pinned by digest + the OPC UA driver installed at build time
+    # (the stock image downloads it at runtime, impossible on an internal network).
+    build:
+      context: ./scada
+    image: vigilimen-plant-scada
     container_name: vigilimen-scada
     hostname: scada
     networks: [net_supervisory]

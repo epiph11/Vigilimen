@@ -65,7 +65,8 @@ sys.path.insert(0, "/opt/vigilimen")          # collector.py, engine.py, store.p
 import psycopg                                 # noqa: E402
 
 DSN = os.environ.get("VIGILIMEN_PGDSN", "")
-OPCUA_URL = os.environ.get("VIGILIMEN_OPCUA_URL", "opc.tcp://gateway:4840/vigilimen/conv001/")
+# ADR-023: the only OPC UA use here is writing Fault* tags (faults-off), i.e. the command path through fw-cell.
+OPCUA_URL = os.environ.get("VIGILIMEN_CMD_URL", "opc.tcp://fw-cell:4840/vigilimen/conv001/")
 OPCUA_USER = os.environ.get("VIGILIMEN_OPCUA_USER", "engineer")
 OPCUA_PASSWORD = os.environ.get("VIGILIMEN_OPCUA_PASSWORD", "")
 FAULTS = ["FaultBearingWear", "FaultBeltSlip", "FaultMisalignment", "FaultIdlerSeizure", "FaultVibrationSpike"]

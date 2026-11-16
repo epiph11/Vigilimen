@@ -101,11 +101,13 @@ flowchart LR
 - A second layer or a red dashed set for the forbidden flows of section 2.
 - Title block per ADR-022 rule 4: title, sprint, date, version, legend. Save uncompressed; commit the `.drawio` with its SVG export as `docs/architecture/diagrams/S5-dmz-target.drawio`.
 
-## 7. Proposed revision (ADR-023, draft of 30 Oct 2026)
+## 7. Revision (ADR-023 accepted 15 Nov 2026; replaces sections 1, 2 and 4 where they differ)
+
+> **Status 16 Nov 2026.** ADR-023 is accepted, ADR-020 Q1 = a (`net_supervisory` internal) is decided. `fw-cell` and `opcua-sup` are written and tested outside Docker (FF-22, FF-31, FF-33); they have **not yet run in Docker**. Edge, broker, jump and the DMZ are still design only. Sections 1, 2 and 4 above are the 26 Oct text and are superseded by this section.
 
 Why: today the gateway is on `net_control` and `net_supervisory` at once, and any logged-in OPC UA client can write (ADR-017). Readers (edge, collector, SCADA read view) are connected to the thing that controls. Fix: one policy point in front of the cell, and a read-only server for everything that only reads.
 
-### 7.1 Zones and networks (replaces section 1 if accepted)
+### 7.1 Zones and networks (replaces section 1)
 
 | Zone | Network | `internal` | Members (target) | Change vs section 1 |
 |---|---|---|---|---|
@@ -132,7 +134,7 @@ Why: today the gateway is on `net_control` and `net_supervisory` at once, and an
 
 Port numbers and the F8 to F10 numbering are proposals. Rule text and example addressing are in the V4.1 document, section 22.4 and 22.5.
 
-### 7.3 FF-22 after ADR-023 (replaces section 4 items 1, 2, 5, 6, 7 if accepted)
+### 7.3 FF-22 after ADR-023 (replaces section 4 items 1, 2, 5, 6, 7)
 
 1. The service set is exactly the eleven expected.
 2. `net_control`, `net_safety`, every `net_remote_*` and (Q1 = a) `net_supervisory` are internal.
@@ -154,4 +156,15 @@ Replace `EDGE -- F3 --> GW` and `COL -- F1 --> GW` by `EDGE -- "F3 / F-01R" --> 
 - Add `opcua-sup` in the supervisory band; re-aim the edge and collector arrows to it (F1, F3).
 - Remove the double border from `gateway`; double border on `fw-cell`.
 - Add F8 to F10, the red dashed F-DENY-01R, and the empty zone ZS box with the label "no conduit".
-- The existing D1 draw.io file needs this update; it is not done by this note.
+- Done 16 Nov 2026 in `docs/architecture/diagrams/S5-dmz-target.drawio`, v0.2. The layout was checked for overlaps by script, **not on screen**: open it in draw.io and tidy the labels. The C4-L2 (`c4-l2-ot.html`) has the same delta.
+
+### 7.6 As written on 15 Nov (differences from the proposal above)
+
+- `fw-cell` in the lab is a **TCP relay plus nftables, not a router** (`ip_forward` 0). Docker bridges are not routed to each other, so the relay is the only path. It shows the policy, not the DIN-rail device.
+- **F10 is `docker logs vigilimen-fw-cell`** (counters and the sources it dropped), not syslog: Linux does not log from a container's network namespace by default.
+- **F8 and F9 share port 4840** through one relay. nftables admits `opcua-sup` (FW-CELL-001) and `scada` (FW-CELL-002) by source address; it cannot tell a read from a write. The gateway sees `fw-cell` as the source.
+- The SCADA project has two OPC UA devices: read (`opcua-sup`, account `scada`) and command (`fw-cell`, account `engineer`).
+- Host access to FUXA, the historian and `opcua-sup` goes through `plant/tools/supervisory-relay.ps1` (run 16 Nov: FUXA relay up); the gateway has no published port.
+- **F9 also carries two reads.** The HMI shows `StartCommand` and `StopCommand`, which `opcua-sup` does not have, so FUXA reads them from the gateway on the command device. Command state is read through F9; every measurement is read from `opcua-sup`.
+- **FUXA needs its OPC UA driver built into the image** (`plant/scada/Dockerfile`): the stock image downloads it at runtime, impossible on an internal network.
+- **Not done:** the OPC UA secure channel on `opcua-sup` (ADR-023 point 7: passwords still travel in clear), FF-34 (needs the DMZ), the DMZ itself (`edge`, broker, `jump`), and an F10 sink beyond `docker logs`. FF-32 is written and not yet run. FF-26 and FF-28 now read from `opcua-sup` and write through `fw-cell` (16 Nov); FF-27 is unchanged and runs inside the gateway. Run on 16 Nov: FF-26, FF-33 live, 4e by hand in FUXA.

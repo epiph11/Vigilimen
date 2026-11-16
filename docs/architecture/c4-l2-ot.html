@@ -132,7 +132,7 @@ footer{border-top:1px solid var(--rule);padding-top:13px;display:flex;justify-co
 
 <figure>
 <div class="scroll">
-<svg viewBox="0 0 1180 770" role="img" aria-label="C4 level 2 container view of conveyor CONV-001. The engineering workstation, historian and FUXA SCADA arrive at sprint 4 and are drawn dashed. A gateway exposes the plant on OPC UA northbound and speaks Modbus TCP down to the control PLC. The control PLC and the safety controller both feed the motor contactor, wired in series. The safety controller has no network connection of any kind; its inputs are dual-channel field devices and its output is a hardwired trip.">
+<svg viewBox="0 0 1180 770" role="img" aria-label="C4 level 2 container view of conveyor CONV-001. The engineering workstation, historian and FUXA SCADA arrive at sprint 4 and are drawn dashed. A gateway exposes the plant on OPC UA northbound and speaks Modbus TCP down to the control PLC. The control PLC and the safety controller both feed the motor contactor, wired in series. The safety controller has no network connection of any kind; its inputs are dual-channel field devices and its output is a hardwired trip. Since ADR-023 (accepted 15 Nov 2026) the gateway is reached only through a cell firewall (fw-cell), and everything that only reads reads a read-only server (opcua-sup); both are drawn dashed because they are written but have not yet run.">
   <defs>
     <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
       <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
@@ -145,7 +145,7 @@ footer{border-top:1px solid var(--rule);padding-top:13px;display:flex;justify-co
   <rect class="band" x="120" y="580" width="1042" height="160"/>
   <text class="band-label" x="8" y="104">L3 · PLANT INFO</text>
   <text class="band-label" x="8" y="200">L2 · SUPERVISORY</text>
-  <text class="band-label" x="8" y="312">L1.5 · GATEWAY</text>
+  <text class="band-label" x="8" y="312">L1.5 · GATEWAY + FW-CELL</text>
   <text class="band-label" x="8" y="440">L1 · CONTROL</text>
   <text class="band-label" x="8" y="660">L0 · FIELD</text>
 
@@ -170,11 +170,24 @@ footer{border-top:1px solid var(--rule);padding-top:13px;display:flex;justify-co
   <text class="bs" x="434" y="242">alarm surface</text>
 
   <!-- ===== L1.5 — built ===== -->
-  <rect class="bx built" x="420" y="274" width="410" height="76" rx="3"/>
+  <rect class="bx built" x="420" y="274" width="250" height="76" rx="3"/>
   <text class="tag built" x="434" y="293">Container · built and running</text>
   <text class="bt" x="434" y="313">Protocol gateway</text>
-  <text class="bs" x="434" y="329">OPC UA server northbound · Modbus TCP client down</text>
-  <text class="bs" x="434" y="342">ISA-95 address space</text>
+  <text class="bs" x="434" y="329">OPC UA only via fw-cell · Modbus TCP down</text>
+  <text class="bs" x="434" y="342">ISA-95 address space · net_control only</text>
+
+  <!-- ===== ADR-023 (accepted 15 Nov 2026): the door of the cell and the read-only server. Written, not yet run in Docker ===== -->
+  <rect class="bx later" x="700" y="172" width="250" height="76" rx="3"/>
+  <text class="tag later" x="714" y="191">Container · written, not run</text>
+  <text class="bt" x="714" y="211">opcua-sup</text>
+  <text class="bs" x="714" y="229">read-only · no command or fault node</text>
+  <text class="bs" x="714" y="242">read by SCADA, collector, edge</text>
+
+  <rect class="bx later" x="700" y="274" width="200" height="76" rx="3" style="stroke-width:3"/>
+  <text class="tag later" x="714" y="293">Container · written, not run</text>
+  <text class="bt" x="714" y="313">fw-cell (C1)</text>
+  <text class="bs" x="714" y="329">nftables deny + TCP relay 4840</text>
+  <text class="bs" x="714" y="342">F8 opcua-sup · F9 SCADA cmd</text>
 
   <!-- ===== L1 — built ===== -->
   <rect class="bx built" x="140" y="384" width="290" height="96" rx="3"/>
@@ -238,8 +251,13 @@ footer{border-top:1px solid var(--rule);padding-top:13px;display:flex;justify-co
   <line class="ln" x1="625" y1="382" x2="625" y2="352" marker-end="url(#a)" color="#47575F"/>
   <text class="lt" x="637" y="366">Modbus TCP 502 · NO AUTH</text>
 
-  <line class="ln later" x1="535" y1="272" x2="535" y2="250" marker-end="url(#a)" color="#8C9CA6"/>
-  <text class="lt later" x="547" y="266">OPC UA 4840</text>
+  <line class="ln later" x1="700" y1="210" x2="652" y2="210" marker-end="url(#a)" color="#8C9CA6"/>
+  <text class="lt later" x="660" y="203">read</text>
+  <line class="ln later" x1="800" y1="250" x2="800" y2="272" marker-end="url(#a)" color="#8C9CA6"/>
+  <text class="lt later" x="810" y="265">F8 OPC UA</text>
+  <polyline class="ln later" points="650,236 675,236 675,300 698,300" marker-end="url(#a)" color="#8C9CA6"/>
+  <text class="lt later" x="500" y="262">command (F9) via fw-cell</text>
+  <line class="ln later" x1="700" y1="330" x2="672" y2="330" marker-end="url(#a)" color="#8C9CA6"/>
 
   <line class="ln later" x1="535" y1="170" x2="535" y2="142" marker-end="url(#a)" color="#8C9CA6"/>
   <text class="lt later" x="547" y="160">historise</text>
@@ -265,8 +283,8 @@ footer{border-top:1px solid var(--rule);padding-top:13px;display:flex;justify-co
     <thead><tr><th>Provisional zone</th><th>Containers</th><th>Why grouped</th><th>Formalised</th></tr></thead>
     <tbody>
       <tr><td class="id">PZ-SAFETY</td><td class="nm">SIS-CONV-001 + its field devices</td><td>Its own zone from day one. The one grouping unlikely to change at S7, because the consequence is a person</td><td>S7 · ZCR 3</td></tr>
-      <tr><td class="id">PZ-CONTROL</td><td class="nm">PLC-CONV-001, process transmitters</td><td>Can act on the machine. Speaks protocols that authenticate nothing</td><td>S7 · ZCR 3</td></tr>
-      <tr><td class="id">PZ-SUPERVISORY</td><td class="nm">Gateway, SCADA/HMI</td><td>Can ask the machine, not reprogram it</td><td>S7 · ZCR 3</td></tr>
+      <tr><td class="id">PZ-CONTROL</td><td class="nm">PLC-CONV-001, gateway, process transmitters (door: fw-cell)</td><td>Can act on the machine. Speaks protocols that authenticate nothing</td><td>S7 · ZCR 3</td></tr>
+      <tr><td class="id">PZ-SUPERVISORY</td><td class="nm">opcua-sup (read-only), SCADA/HMI, collector</td><td>Can ask the machine, not reprogram it</td><td>S7 · ZCR 3</td></tr>
       <tr><td class="id">PZ-ENGINEERING</td><td class="nm">Engineering workstation, historian</td><td><strong>Expect this one to split at S7.</strong> The workstation can reprogram the controller; the historian can only read. That is the Z-05 split the hydro assessment made, and the same argument applies here</td><td>S7 · ZCR 3</td></tr>
     </tbody>
   </table>
@@ -291,7 +309,7 @@ footer{border-top:1px solid var(--rule);padding-top:13px;display:flex;justify-co
 </div>
 
 <footer>
-  <span>VIGILIMEN-ARC-006 rev 1.0 · C4 Level 2 · Sprint 3 · zones provisional until S7</span>
+  <span>VIGILIMEN-ARC-006 rev 1.1 · C4 Level 2 · Sprint 3, ADR-023 delta 16 Nov 2026 · zones provisional until S7</span>
   <span>Simulated plant · worked example · E. Zaré, Sept 2026</span>
 </footer>
 

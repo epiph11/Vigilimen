@@ -125,7 +125,7 @@ button("btn_STOP", "STOP", 240, 540, 170, "#c62828", [("StopCommand", 1), ("Star
 button("btn_SPIKE", "Spike vibration +8", 440, 540, 200, "#ef6c00", [("FaultVibrationSpike", 8)])
 button("btn_MISALIGN", "Misalignment 100%", 660, 540, 200, "#6a1b9a", [("FaultMisalignment", 1)])
 button("btn_CLEAR", "Clear all faults", 440, 610, 200, "#455a64", [(f, 0) for f in FAULTS])
-text(40, 640, "HMI holds a credential that can start the conveyor (risk R-14). Recorded, not fixed: S8 attacks it.", 14, "#888888")
+text(40, 750, "HMI holds a credential that can start the conveyor (risk R-14). Recorded, not fixed: S8 attacks it.", 14, "#888888")
 text(40, 705, "StartCommand", 16)
 text(300, 705, "StopCommand", 16)
 for tag, x in (("StartCommand", 190), ("StopCommand", 450)):

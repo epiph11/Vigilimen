@@ -1,0 +1,9 @@
+# TEST OVERRIDE (FF-26, FF-28). Not part of the running design.
+# fw-cell accepts F9 (commands) only from one source. In the design that source is `scada`.
+# For the scripted end-to-end run the collector container plays the operator, so F9 is
+# switched to `collector` for the duration of the test. While this override is up, FUXA
+# cannot command the belt. Restore with:  docker compose up -d   (without this file)
+services:
+  fw-cell:
+    environment:
+      FW_F9_SOURCE: collector

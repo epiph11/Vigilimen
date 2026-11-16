@@ -37,19 +37,19 @@ function Stop-Here($why) {
 
 Write-Host "== 1. local fitness functions =="
 if (Get-Command python -ErrorAction SilentlyContinue) {
-    foreach ($ff in 'ff07_alarm_state_model', 'ff21_safety_st_static', 'ff22_compose_topology', 'ff23_plc_io_map', 'ff24_gateway_plc_link', 'ff25_alarm_persistence') {
+    foreach ($ff in 'ff07_alarm_state_model', 'ff21_safety_st_static', 'ff22_compose_topology', 'ff23_plc_io_map', 'ff24_gateway_plc_link', 'ff25_alarm_persistence', 'ff31_cell_door', 'ff33_opcua_sup_readonly') {
         python "$root\scripts\$ff.py" | Out-Null
         if ($LASTEXITCODE -ne 0) { Stop-Here "$ff failed locally. Run it to see why: python scripts\$ff.py" }
         Write-Host "  PASS  $ff"
     }
 } else { Write-Host "  (python not on PATH: skipped)" }
 
-Write-Host "`n== 2. build gateway + collector =="
-docker compose build gateway collector
+Write-Host "`n== 2. build gateway, fw-cell, opcua-sup, collector =="
+docker compose build gateway fw-cell opcua-sup collector
 if ($LASTEXITCODE -ne 0) { Stop-Here "docker compose build failed (read the first error above, not the last)" }
 
-Write-Host "`n== 3. up =="
-docker compose up -d
+Write-Host "`n== 3. up (FF-26 override: F9 source = collector, ADR-023) =="
+docker compose -f docker-compose.yml -f docker-compose.ff26.yml up -d
 if ($LASTEXITCODE -ne 0) { Stop-Here "docker compose up failed" }
 docker compose ps
 
@@ -58,14 +58,16 @@ $healthy = $false
 foreach ($i in 1..45) {
     $g = (docker inspect -f '{{.State.Health.Status}}' vigilimen-gateway).Trim()
     $h = (docker inspect -f '{{.State.Health.Status}}' vigilimen-historian).Trim()
-    Write-Host "  gateway=$g historian=$h"
-    if ($g -eq 'healthy' -and $h -eq 'healthy') { $healthy = $true; break }
+    $f = (docker inspect -f '{{.State.Health.Status}}' vigilimen-fw-cell).Trim()
+    $o = (docker inspect -f '{{.State.Health.Status}}' vigilimen-opcua-sup).Trim()
+    Write-Host "  gateway=$g fw-cell=$f opcua-sup=$o historian=$h"
+    if ($g -eq 'healthy' -and $f -eq 'healthy' -and $o -eq 'healthy' -and $h -eq 'healthy') { $healthy = $true; break }
     Start-Sleep -Seconds 4
 }
-if (-not $healthy) { Stop-Here "gateway or historian not healthy after 3 minutes: docker compose logs gateway --tail 40" }
+if (-not $healthy) { Stop-Here "a service is not healthy after 3 minutes: docker compose logs fw-cell opcua-sup gateway --tail 40" }
 
 Write-Host "`n== 5. the gateway built from THIS tree has the Fault* nodes (the 25/10 trap: an old image has none) =="
-docker compose logs gateway --tail 5
+docker compose logs gateway fw-cell opcua-sup --tail 5
 Start-Sleep -Seconds 5
 
 Write-Host "`n== 6. FF-26: START, Spike +8, timed alarm row, Clear all faults =="
@@ -87,6 +89,9 @@ Write-Host @"
   e. 'Clear all faults': the lamp clears and the row goes UNACK -> RTN_UNACK.
 Write down anything that differs from c-e. Do not fix it first.
 "@
+
+Write-Host "`n== restore the design: F9 source back to scada (FUXA) =="
+docker compose up -d
 
 Stop-Transcript | Out-Null
 if ($ff26 -ne 0) { Write-Host "FF-26 FAILED. Log: $log"; exit 1 }

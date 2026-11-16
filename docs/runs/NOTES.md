@@ -238,3 +238,47 @@ Reste décidé mais pas fait : canal sécurisé OPC UA (ADR-023 point 7), FF-32 
 SYMPTÔME : `TypeError: Node.read_data_value() got an unexpected keyword argument 'raise_on_bad_status'` dans `scripts/ff25_alarm_persistence.py`, ligne 179 (faux nœud).
 CAUSE : mon changement de `historian/collector.py`. Le vrai `Node.read_data_value` d'asyncua 1.1.5 accepte l'argument (vérifié contre le vrai serveur) ; le faux nœud de FF-25 n'a pas la même signature. C'est l'instrument qui diffère, pas le collecteur. Le changement lui-même vient d'un défaut constaté : sans lui, un statut Bad lève une exception, le collecteur boucle sur la reconnexion et l'historian montre un trou au lieu d'une ligne de qualité 0.
 CORRECTION : le faux nœud prend `raise_on_bad_status=True` comme le vrai.
+
+## 16/11/2026 - FF-26, FF-28 and validate-4e.ps1 reworked for ADR-023 (not run)
+- Why: the collector no longer has a route to the gateway (gateway is on net_control only). FF-26 and FF-28 opened OPC UA to gateway:4840 and would fail with a connection error.
+- Change: FF-26 reads measurements from opcua-sup (account historian) and writes START/STOP/Fault* through fw-cell:4840 (account engineer). FF-28 faults-off writes through fw-cell. validate-4e.ps1 builds fw-cell and opcua-sup, waits for their health, runs FF-31 and FF-33 locally.
+- fw-cell accepts F9 from one source only (scada). The scripted run needs the collector to play the operator, so docker-compose.ff26.yml sets FW_F9_SOURCE=collector for the run and validate-4e.ps1 restores the design afterwards. While the override is up FUXA cannot command the belt.
+- Not measured: none of this has run in Docker. Syntax checked only. FF-27 is unchanged (runs inside the gateway, 127.0.0.1).
+
+## 16/11/2026 - first Docker run: fw-cell restarts in a loop (relay "exited")
+- Symptom: `docker logs vigilimen-fw-cell` repeats "relay :4840 -> gateway:4840 ... relay exited" about every 5 s; `docker compose ps` shows fw-cell "health: starting"; opcua-sup logs ConnectionError / ConnectionRefused / gaierror (fw-cell is not up long enough). The nft table loaded (counters printed), so the firewall part works.
+- Cause (strong suspicion, confirmed only if the fix works): the supervision loop used `kill -0 $RELAY`. With cap_drop ALL the entrypoint has no CAP_KILL and the relay runs as `nobody`, so kill -0 returns EPERM although socat is alive; the loop ends and the container exits.
+- Fix: loop on `[ -d /proc/$RELAY ]` instead. Needs `docker compose build fw-cell`.
+- Earlier the same run: `docker compose up -d` failed with "network net_supervisory has active endpoints" because the network became internal while the old gateway still held it; cure was `docker compose down` then `up -d` (volumes kept).
+
+## 16/11/2026 - fw-cell allow-set refresh dropped the allowed source
+- Symptom: after the /proc fix fw-cell stays up, but counters show FW-CELL-001=1 and FW-CELL-DEFAULT_drops=1 with dropped source 172.20.0.5 = opcua-sup, the one source meant to be allowed.
+- Cause: `fill` did `nft flush set` then `nft add element` as two commands every 5 s; a packet arriving between them meets an empty set and falls to the default drop.
+- Fix: one `nft -f -` transaction with flush + add. Not yet run.
+- Open: opcua-sup still logs `gaierror` (name resolution) while fw-cell is healthy. Cause not known; diagnostics requested before any change.
+
+## 16/11/2026 - FF-33 inside the collector container: FileNotFoundError
+- Symptom: `docker exec vigilimen-collector python /tmp/ff33.py --url ...` ends with FileNotFoundError '/plant/opcua-sup/opcua_sup.py'.
+- Cause: FF-33 always ran its static part first, and that reads the source file, which is not in the container. My own command skipped nothing; the script had no live-only mode.
+- Fix: new flag `--live-only` (needs --url). Static part stays on the laptop (it passes there).
+- Same run, positive: after the two fw-cell fixes all 8 services healthy, FW-CELL-001=1, drops=0, opcua-sup log quiet; the gaierror lines were from the moment fw-cell was restarting (fw-cell resolves to 172.20.0.4 from opcua-sup).
+
+## 16/11/2026 - first Docker run of the ADR-023 stack: results (validate-4e, log 4e-20261116-121726.log)
+- Measured, passed: 8 services healthy; fw-cell stable after two fixes (/proc supervision, atomic set refresh); FF-33 live (anonymous refused, 10 nodes, read works, write refused on every node for historian and scada); historian newest row 1.08 s old via collector -> opcua-sup -> fw-cell -> gateway; FF-26 7/7 (START 0.8 s; Spike +8 to alarm_event row 1.12 s, stamped +0.32 s; Clear all faults UNACK -> RTN_UNACK).
+- Instrument caveat: FF-26 ran with docker-compose.ff26.yml, so F9 source = collector, not scada. It proves the command path through fw-cell works; it does not prove FUXA can use it (step 8, by hand, not done yet).
+- Not proven: that fw-cell drops a source that is not allowed (FF-32 not written). The F9 counter value after FF-26 was not captured: `up -d` at the end recreated fw-cell and reset the counters.
+- Still open: OPC UA runs with a plain-text password (ADR-023 point 7); FF-27/FF-28 not run against the new stack.
+
+## 16/11/2026 - FUXA has no OPC UA type: devices show "internal", log "Unsupported protocol opc.tcp:"
+- Symptom: after importing the project, both devices show Type "internal"; the Type dropdown offers only WebAPI, MQTTclient, internal; docker logs vigilimen-scada repeats `'CONV-001 (read)' _readRequest error! AxiosError: Unsupported protocol opc.tcp:` every 3 s (FUXA treats the device as a web API).
+- Cause: the stock FUXA image does not contain the OPC UA driver. Plugins page: OPCUA node-opcua 2.149.0, Installed "-"; only node-red installed. FUXA installs drivers from the Internet at runtime. It worked in Sprint 4 because net_supervisory had a route; since ADR-023 the network is internal, and `docker compose down` deleted the container and the runtime install.
+- Wrong turn on the way: I read the container creation time as the image build time and suspected a moving `latest`. The image is 3 weeks old and unchanged. The instrument was my own reading of `docker inspect`.
+- Fix: plant/scada/Dockerfile = FUXA pinned by digest + `npm install node-opcua@2.149.0` at build time, with a build-time check; compose builds it. Not yet built or run.
+
+## 16/11/2026 - 4e passes on the ADR-023 stack, including FUXA (by hand)
+- Measured: FUXA (image rebuilt with node-opcua 2.149.0) connects both devices with scada and engineer credentials; no ERR in `docker logs vigilimen-scada --since 2m`; page values live (belt 2.5 m/s, load 602.9 t/h); START -> Running green; Spike +8 -> vibration 10.059 mm/s, lamp red; Clear all faults -> alarm_event rows 65/66 HI and HI_HI UNACK -> RTN_UNACK at 04:18:44 UTC.
+- alarm_event 63..66 (UTC): 63 HI_HI RTN_UNACK->UNACK 04:18:00; 64 HI NORMAL->UNACK 04:18:31; 65, 66 RTN_UNACK 04:18:44. HI follows HI_HI by 31 s because engine.py sets on_delay_s=30 for Vibration HI and none for HI_HI; checked in the source, not measured separately.
+- fw-cell counters: FW-CELL-002 = 92 new connections, almost all FUXA retries before the credentials were set; it stopped growing once connected. Not a count of commands. Live ruleset (`nft list ruleset`) matches entrypoint.sh.
+- FF-32 live: not run yet (script written 16 Nov).
+- Layout defect found on screen: "Clear all faults" button overlapped the R-14 footnote. Footnote moved to y=750 in build_project.py; JSON regenerated; needs a re-import to show.
+- Not proven: that FUXA's command path is refused when the credentials are wrong (not tried); the 4e latency from a button press was not timed on screen.

@@ -4,101 +4,101 @@
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="c2" parent="1" style="text;html=1;fontSize=12;fontStyle=1;align=left;" value="D1 - OT / DMZ / IT target topology | Sprint S5 | 2026-10-26 | v0.1 DRAFT (design only, nothing built) | ADR-020, ADR-021, ADR-022 | SL-T: provisional until S7" vertex="1">
+        <mxCell id="c2" parent="1" style="text;html=1;fontSize=12;fontStyle=1;align=left;" value="D1 · OT / DMZ / IT · S5 target · v0.3 · 2026-11-16" vertex="1">
           <mxGeometry height="30" width="1160" x="20" y="10" as="geometry" />
         </mxCell>
-        <mxCell id="c3" parent="1" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=12;dashed=0;fillColor=#f5f5f5;strokeColor=#666666;" value="IT / outside = host loopback (127.0.0.1)" vertex="1">
+        <mxCell id="c3" parent="1" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=12;dashed=0;fillColor=#f5f5f5;strokeColor=#666666;" value="IT / outside (127.0.0.1)" vertex="1">
           <mxGeometry height="420" width="200" x="20" y="60" as="geometry" />
         </mxCell>
-        <mxCell id="c4" parent="1" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=12;dashed=0;fillColor=#ffe6cc;strokeColor=#666666;" value="OT DMZ - net_dmz&#xa;internal: NO (simulation constraint, Docker)" vertex="1">
+        <mxCell id="c4" parent="1" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=12;dashed=0;fillColor=#ffe6cc;strokeColor=#666666;" value="Z3 · DMZ · net_dmz" vertex="1">
           <mxGeometry height="420" width="230" x="250" y="60" as="geometry" />
         </mxCell>
-        <mxCell id="c5" parent="1" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=12;dashed=0;fillColor=#dae8fc;strokeColor=#666666;" value="OT supervisory - net_supervisory&#xa;internal: yes if Q1=a (open)" vertex="1">
+        <mxCell id="c5" parent="1" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=12;dashed=0;fillColor=#dae8fc;strokeColor=#666666;" value="Z2 · Supervisory · net_supervisory" vertex="1">
           <mxGeometry height="420" width="400" x="510" y="60" as="geometry" />
         </mxCell>
-        <mxCell id="c6" parent="1" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=12;dashed=0;fillColor=#d5e8d4;strokeColor=#666666;" value="OT control - net_control&#xa;internal: yes" vertex="1">
-          <mxGeometry height="200" width="240" x="940" y="60" as="geometry" />
+        <mxCell id="c6" parent="1" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=12;dashed=0;fillColor=#d5e8d4;strokeColor=#666666;" value="Z1 · Cell · net_control" vertex="1">
+          <mxGeometry height="230" width="240" x="1000" y="60" as="geometry" />
         </mxCell>
-        <mxCell id="c7" parent="1" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=12;dashed=0;fillColor=#f8cecc;strokeColor=#666666;" value="OT safety - net_safety&#xa;internal: yes, single member" vertex="1">
-          <mxGeometry height="180" width="240" x="940" y="300" as="geometry" />
+        <mxCell id="c7" parent="1" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;fontStyle=1;fontSize=12;dashed=0;fillColor=#f8cecc;strokeColor=#666666;" value="ZS · Safety · net_safety" vertex="1">
+          <mxGeometry height="180" width="240" x="1000" y="300" as="geometry" />
         </mxCell>
-        <mxCell id="c8" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;fillColor=none;strokeColor=#999999;dashed=1;" value="Access segment net_remote_historian (internal, jump + historian only)" vertex="1">
+        <mxCell id="c8" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;fillColor=none;strokeColor=#999999;dashed=1;" value="net_remote_historian (jump + historian)" vertex="1">
           <mxGeometry height="50" width="660" x="250" y="500" as="geometry" />
         </mxCell>
-        <mxCell id="c9" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffffff;strokeColor=#333333;" value="cloud stand-in consumer&#xa;(host process)" vertex="1">
+        <mxCell id="c9" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffffff;strokeColor=#333333;" value="cloud consumer" vertex="1">
           <mxGeometry height="50" width="160" x="40" y="110" as="geometry" />
         </mxCell>
-        <mxCell id="c10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffffff;strokeColor=#333333;" value="vendor client&#xa;(host process)" vertex="1">
+        <mxCell id="c10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffffff;strokeColor=#333333;" value="vendor client" vertex="1">
           <mxGeometry height="50" width="160" x="40" y="300" as="geometry" />
         </mxCell>
-        <mxCell id="c11" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#fff2cc;strokeColor=#d6b656;dashed=1;" value="broker (Mosquitto)&#xa;MQTT/TLS - NEW" vertex="1">
+        <mxCell id="c11" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#fff2cc;strokeColor=#d6b656;dashed=1;" value="broker Mosquitto" vertex="1">
           <mxGeometry height="50" width="150" x="290" y="110" as="geometry" />
         </mxCell>
-        <mxCell id="c12" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#fff2cc;strokeColor=#000000;strokeWidth=4;dashed=1;" value="jump (OpenSSH, recorded)&#xa;NEW - also on access segment" vertex="1">
+        <mxCell id="c12" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#fff2cc;strokeColor=#000000;strokeWidth=4;dashed=1;" value="jump (OpenSSH)" vertex="1">
           <mxGeometry height="60" width="190" x="270" y="300" as="geometry" />
         </mxCell>
-        <mxCell id="c13" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#fff2cc;strokeColor=#000000;strokeWidth=4;dashed=1;" value="edge - NEW&#xa;also on net_dmz" vertex="1">
+        <mxCell id="c13" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#fff2cc;strokeColor=#000000;strokeWidth=4;dashed=1;" value="edge" vertex="1">
           <mxGeometry height="60" width="150" x="540" y="110" as="geometry" />
         </mxCell>
         <mxCell id="c14" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffffff;strokeColor=#333333;" value="collector" vertex="1">
           <mxGeometry height="50" width="140" x="740" y="110" as="geometry" />
         </mxCell>
-        <mxCell id="c15" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffffff;strokeColor=#000000;strokeWidth=4;" value="gateway&#xa;also on net_control" vertex="1">
-          <mxGeometry height="60" width="170" x="610" y="230" as="geometry" />
+        <mxCell id="c15" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffffff;strokeColor=#333333;" value="gateway" vertex="1">
+          <mxGeometry height="55" width="140" x="1060" y="205" as="geometry" />
         </mxCell>
         <mxCell id="c16" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffffff;strokeColor=#333333;" value="scada (FUXA)" vertex="1">
           <mxGeometry height="50" width="140" x="540" y="350" as="geometry" />
         </mxCell>
-        <mxCell id="c17" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffffff;strokeColor=#000000;strokeWidth=4;" value="historian (TimescaleDB)&#xa;also on access segment" vertex="1">
+        <mxCell id="c17" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffffff;strokeColor=#000000;strokeWidth=4;" value="historian (TimescaleDB)" vertex="1">
           <mxGeometry height="60" width="180" x="720" y="350" as="geometry" />
         </mxCell>
-        <mxCell id="c18" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffffff;strokeColor=#333333;" value="plc-control&#xa;(OpenPLC, EOL)" vertex="1">
-          <mxGeometry height="60" width="160" x="980" y="110" as="geometry" />
+        <mxCell id="c18" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffffff;strokeColor=#333333;" value="plc-control" vertex="1">
+          <mxGeometry height="50" width="160" x="1040" y="100" as="geometry" />
         </mxCell>
-        <mxCell id="c19" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffffff;strokeColor=#333333;" value="plc-safety (SIS)&#xa;no arrow in or out" vertex="1">
-          <mxGeometry height="60" width="160" x="980" y="350" as="geometry" />
+        <mxCell id="c19" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ffffff;strokeColor=#333333;" value="plc-safety" vertex="1">
+          <mxGeometry height="60" width="160" x="1040" y="350" as="geometry" />
         </mxCell>
-        <mxCell id="c20" edge="1" parent="1" source="c13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;fontSize=10;" target="c11" value="F4 MQTT/TLS 8883&#xa;initiator: edge (outbound)&#xa;C-EDGE">
+        <mxCell id="c20" edge="1" parent="1" source="c13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;fontSize=11;" target="c11" value="F4 · MQTT/TLS 8883">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="c21" edge="1" parent="1" source="c9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;fontSize=10;" target="c11" value="F5 subscribe, 127.0.0.1:18883&#xa;C-BROKER">
+        <mxCell id="c21" edge="1" parent="1" source="c9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;fontSize=11;" target="c11" value="F5 · MQTT 18883">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="c22" edge="1" parent="1" source="c10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;fontSize=10;" target="c12" value="F6 SSH, 127.0.0.1:12222&#xa;named cert, time-boxed&#xa;C-REMOTE-IN">
+        <mxCell id="c22" edge="1" parent="1" source="c10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;fontSize=11;" target="c12" value="F6 · SSH 12222">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="c23" edge="1" parent="1" source="c12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;fontSize=10;" target="c17" value="F7 psql 5432 read-only role&#xa;C-REMOTE-OT">
+        <mxCell id="c23" edge="1" parent="1" source="c12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;fontSize=11;" target="c17" value="F7 · PostgreSQL 5432">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="c24" edge="1" parent="1" source="c13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;fontSize=10;" target="c15" value="F3 OPC UA 4840&#xa;account edge">
+        <mxCell id="c24" edge="1" parent="1" source="c13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;fontSize=11;entryX=0.5;entryY=0;" target="c40" value="F3 · OPC UA 4840">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="c25" edge="1" parent="1" source="c14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;fontSize=10;" target="c15" value="F1 OPC UA 4840&#xa;account historian">
+        <mxCell id="c25" edge="1" parent="1" source="c14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;fontSize=11;exitX=0.2;exitY=1;entryX=1;entryY=0.3;" target="c40" value="F1 · OPC UA 4840">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="c26" edge="1" parent="1" source="c14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;fontSize=10;" target="c17" value="F2 SQL 5432&#xa;local chain, no dependency on edge (s8C)">
+        <mxCell id="c26" edge="1" parent="1" source="c14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;fontSize=11;" target="c17" value="F2 · SQL 5432">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="c27" edge="1" parent="1" source="c15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;fontSize=10;" target="c18" value="Modbus TCP 502&#xa;client: gateway">
+        <mxCell id="c27" edge="1" parent="1" source="c15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;fontSize=11;" target="c18" value="Modbus TCP 502">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="c28" edge="1" parent="1" source="c16" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;fontSize=10;" target="c15" value="OPC UA 4840">
+        <mxCell id="c28" edge="1" parent="1" source="c16" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;fontSize=11;exitX=0.3;exitY=0;entryX=0.3;entryY=1;" target="c40" value="OPC UA 4840">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="c32" parent="1" style="text;html=1;fontSize=10;align=left;whiteSpace=wrap;" value="Legend: double thick border = multi-homed service (registered conduit component); yellow dashed = new in S5; red dashed = forbidden and tested; arrow head at target; label = flow, protocol, port, initiator, conduit ID. Source of truth: docs/architecture/dmz-target.md" vertex="1">
-          <mxGeometry height="50" width="1160" x="20" y="570" as="geometry" />
+        <mxCell id="c32" parent="1" style="text;html=1;fontSize=10;align=left;whiteSpace=wrap;" value="Legend: thick purple border = cell firewall · red dashed = forbidden flow (tested) · arrow = initiator direction · F# = flow ID (dmz-target.md §7)" vertex="1">
+          <mxGeometry height="30" width="1160" x="20" y="570" as="geometry" />
         </mxCell>
         <mxCell id="L2" parent="0" style="locked=0;" value="Forbidden flows" />
-        <mxCell id="c29" edge="1" parent="L2" source="c11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;fontSize=10;strokeColor=#cc0000;dashed=1;endArrow=cross;fontColor=#cc0000;" target="c13" value="FORBIDDEN: broker -&gt; edge">
+        <mxCell id="c29" edge="1" parent="L2" source="c11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;fontSize=11;strokeColor=#cc0000;dashed=1;endArrow=cross;fontColor=#cc0000;" target="c13" value="forbidden">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="c30" edge="1" parent="L2" source="c12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;fontSize=10;strokeColor=#cc0000;dashed=1;endArrow=cross;fontColor=#cc0000;" target="c15" value="FORBIDDEN: jump -&gt; gateway/PLC">
+        <mxCell id="c30" edge="1" parent="L2" source="c12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;fontSize=11;strokeColor=#cc0000;dashed=1;endArrow=cross;fontColor=#cc0000;" target="c15" value="forbidden">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="c31" edge="1" parent="L2" source="c9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;fontSize=10;strokeColor=#cc0000;dashed=1;endArrow=cross;fontColor=#cc0000;" target="c15" value="FORBIDDEN: IT -&gt; any OT address">
+        <mxCell id="c31" edge="1" parent="L2" source="c9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;fontSize=11;strokeColor=#cc0000;dashed=1;endArrow=cross;fontColor=#cc0000;" target="c15" value="forbidden">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-      </root>
+      <mxCell id="c40" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#e1d5e7;strokeColor=#000000;dashed=1;" value="opcua-sup" vertex="1"><mxGeometry x="540" y="215" width="180" height="60" as="geometry" /></mxCell><mxCell id="c41" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#e1d5e7;strokeColor=#000000;dashed=1;strokeWidth=4;" value="fw-cell" vertex="1"><mxGeometry x="880" y="180" width="150" height="100" as="geometry" /></mxCell><mxCell id="c42" edge="1" parent="1" source="c40" target="c41" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;fontSize=11;exitX=1;exitY=0.75;entryX=0;entryY=0.7;" value="F8 · OPC UA 4840"><mxGeometry relative="1" as="geometry" /></mxCell><mxCell id="c43" edge="1" parent="1" source="c41" target="c15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;fontSize=11;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" value="4840"><mxGeometry relative="1" as="geometry" /></mxCell><mxCell id="c44" edge="1" parent="1" source="c16" target="c41" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;fontSize=11;exitX=0.5;exitY=1;entryX=0.5;entryY=1;" value="F9 · command 4840"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="610" y="450" /><mxPoint x="955" y="450" /></Array></mxGeometry></mxCell><mxCell id="c45" edge="1" parent="L2" source="c11" target="c18" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;html=1;fontSize=11;strokeColor=#cc0000;dashed=1;endArrow=cross;fontColor=#cc0000;" value="forbidden"><mxGeometry relative="1" as="geometry" /></mxCell><mxCell id="c50" parent="1" vertex="1" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;fontSize=11;fillColor=#f5f5f5;strokeColor=#999999;" value="Status (outside the diagram)&lt;br&gt;&lt;br&gt;Written, not yet run: fw-cell, opcua-sup&lt;br&gt;Design only: edge, broker, jump, DMZ networks&lt;br&gt;&lt;br&gt;History&lt;br&gt;v0.1 26 Oct: DMZ target&lt;br&gt;v0.2 15 Nov: ADR-023, fw-cell, opcua-sup&lt;br&gt;v0.3 16 Nov: reduced text, English&lt;br&gt;&lt;br&gt;ADR-020, 021, 022: proposed&lt;br&gt;ADR-023: accepted&lt;br&gt;SL-T: provisional until S7"><mxGeometry x="1270" y="60" width="260" height="230" as="geometry" /></mxCell></root>
     </mxGraphModel>
   </diagram>
 </mxfile>

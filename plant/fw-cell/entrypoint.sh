@@ -57,8 +57,13 @@ resolve() {            # first IPv4 of a service name, or nothing
 }
 fill() {               # set name, host name
   ip="$(resolve "$2")"
-  nft flush set inet fwcell "$1"
-  if [ -n "$ip" ]; then nft add element inet fwcell "$1" "{ $ip }"; fi
+  # One transaction: flush + add are applied together, so there is no instant with an empty
+  # set (a separate flush then add dropped opcua-sup's own packet once, seen in the first run).
+  if [ -n "$ip" ]; then
+    printf 'flush set inet fwcell %s\nadd element inet fwcell %s { %s }\n' "$1" "$1" "$ip" | nft -f -
+  else
+    nft flush set inet fwcell "$1"
+  fi
   echo "$ip"
 }
 count() {              # counter name -> packets
@@ -66,7 +71,9 @@ count() {              # counter name -> packets
 }
 
 last=""
-while kill -0 "$RELAY" 2>/dev/null; do
+# Not `kill -0`: the entrypoint has no CAP_KILL (cap_drop ALL) and the relay runs as another uid,
+# so kill -0 fails with EPERM even while the relay is alive. /proc needs no capability.
+while [ -d "/proc/$RELAY" ]; do
   a="$(fill f8 "$F8_SRC")"; b="$(fill f9 "$F9_SRC")"
   now="f8=${a:-unresolved} f9=${b:-unresolved} FW-CELL-001=$(count c_f8) FW-CELL-002=$(count c_f9) FW-CELL-DEFAULT_drops=$(count c_drop) dropped_sources=[$(nft list set inet fwcell seen | tr -d '\n\t' | sed -n 's/.*elements = {\(.*\)}.*/\1/p')]"
   if [ "$now" != "$last" ]; then echo "fw-cell: $now"; last="$now"; fi
