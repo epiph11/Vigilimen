@@ -171,7 +171,7 @@ async def phase_after_restart(t, conn, args) -> int:
           f"{len(raises)} raise(s) since event {args.since_event_id}")
     st = q(conn, "SELECT state, in_condition FROM alarm_state WHERE tag_id = %s AND condition = 'HI_HI'", (VIB,))
     check("alarm_state holds the live alarm", bool(st) and st[0][0] in ("UNACK", "ACKED") and st[0][1] is True,
-          str(st))
+          f"{st}; {await plant_state(t)}")
     return 0 if all(r[0] for r in results) else 1
 
 
@@ -186,7 +186,7 @@ async def phase_clear(t, conn, args) -> int:
         return rows[0] if rows else None
 
     row = await wait_for(rtn, 15.0, every_s=0.1)
-    check("Clear all faults: HI_HI UNACK -> RTN_UNACK", bool(row))
+    check("Clear all faults: HI_HI UNACK -> RTN_UNACK", bool(row), "" if row else await plant_state(t))
     try:
         q(conn, "UPDATE alarm_event SET note = note WHERE event_id = (SELECT max(event_id) FROM alarm_event)")
         refused = False
@@ -196,6 +196,16 @@ async def phase_clear(t, conn, args) -> int:
     if args.expect_append_only:
         check("alarm_event refuses an UPDATE (append-only trigger)", refused)
     return 0 if row else 1
+
+
+async def plant_state(t) -> str:
+    """One line for the detail of a failed check: a stopped belt or a lost PLC link explains an alarm that went away."""
+    try:
+        return (f"plant: Running={bool(await t['Running'].get_value())} "
+                f"PlcLinkOK={bool(await t['PlcLinkOK'].get_value())} "
+                f"belt={float(await t['BeltSpeed_mps'].get_value()):.2f} m/s")
+    except Exception as e:  # noqa: BLE001 - a diagnostic must never raise
+        return f"plant state unreadable ({type(e).__name__})"
 
 
 async def _val(node):

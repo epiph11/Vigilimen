@@ -287,3 +287,35 @@ CORRECTION : le faux nœud prend `raise_on_bad_status=True` comme le vrai.
 - Model edited by script (lxml), not in Archi: new opcua-sup, its interface, fw-cell (device), net_dmz, requirement m09; readers re-pointed to opcua-sup (r05, r06, r08); r12 (gateway on net_supervisory) removed; F8/F9 flows, 12 new relations. Archi loaded the file without error (seen on screen).
 - Symptom: first layout overlapped (fw-cell on "Operate the conveyor", opcua-sup on "Safe conveyor operation") and the association lines to the networks crossed everything. Cause: new boxes placed by guessed coordinates in free-looking spots without computing overlaps. Fix: Plant layers relaid out by layer with no network lines; new view "Network membership" carries networks and associations; box-overlap check added to the validation (no overlaps in the final layout, lines not checked).
 - vigilimen-exchange.xml not regenerated (stale).
+
+## 16/11/2026 - FF-32 passes; FF-27 fails with "PLC link up (PlcLinkOK)" (precondition, not yet a regression)
+- Measured: FF-32 5/5 (drops 6 -> 9, probe 172.20.0.6 listed in dropped_sources). FF-27: FAIL PLC link up (PlcLinkOK) - its own message says to run validate-plcio.ps1 first.
+- Suspected cause (not confirmed): validate-4e.ps1 sets VIGILIMEN_PLC_LINK=off in its own PowerShell process, and its final `docker compose up -d` runs in that same process, so the gateway was recreated in embedded mode (the header of that script says the containers stay embedded afterwards). Also the PLC program is lost if the PLC containers were recreated by `docker compose down`.
+- Next: check `docker exec vigilimen-gateway env` for VIGILIMEN_PLC_LINK, then run validate-plcio.ps1 in a NEW PowerShell window.
+- validate-plcio.ps1 reworked for ADR-023 (not run): builds fw-cell/opcua-sup/scada, local FF-31/FF-33, F9 source switched to the collector via docker-compose.ff26.yml for the FF-26 steps and restored at step 9.
+
+## 16/11/2026 - validate-plcio step 5: FF-26 "PLC link up" failed once, then passed on a manual re-run
+- Symptom: validate-plcio.ps1 step 5 stopped at `FAIL PLC link up (PlcLinkOK)` although the gateway log ended with "plc-link: linked to plc-control:502, read-back clean" and PLC_LINK=modbus. opcua-sup's log tail showed repeated "ConnectionError: Connection is closed" (no timestamps; it logs only on error, so the tail can be old).
+- Measured afterwards (15:05-15:16 Brisbane): stack steady, opcua-sup silent and healthy, FF-26 alone passes 6/6 with the PLC in the loop (START 10.7 s, alarm row 0.93 s).
+- Cause: NOT established. Suspicion: start-up order (gateway restarted, fw-cell recreated, PLC link still retrying). It does not fit FF-26's own 60 s wait for PlcLinkOK, so it may be wrong.
+- Change: when FF-26 fails, validate-plcio.ps1 now prints the last 15 timestamped log lines of gateway, opcua-sup and fw-cell before stopping.
+
+## 16/11/2026 - after-restart and clear phases failed: the PLC link dropped and the gateway stopped the belt
+- Symptom: validate-plcio steps run by hand. FF-26 after-restart: "alarm_state holds the live alarm" FAIL, state RTN_UNACK in_condition False. FF-26 clear: "UNACK -> RTN_UNACK" FAIL. Plant at that moment: Running 0, speed 0, current 0, vibration 0, SafetyTripped 0.
+- Evidence (UTC): alarm_event 101 HI_HI raised 05:13:03, 102 HI 05:13:34 (30 s on-delay), 103/104 both RTN_UNACK 05:14:16. Gateway log: "plc-link: lost the PLC (ConnectionResetError ... Connection reset by peer); no run request until it returns" at 05:14:15, one second before. Link history: linked 04:59:26, cannot connect 05:10:46, linked 05:12:47, lost 05:14:15. plc-control log shows "OpenPLC Runtime starting ... Persistent Storage is empty" (timestamps not collected).
+- Cause: the operator pressed Start PLC in the OpenPLC page more than once (confirmed by the operator, not by runtime timestamps). Each start restarts the runtime and resets the gateway's Modbus connection; the gateway withdraws the run request (designed fail-safe), the belt stops, vibration reads 0, and the collector's speed gate ends the alarm. Not a fault of ADR-023, fw-cell or opcua-sup.
+- Instrument note: FF-26 phases assume the PLC stays running between them; it does not check the link at each phase.
+- Fix (test side, not yet written): FF-26 after-restart and clear should check PlcLinkOK and Running first and report "plant stopped / link lost" as the reason instead of a misleading alarm failure. Procedure: press Start PLC once, then leave the page alone until the run ends.
+
+## 16/11/2026 - validate-plcio step 5 failed again: plc-control was not listening on Modbus port 502
+- Symptom: second run of validate-plcio.ps1 (no clicks in the OpenPLC page): FF-26 "PLC link up (PlcLinkOK)" FAIL. Gateway log (UTC): restarted 06:58, 06:59:09 "plc-link: cannot connect to plc-control:502", no "linked" line in the next 7+ minutes. From the gateway container: ConnectionRefusedError on plc-control:502. /proc/net/tcp in plc-control: listeners on 8080, 8443 and 127.0.0.1:43628 (interactive server), none on 502 (hex 01F6).
+- Evidence after Stop PLC, 5 s, Start PLC once: connection to plc-control:502 succeeds ("connected").
+- Cause (consistent with the evidence, not proven): the runtime's Modbus listener was gone since the 05:14:15 link loss, after Start PLC had been pressed more than once, while the dashboard still said Running. The earlier "about two minutes after a gateway restart" idea was wrong: the link did not come back for 7+ minutes until Stop/Start. plc-control's runtime log is block-buffered (identical timestamps, nothing after 05:06:42), so it cannot show when the listener went away.
+- Fix (test side): validate-plcio.ps1 now tests port 502 from the gateway after the PLC step and stops with an instruction (Stop PLC, 5 s, Start PLC once) if it does not answer; after the gateway restart it waits for the gateway's own "plc-link: linked" line up to 2 minutes instead of sleeping 12 s. FF-26 after-restart and clear now print the plant state (Running, PlcLinkOK, belt speed) in the failure detail. Not yet run.
+- Observation, not investigated: asyncua prints "RuntimeError: Task cannot await on itself" (UaProcessor session watchdog) in the gateway and opcua-sup logs when sessions close during a restart.
+
+## 16/11/2026 - validate-plcio.ps1 passes end to end on the ADR-023 stack (log plcio-20261116-171606.log)
+- Result: the script ended with "PLC link, persistence and isolation all proven in Docker" after the port 502 check, the wait for "plc-link: linked", FF-26 alarm with the PLC in the loop, the collector restart in the middle of the alarm, the after-restart and clear phases, and the isolation proof. Step 9 restored the F9 source to scada.
+- What the maintainer saw: the last lines only; the per-step output is in the log file. Not re-read by the assistant at the time of writing.
+- Procedure that made it pass: press Start PLC once, leave the OpenPLC page alone; the script checks Modbus port 502 itself.
+- Still open: FF-27 on the new stack; OPC UA secure channel (ADR-023 point 7); the cause of the lost Modbus listener is a suspicion (repeated Start PLC), not proven.
