@@ -84,3 +84,6 @@ $RECYCLE.BIN/
 
 # Transcripts of validation runs: kept locally, commit one deliberately if it is evidence
 docs/runs/*.log
+
+.$*.bkp
+.$*.dtmp
