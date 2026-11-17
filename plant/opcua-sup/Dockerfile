@@ -9,6 +9,7 @@ RUN pip install --no-cache-dir --root-user-action=ignore "asyncua==1.1.5"
 
 COPY opcua-sup/opcua_sup.py   /opt/vigilimen/opcua_sup.py
 COPY opcua-sup/healthcheck.py /opt/vigilimen/healthcheck.py
+COPY pki/uasec.py            /opt/vigilimen/uasec.py
 
 USER opcuasup
 ENV PYTHONUNBUFFERED=1

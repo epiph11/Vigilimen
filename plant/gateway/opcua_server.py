@@ -43,9 +43,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "sim"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "pki"))   # in the image uasec.py sits beside this file
 
 from plant_cycle import PlantCycle, FAULT_LIMITS         # noqa: E402
 from plc_link import PlcLink                              # noqa: E402
+import uasec                                              # noqa: E402  (ADR-023 point 7)
 
 from asyncua import Server, ua                            # noqa: E402
 from asyncua.server.user_managers import UserManager      # noqa: E402
@@ -215,7 +217,9 @@ async def run(port: int) -> None:
     # authentication and authorisation are configured together or they drift
     # apart — which is how a correctly-authenticated engineer ends up able to
     # write a measurement.
-    server.set_security_policy([ua.SecurityPolicyType.NoSecurity])
+    # ADR-023 point 7: Sign and Encrypt only, and the client's application certificate must be on the
+    # trust list. No NoSecurity policy is offered at all; there is no switch to turn this off.
+    await uasec.secure_server(server, os.environ.get("VIGILIMEN_UA_IDENTITY", "gateway"))
     server.set_security_IDs(["Username"])
 
     tags = await build(server)

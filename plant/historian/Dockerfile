@@ -17,6 +17,7 @@ RUN pip install --no-cache-dir --root-user-action=ignore \
         "psycopg[binary]==3.2.3"
 
 COPY historian/collector.py /opt/vigilimen/collector.py
+COPY pki/uasec.py /opt/vigilimen/uasec.py
 COPY alarms/engine.py /opt/vigilimen/engine.py
 COPY alarms/store.py /opt/vigilimen/store.py
 

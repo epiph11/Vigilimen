@@ -29,6 +29,8 @@ RUN pip install --no-cache-dir --root-user-action=ignore \
 
 COPY sim/     /opt/vigilimen/sim/
 COPY gateway/ /opt/vigilimen/gateway/
+# OPC UA secure channel (ADR-023 point 7)
+COPY pki/uasec.py /opt/vigilimen/gateway/uasec.py
 
 USER gateway
 

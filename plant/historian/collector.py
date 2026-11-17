@@ -40,6 +40,8 @@ from datetime import datetime, timezone
 
 from asyncua import Client, ua
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "pki"))   # in the image uasec.py sits beside this file
+import uasec                       # noqa: E402  (ADR-023 point 7)
 from engine import build_conv001   # plant/alarms/engine.py, copied next to this file
 import store                       # plant/alarms/store.py, copied next to this file
 
@@ -290,13 +292,12 @@ async def main() -> int:
         try:
             conn = psycopg.connect(PGDSN)
             feed.restore(conn)
-            client = Client(OPCUA_URL)
-            # set_user/set_password BEFORE connect. `async with Client(url)`
+            # set_user/set_password BEFORE connect (make_client does both). `async with Client(url)`
             # calls __aenter__, which connects anonymously before any
             # credential is set — a mistake that presents as "the server
             # accepts anonymous sessions" when it does not.
-            client.set_user(OPCUA_USER)
-            client.set_password(OPCUA_PASSWORD)
+            # Sign and Encrypt with the collector's own certificate, pinned to opcua-sup's (ADR-023 point 7).
+            client = await uasec.make_client(OPCUA_URL, "collector", "opcua-sup", OPCUA_USER, OPCUA_PASSWORD, timeout=4)
             await client.connect()
             try:
                 nodes = await resolve(client)

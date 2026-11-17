@@ -8,15 +8,13 @@ Exit 0 = healthy, 1 = not. Lives in a file, not in the Dockerfile: an inline
 import asyncio
 import sys
 
-from asyncua import Client
+import uasec
 
 URL = "opc.tcp://127.0.0.1:4840/vigilimen/conv001/"
 
 
 async def check() -> None:
-    c = Client(URL, timeout=4)
-    c.set_user("historian")
-    c.set_password("h1st0r1an-demo")
+    c = await uasec.make_client(URL, "gateway-local", "gateway", "historian", "h1st0r1an-demo", timeout=4)
     await c.connect()
     await c.disconnect()
 

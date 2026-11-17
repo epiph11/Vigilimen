@@ -40,9 +40,13 @@ import argparse
 import asyncio
 import logging
 import os
+import sys
 from datetime import datetime, timezone
+from pathlib import Path
 
-from asyncua import Client, Server, ua
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "pki"))   # in the image uasec.py sits beside this file
+import uasec  # noqa: E402  (ADR-023 point 7)
+from asyncua import Server, ua  # noqa: E402
 from asyncua.server.user_managers import UserManager
 from asyncua.server.users import User, UserRole
 
@@ -105,9 +109,8 @@ async def mirror(nodes: dict, url: str, user: str, password: str, period_s: floa
     await mark_bad(nodes)                               # Bad until the first good read
     while True:
         try:
-            client = Client(url, timeout=4)
-            client.set_user(user)                       # before connect(), as in collector.py
-            client.set_password(password)
+            # Sign and Encrypt, pinned to the gateway's certificate; user/password travel inside the channel.
+            client = await uasec.make_client(url, "opcua-sup", "gateway", user, password, timeout=4)
             await client.connect()
             try:
                 ns = await client.get_namespace_index(URI)
@@ -140,7 +143,7 @@ async def run(port: int, url: str, user: str, password: str, period_s: float) ->
     await server.init()
     server.set_endpoint(f"opc.tcp://0.0.0.0:{port}/vigilimen/conv001/")
     server.set_server_name("VIGILIMEN CONV-001 (supervisory, read-only)")
-    server.set_security_policy([ua.SecurityPolicyType.NoSecurity])
+    await uasec.secure_server(server, "opcua-sup")   # Sign and Encrypt only; clients must be on the trust list
     server.set_security_IDs(["Username"])
     nodes = await build(server)
     async with server:

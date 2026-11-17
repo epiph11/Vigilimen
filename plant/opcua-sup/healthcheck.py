@@ -7,7 +7,8 @@ Exit 0 = healthy, 1 = not.
 import asyncio
 import sys
 
-from asyncua import Client, ua
+import uasec
+from asyncua import ua
 
 URL = "opc.tcp://127.0.0.1:4840/vigilimen/conv001/"
 NS = "urn:vigilimen:plant:conv001"
@@ -15,9 +16,7 @@ PATH = ("Enterprise", "PilbaraSite", "ProcessingArea", "ConveyingCell", "CONV001
 
 
 async def check() -> None:
-    c = Client(URL, timeout=4)
-    c.set_user("historian")
-    c.set_password("h1st0r1an-demo")
+    c = await uasec.make_client(URL, "opcua-sup-local", "opcua-sup", "historian", "h1st0r1an-demo", timeout=4)
     await c.connect()
     try:
         ns = await c.get_namespace_index(NS)

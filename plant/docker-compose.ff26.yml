@@ -7,3 +7,9 @@ services:
   fw-cell:
     environment:
       FW_F9_SOURCE: collector
+  pki-init:
+    # also issues a `tester` certificate to the collector container and puts it on the trust lists of the
+    # gateway and opcua-sup. Without this file (docker compose up -d) pki-init rewrites the lists without it,
+    # and because the servers re-read the trust folder at every session it is revoked at once.
+    environment:
+      VIGILIMEN_PKI_TESTER: "1"
