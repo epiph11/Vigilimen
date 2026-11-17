@@ -22,6 +22,7 @@ Les données ne quittent l'OT que par une DMZ ; les fournisseurs aussi. Porte M1
 | Chaîne d'approvisionnement : images par digest, SBOM (Syft), scan (Grype/Trivy) en CI, Dependabot | 3 | CI |
 | Version M1 : tag + DOI (Zenodo) | 1 | tout |
 | **Lot V4.1 (ADR-023 accepté le 15/11, intégré à S5) :** ADR-023, conteneur `fw-cell` (nftables), conteneur `opcua-sup` (lecture seule), repointage edge / collecteur / SCADA, FF-31 à FF-34, mise à jour FF-22 | environ 15 | ADR-023 |
+| **Socle entreprise (décidé le 17/11/2026) :** TLS mutuel et ACL sur le broker, limites et dernier-vœu, conteneurs durcis, journaux UTC, modèle de menaces TB-2. Détail et cibles production : `docs/architecture/hardening-targets.md` | environ 8 (estimation de l'auteur) | ADR-020 |
 
 ## Décisions à écrire (numéros libres : ADR-020, ADR-021)
 - ADR-020 : pile edge (broker MQTT, bibliothèque, chemin collecteur).
@@ -54,3 +55,19 @@ Règle des ADR étendue aux FF (voir `docs/adr/NUMBERING.md`) : les scripts du d
 
 ## Premier pas proposé
 Écrire ADR-020 et ADR-021 en brouillon, étendre FF-22 (réseau DMZ, un seul service qui traverse), puis l'edge sans filtrage.
+
+## Deadbands et charge WAN (ADR-020 Q3, décidé le 17/11/2026)
+Les deadbands d'exception reprennent ceux du moteur d'alarmes (`plant/alarms/engine.py`), pour ne pas avoir une seconde table de chiffres. Ce sont les valeurs de l'auteur et du simulateur, pas celles d'un ingénieur procédé : le rapport M1 doit le dire.
+
+| Tag | Seuils | Deadband d'exception | Origine |
+|---|---|---|---|
+| `CONV001.BearingTemp_C` | HI 85 / HI_HI 95 | 2,0 degC | deadband d'alarme |
+| `CONV001.Vibration_mms` | HI 4,5 / HI_HI 7,1 | 0,3 mm/s | deadband d'alarme |
+| `CONV001.Current_A` | HI 38 / HI_HI 42 | 1,0 A | deadband d'alarme |
+| `CONV001.Speed_mps` | LO 2,0 / LO_LO 0,1 | 0,1 m/s | deadband d'alarme |
+| `CONV001.Load_tph` | HI 950 / HI_HI 1100 (schéma, pas d'alarme dans le moteur) | 36 t/h | 3 x sigma, le bruit simulé étant sigma = 12 t/h |
+| `CONV001.Running`, `CONV001.SafetyTripped` | n/a | à chaque changement | booléens |
+
+Publication immédiate aussi au franchissement d'un seuil et au changement de qualité (ADR-020, point 5).
+
+**Charge du test WAN (FF-29) :** 7 tags à 0,1 Hz, environ 2 500 messages pour une coupure d'une heure ; pendant la coupure, des exceptions injectées (spike vibration +8, puis Clear). Critères : zéro perte, rejeu dans l'ordre de `seq`, compteur de pertes à 0, dédoublonnage sur `(edge_id, seq)`. Run final d'une heure ; en développement, coupure de 5 minutes. Taille de la file : de l'ordre de 10 fois la charge d'une heure (valeur à fixer au moment d'écrire l'edge).
