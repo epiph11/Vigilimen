@@ -372,3 +372,10 @@ CORRECTION : le faux nœud prend `raise_on_bad_status=True` comme le vrai.
 - Fix: validate-durability.ps1 now builds and starts with `-f docker-compose.yml -f docker-compose.ff26.yml` (same $composeTest as validate-plcio). The corrected script ran green. Not tested: -Extended (A, B, C).
 - Not in these scripts: FF-27/FF-28 are not part of validate-plcio.ps1; they run on their own (validate-trips.ps1, validate-durability.ps1). validate-durability leaves the stack in embedded mode with F9 = collector; return with `docker compose up -d --build` in a new window, then re-run supervisory-relay.ps1.
 - Open, not investigated: gateway logs one 'lost the PLC (Connection reset)' then relinks when the PLC is started; FF-26 after-restart header prints link=off although the same test reads PlcLinkOK=True.
+
+## 17/11/2026 - CI: FF-01 fails, threat-model-v1.md is 125 lines (limit 115)
+- Symptom: the CI step `bash scripts/ff01_doc_cut_line.sh` fails: `docs/architecture/threat-model-v1.md 125 lines (+10 over)`. Reproduced locally (exit 1) before any change.
+- Cause: commit ed76f9c (30 Oct, ADR-023 proposal) appended a 17-line "Update 30 Oct 2026, TB-1a" section to a file that was already near the cap. FF-01 was not run on that commit locally; the Docker validations do not run it.
+- Fix: the section moved unchanged (heading level only) to `docs/architecture/threat-model-tb1a.md`; `threat-model-v1.md` keeps a one-line pointer (112 lines). FF-01 passes locally. Limit NOT raised (that needs an ADR).
+- Limit of this fix: the new file is not in FF-01's GOVERNED list (a directory entry would be needed), so it is not under the cut line. Adding it is a choice for the maintainer.
+- To confirm: the next CI run on GitHub after the push (not seen yet).
