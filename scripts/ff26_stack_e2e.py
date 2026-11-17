@@ -38,9 +38,13 @@ import os
 import sys
 import time
 from datetime import timezone
+from pathlib import Path
 
 import psycopg
 from asyncua import Client
+
+sys.path[:0] = ["/opt/vigilimen", "/opt/vigilimen/gateway", "/tmp", str(Path(__file__).resolve().parent.parent / "plant" / "pki")]   # uasec.py: in the images, or /tmp, or the repo
+import uasec                                   # noqa: E402  (ADR-023 point 7)
 
 # ADR-023: measurements are read from opcua-sup (read-only); commands and faults are written through fw-cell.
 URL = os.environ.get("VIGILIMEN_OPCUA_URL", "opc.tcp://opcua-sup:4840/vigilimen/conv001/")
@@ -232,12 +236,13 @@ async def main() -> int:
         return 2
 
     print(f"FF-26 — stack end to end (phase={args.phase}, link={args.expect_link})")
-    client = Client(URL, timeout=10)           # read path: opcua-sup
-    client.set_user(os.environ.get("VIGILIMEN_READ_USER", "historian"))
-    client.set_password(os.environ.get("VIGILIMEN_READ_PASSWORD", "h1st0r1an-demo"))
-    cmd = Client(CMD_URL, timeout=10)          # command path: fw-cell F9
-    cmd.set_user(USER)
-    cmd.set_password(PASSWORD)
+    # Sign and Encrypt, as the running stack does. The collector container plays both clients: its own
+    # certificate to read opcua-sup, and the `tester` certificate (docker-compose.ff26.yml) to command through fw-cell.
+    client = await uasec.make_client(URL, os.environ.get("VIGILIMEN_READ_IDENTITY", "collector"), "opcua-sup",
+                                     os.environ.get("VIGILIMEN_READ_USER", "historian"),
+                                     os.environ.get("VIGILIMEN_READ_PASSWORD", "h1st0r1an-demo"), timeout=10)   # read path: opcua-sup
+    cmd = await uasec.make_client(CMD_URL, os.environ.get("VIGILIMEN_CMD_IDENTITY", "tester"), "gateway",
+                                  USER, PASSWORD, timeout=10)                                                     # command path: fw-cell F9
     await client.connect()
     await cmd.connect()
     conn = psycopg.connect(DSN)

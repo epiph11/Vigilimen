@@ -23,7 +23,7 @@ would, so an opt-in override cannot quietly add a network either:
   5. no service uses host networking, privileged mode, or links/extra_hosts that
      route around a network;
   6. nothing configured for the gateway or collector names the safety controller;
-  7. the service set is the expected eight: a new container is a new decision.
+  7. the service set is the expected nine: a new container is a new decision.
      fw-cell is the only service that may add capabilities: exactly NET_ADMIN, SETUID and
      SETGID, after dropping ALL, with ip_forward 0 (it relays, it does not route);
   9. the compose default for the control function is the PLC link, not the embedded model (ADR-013);
@@ -51,9 +51,27 @@ except ImportError:                                    # pragma: no cover
 
 PLANT = Path(__file__).resolve().parent.parent / "plant"
 FILES = [PLANT / "docker-compose.yml", PLANT / "docker-compose.plcio.yml"]
-EXPECTED = {"plc-control", "plc-safety", "gateway", "scada", "historian", "collector", "fw-cell", "opcua-sup"}
+EXPECTED = {"plc-control", "plc-safety", "gateway", "scada", "historian", "collector", "fw-cell", "opcua-sup", "pki-init"}
 FWCELL_CAPS = {"NET_ADMIN", "SETUID", "SETGID"}
 PASS, FAIL = "PASS", "FAIL"
+
+
+class _StrictLoader(yaml.SafeLoader):
+    """SafeLoader that REFUSES a duplicate key. PyYAML keeps the last one silently; Docker Compose rejects the file
+    ("mapping key volumes already defined"), so a check on the silent result passes a file that does not start."""
+
+
+def _no_dup(loader, node, deep=False):
+    seen = set()
+    for k, _ in node.value:
+        key = loader.construct_object(k, deep=deep)
+        if key in seen:
+            raise SystemExit(f"FF-22: duplicate key {key!r} at line {k.start_mark.line + 1} of a compose file")
+        seen.add(key)
+    return yaml.SafeLoader.construct_mapping(loader, node, deep)
+
+
+_StrictLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _no_dup)
 
 
 def nets(svc: dict) -> set[str]:
@@ -126,7 +144,8 @@ def evaluate(c: dict) -> list[tuple[str, str, str]]:
           f"{bad_ports}. Docker publishes on 0.0.0.0 unless told otherwise")
 
     risky = [s for s, v in svcs.items()
-             if v.get("network_mode") or v.get("privileged") or v.get("links") or v.get("extra_hosts")
+             if (v.get("network_mode") and not (s == "pki-init" and v.get("network_mode") == "none"))
+             or v.get("privileged") or v.get("links") or v.get("extra_hosts")
              or v.get("pid") == "host" or (v.get("cap_add") and s != "fw-cell")]
     check("no host networking, privileged mode, links, extra_hosts or added capabilities (except fw-cell's three)", not risky,
           f"{risky}. Each of these routes around the networks the file draws")
@@ -157,12 +176,16 @@ def evaluate(c: dict) -> list[tuple[str, str, str]]:
     check("the gateway's Modbus host is resolvable by Docker DNS on net_control", gw_host in resolvable,
           f"VIGILIMEN_MODBUS_HOST={gw_host!r}; resolvable there: {sorted(resolvable)}. `hostname:` is not a DNS name")
 
+    pki = svcs.get("pki-init", {})
+    check("pki-init (the certificate generator) has no network at all and publishes nothing",
+          pki.get("network_mode") == "none" and not pki.get("networks") and not pki.get("ports"),
+          f"network_mode={pki.get('network_mode')!r} networks={pki.get('networks')!r}. It writes private keys: nothing may reach it or leave it")
     plc_mode = str((svcs.get("gateway", {}).get("environment") or {}).get("VIGILIMEN_PLC_LINK", ""))
     check("the compose default is the PLC link (embedded needs an explicit opt-out)",
           plc_mode.replace(" ", "") == "${VIGILIMEN_PLC_LINK:-modbus}",
           f"VIGILIMEN_PLC_LINK={plc_mode!r}. ADR-013: the PLC link is the default since 26 Oct 2026; a silent fall back to the embedded model would make every later check about a different plant")
 
-    check("the service set is the expected eight", set(svcs) == EXPECTED,
+    check("the service set is the expected nine", set(svcs) == EXPECTED,
           f"unexpected: {sorted(set(svcs) - EXPECTED)}; missing: {sorted(EXPECTED - set(svcs))}")
     return out
 
@@ -182,6 +205,8 @@ def mutations(c: dict):
         m("a port bound to every interface", lambda d: d["services"]["plc-control"]["ports"].__setitem__(
             0, "8081:8080"),
           "every published port is bound to 127.0.0.1"),
+        m("pki-init gets a network", lambda d: d["services"]["pki-init"].pop("network_mode"),
+          "pki-init (the certificate generator) has no network at all and publishes nothing"),
         m("plc-safety on host networking", lambda d: d["services"]["plc-safety"].__setitem__(
             "network_mode", "host"),
           "no host networking, privileged mode, links, extra_hosts or added capabilities (except fw-cell's three)"),
@@ -196,7 +221,7 @@ def mutations(c: dict):
           "the compose default is the PLC link (embedded needs an explicit opt-out)"),
         m("an unreviewed ninth container", lambda d: d["services"].__setitem__(
             "debug", {"image": "alpine", "networks": ["net_supervisory"]}),
-          "the service set is the expected eight"),
+          "the service set is the expected nine"),
         m("scada joins net_control", lambda d: d["services"]["scada"].__setitem__(
             "networks", ["net_supervisory", "net_control"]),
           "only plc-control, gateway and fw-cell are on net_control"),
@@ -212,7 +237,7 @@ def mutations(c: dict):
         m("net_supervisory no longer internal", lambda d: d["networks"]["net_supervisory"].__setitem__("internal", False),
           "net_supervisory is internal (ADR-020 Q1 = a)"),
         m("fw-cell removed", lambda d: d["services"].pop("fw-cell"),
-          "the service set is the expected eight"),
+          "the service set is the expected nine"),
         m("fw-cell gains a capability", lambda d: d["services"]["fw-cell"]["cap_add"].append("SYS_ADMIN"),
           "fw-cell drops ALL capabilities and adds exactly NET_ADMIN, SETUID, SETGID"),
         m("fw-cell forwards packets", lambda d: d["services"]["fw-cell"]["sysctls"].__setitem__("net.ipv4.ip_forward", "1"),
@@ -223,7 +248,7 @@ def mutations(c: dict):
 
 
 def main() -> int:
-    docs = [yaml.safe_load(f.read_text(encoding="utf-8")) for f in FILES if f.exists()]
+    docs = [yaml.load(f.read_text(encoding="utf-8"), _StrictLoader) for f in FILES if f.exists()]
     merged = merge(docs)
     results = evaluate(merged)
     print(f"FF-22 — compose topology ({' + '.join(f.name for f in FILES if f.exists())})\n")

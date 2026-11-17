@@ -220,10 +220,9 @@ def phase_shelve(conn, args) -> int:
 # --------------------------------------------------------------------------- faults off
 
 async def _faults_off() -> None:
-    from asyncua import Client
-    client = Client(OPCUA_URL, timeout=10)
-    client.set_user(OPCUA_USER)
-    client.set_password(OPCUA_PASSWORD)
+    import uasec                                 # /opt/vigilimen in the collector image (ADR-023 point 7)
+    client = await uasec.make_client(OPCUA_URL, os.environ.get("VIGILIMEN_CMD_IDENTITY", "tester"), "gateway",
+                                     OPCUA_USER, OPCUA_PASSWORD, timeout=10)   # the `tester` certificate, docker-compose.ff26.yml
     await client.connect()
     try:
         ns = await client.get_namespace_index("urn:vigilimen:plant:conv001")

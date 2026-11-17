@@ -29,6 +29,9 @@ $env:VIGILIMEN_PLC_LINK = 'off'
 # VIGILIMEN_ALARM_PERSIST is set AFTER step 1: ff25 asserts that persistence is OFF by default,
 # so it fails if the variable is already 'on' (NOTES.md, 26/10 03:15).
 $root = (Resolve-Path "$PSScriptRoot\..\..").Path
+# ADR-023: FF-26 and FF-28 command through fw-cell, which admits only one F9 source. For the scripted run the collector plays
+# the operator (docker-compose.ff26.yml: F9 source = collector, `tester` certificate). FUXA cannot command while this is up.
+$composeTest = @('-f', 'docker-compose.yml', '-f', 'docker-compose.ff26.yml')
 Set-Location "$root\plant"
 $logDir = "$root\docs\runs"
 New-Item -ItemType Directory -Force $logDir | Out-Null
@@ -70,9 +73,9 @@ if (Get-Command python -ErrorAction SilentlyContinue) {
 
 $env:VIGILIMEN_ALARM_PERSIST = 'on'
 Write-Host "`n== 2. up (embedded model, alarm persistence ON), migrate the historian =="
-docker compose build gateway collector
+docker compose @composeTest build pki-init gateway fw-cell opcua-sup collector
 if ($LASTEXITCODE -ne 0) { Stop-Here "docker compose build failed" }
-docker compose up -d
+docker compose @composeTest up -d
 if ($LASTEXITCODE -ne 0) { Stop-Here "docker compose up failed" }
 $healthy = $false
 foreach ($i in 1..45) {
@@ -184,4 +187,4 @@ if ($Extended) {
 
 Stop-Transcript | Out-Null
 Write-Host "FF-28 passed in Docker. Log: $log"
-Write-Host "Stack left in embedded mode + persistence ON. To return to the default: new PowerShell window, docker compose up -d --build"
+Write-Host "Stack left in embedded mode + persistence ON, F9 source = collector (FUXA cannot command). To return to the design: new PowerShell window, docker compose up -d --build"

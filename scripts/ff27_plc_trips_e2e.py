@@ -38,6 +38,9 @@ for p in ("/opt/vigilimen/gateway", str(Path(__file__).resolve().parent.parent /
         sys.path.insert(0, p)
 
 from asyncua import Client          # noqa: E402
+
+sys.path[:0] = ["/opt/vigilimen/gateway", "/tmp", str(Path(__file__).resolve().parent.parent / "plant" / "pki")]
+import uasec                         # noqa: E402  (ADR-023 point 7)
 from modbus import Client as Modbus  # noqa: E402
 
 URL = os.environ.get("VIGILIMEN_OPCUA_URL", "opc.tcp://127.0.0.1:4840/vigilimen/conv001/")
@@ -78,9 +81,8 @@ async def main() -> int:
         print("set VIGILIMEN_OPCUA_PASSWORD (docker exec -e ...)", file=sys.stderr)
         return 2
     print("FF-27 — conveyor.st trips in the real OpenPLC")
-    c = Client(URL, timeout=10)
-    c.set_user(USER)
-    c.set_password(PASSWORD)
+    # Runs inside the gateway container, against its own endpoint: its local identity, pinned to its own certificate.
+    c = await uasec.make_client(URL, os.environ.get("VIGILIMEN_CMD_IDENTITY", "gateway-local"), "gateway", USER, PASSWORD, timeout=10)
     await c.connect()
     try:
         n = await nodes(c)

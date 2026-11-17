@@ -42,10 +42,13 @@ if (Get-Command python -ErrorAction SilentlyContinue) {
         if ($LASTEXITCODE -ne 0) { Stop-Here "$ff failed locally. Run it to see why: python scripts\$ff.py" }
         Write-Host "  PASS  $ff"
     }
+    python "$root\scripts\ff35_secure_channel.py" --static-only | Out-Null
+    if ($LASTEXITCODE -ne 0) { Stop-Here "ff35_secure_channel (static) failed locally. Run it to see why: python scripts\ff35_secure_channel.py --static-only" }
+    Write-Host "  PASS  ff35_secure_channel (static)"
 } else { Write-Host "  (python not on PATH: skipped)" }
 
-Write-Host "`n== 2. build gateway, fw-cell, opcua-sup, collector =="
-docker compose build gateway fw-cell opcua-sup collector
+Write-Host "`n== 2. build pki-init, gateway, fw-cell, opcua-sup, collector, scada =="
+docker compose build pki-init gateway fw-cell opcua-sup collector scada
 if ($LASTEXITCODE -ne 0) { Stop-Here "docker compose build failed (read the first error above, not the last)" }
 
 Write-Host "`n== 3. up (FF-26 override: F9 source = collector, ADR-023) =="
@@ -66,24 +69,35 @@ foreach ($i in 1..45) {
 }
 if (-not $healthy) { Stop-Here "a service is not healthy after 3 minutes: docker compose logs fw-cell opcua-sup gateway --tail 40" }
 
+Write-Host "`n== 4b. FF-35: the OPC UA secure channel is enforced, from inside the stack (ADR-023 point 7) =="
+docker cp "$root\scripts\ff35_secure_channel.py" vigilimen-collector:/tmp/ff35.py | Out-Null
+docker cp "$root\plant\pki\uasec.py" vigilimen-collector:/tmp/uasec.py | Out-Null
+docker exec vigilimen-collector python3 /tmp/ff35.py --live-only --url opc.tcp://opcua-sup:4840/vigilimen/conv001/ --identity collector --peer opcua-sup --user historian --password h1st0r1an-demo 2>&1 | ForEach-Object { Write-Host $_ }
+if ($LASTEXITCODE -ne 0) { Stop-Here "FF-35 failed against opcua-sup" }
+docker cp "$root\scripts\ff35_secure_channel.py" vigilimen-gateway:/tmp/ff35.py | Out-Null
+docker cp "$root\plant\pki\uasec.py" vigilimen-gateway:/tmp/uasec.py | Out-Null
+docker exec vigilimen-gateway python3 /tmp/ff35.py --live-only --url opc.tcp://127.0.0.1:4840/vigilimen/conv001/ --identity gateway-local --peer gateway --user engineer --password eng1neer-demo --writable 2>&1 | ForEach-Object { Write-Host $_ }
+if ($LASTEXITCODE -ne 0) { Stop-Here "FF-35 failed against the gateway" }
+
 Write-Host "`n== 5. the gateway built from THIS tree has the Fault* nodes (the 25/10 trap: an old image has none) =="
-docker compose logs gateway fw-cell opcua-sup --tail 5
+docker compose logs gateway fw-cell opcua-sup --tail 5 2>&1 | ForEach-Object { Write-Host $_ }
 Start-Sleep -Seconds 5
 
 Write-Host "`n== 6. FF-26: START, Spike +8, timed alarm row, Clear all faults =="
 docker cp "$root\scripts\ff26_stack_e2e.py" vigilimen-collector:/tmp/ff26.py
-docker exec -e VIGILIMEN_OPCUA_USER=engineer -e VIGILIMEN_OPCUA_PASSWORD=eng1neer-demo vigilimen-collector python /tmp/ff26.py --phase all --expect-link off
+docker exec -e VIGILIMEN_OPCUA_USER=engineer -e VIGILIMEN_OPCUA_PASSWORD=eng1neer-demo vigilimen-collector python /tmp/ff26.py --phase all --expect-link off 2>&1 | ForEach-Object { Write-Host $_ }
 $ff26 = $LASTEXITCODE
 
 Write-Host "`n== 7. last alarm_event rows =="
-docker exec vigilimen-historian psql -U vigilimen -d vigilimen -c "SELECT event_id, ts, condition, from_state, to_state FROM alarm_event ORDER BY event_id DESC LIMIT 6;"
+docker exec vigilimen-historian psql -U vigilimen -d vigilimen -c "SELECT event_id, ts, condition, from_state, to_state FROM alarm_event ORDER BY event_id DESC LIMIT 6;" 2>&1 | ForEach-Object { Write-Host $_ }
 
 Write-Host @"
 
 == 8. FUXA, by hand (this part cannot be scripted) ==
   a. http://localhost:1881 -> gear (top right) -> Project -> Import
      plant\scada\project\vigilimen-conv001.fuxa.json   (REPLACES the whole project)
-  b. Connections -> CONV-001: user engineer, password eng1neer-demo, if it shows disconnected.
+  b. Connections -> CONV-001 (read) and CONV-001 (command): set the credentials (read: scada / sc4da-demo, command: engineer / eng1neer-demo)
+     AND the security: Security mode = Sign & Encrypt, Security policy = Basic256Sha256 (ADR-023 point 7; FUXA stores it with the credentials).
   c. START: Running lamp green, belt speed rises to 2.5 m/s (immediately: no PLC in the loop yet).
   d. 'Spike vibration +8': vibration lamp red within 2 s. Then re-run step 7 above for the row.
   e. 'Clear all faults': the lamp clears and the row goes UNACK -> RTN_UNACK.

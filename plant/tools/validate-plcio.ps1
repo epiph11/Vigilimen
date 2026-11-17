@@ -50,6 +50,9 @@ if (Get-Command python -ErrorAction SilentlyContinue) {
         if ($LASTEXITCODE -ne 0) { Stop-Here "$ff failed locally" }
         Write-Host "  PASS  $ff"
     }
+    python "$root\scripts\ff35_secure_channel.py" --static-only | Out-Null
+    if ($LASTEXITCODE -ne 0) { Stop-Here "ff35_secure_channel (static) failed locally" }
+    Write-Host "  PASS  ff35_secure_channel (static)"
 }
 
 Write-Host "`n== 2. migrate the historian (idempotent; the schema only runs on an EMPTY volume) =="
@@ -60,7 +63,7 @@ if ($LASTEXITCODE -ne 0) { Stop-Here "migration failed" }
 docker exec vigilimen-historian psql -U vigilimen -d vigilimen -c "\d alarm_state"
 
 Write-Host "`n== 3. build + up WITH the PLC link and persistence =="
-docker compose @compose build gateway fw-cell opcua-sup collector scada
+docker compose @compose build pki-init gateway fw-cell opcua-sup collector scada
 if ($LASTEXITCODE -ne 0) { Stop-Here "build failed" }
 docker compose @compose up -d
 docker compose @compose ps

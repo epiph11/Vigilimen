@@ -89,14 +89,17 @@ def static_mutations(text: str):
     ]
 
 
-async def live(url: str) -> list[tuple[str, str, str]]:
-    from asyncua import Client
+async def live(url: str, identity: str = "collector", peer: str = "opcua-sup") -> list[tuple[str, str, str]]:
+    sys.path[:0] = ["/opt/vigilimen", "/tmp", str(Path(__file__).resolve().parent.parent / "plant" / "pki")]
+    import uasec                                     # ADR-023 point 7: the channel is Sign and Encrypt now
     out: list[tuple[str, str, str]] = []
 
     def check(n: str, ok: bool, why: str) -> None:
         out.append((PASS if ok else FAIL, n, why))
 
+    from asyncua import Client
     anon = Client(url, timeout=4)
+    await uasec.secure_client(anon, identity, peer)      # trusted certificate, but no account: anonymous
     try:
         await anon.connect(); await anon.disconnect(); refused = False
     except Exception:                                        # noqa: BLE001
@@ -104,8 +107,7 @@ async def live(url: str) -> list[tuple[str, str, str]]:
     check("anonymous sessions are refused", refused, "an endpoint that accepts anonymous is open to every container on the network")
 
     for user, pw in ACCOUNTS.items():
-        c = Client(url, timeout=4)
-        c.set_user(user); c.set_password(pw)
+        c = await uasec.make_client(url, identity, peer, user, pw, timeout=4)
         try:
             await c.connect()
         except Exception as e:                               # noqa: BLE001
@@ -155,6 +157,8 @@ def report(title: str, rows) -> int:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--url", default=None, help="run the LIVE part against this opcua-sup endpoint")
+    ap.add_argument("--identity", default="collector", help="certificate identity of the client (see plant/pki/uasec.py)")
+    ap.add_argument("--peer", default="opcua-sup", help="server certificate to pin")
     ap.add_argument("--live-only", action="store_true",
                     help="skip the static part (the source file is not inside the container); needs --url")
     a = ap.parse_args()
@@ -176,7 +180,7 @@ def main() -> int:
     live_failed = 0
     if a.url:
         print(f"\n  LIVE ({a.url})")
-        live_failed = report("", asyncio.run(live(a.url)))
+        live_failed = report("", asyncio.run(live(a.url, a.identity, a.peer)))
     else:
         print("\n  LIVE skipped (no --url). Static only: this does not prove the running server.")
 
