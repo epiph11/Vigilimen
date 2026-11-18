@@ -71,3 +71,6 @@ Les deadbands d'exception reprennent ceux du moteur d'alarmes (`plant/alarms/eng
 Publication immédiate aussi au franchissement d'un seuil et au changement de qualité (ADR-020, point 5).
 
 **Charge du test WAN (FF-29) :** 7 tags à 0,1 Hz, environ 2 500 messages pour une coupure d'une heure ; pendant la coupure, des exceptions injectées (spike vibration +8, puis Clear). Critères : zéro perte, rejeu dans l'ordre de `seq`, compteur de pertes à 0, dédoublonnage sur `(edge_id, seq)`. Run final d'une heure ; en développement, coupure de 5 minutes. Taille de la file : de l'ordre de 10 fois la charge d'une heure (valeur à fixer au moment d'écrire l'edge).
+
+## Topologie DMZ (décidé le 17/11/2026, option B)
+`net_dmz` devient interne (edge, broker) et un réseau `net_hostleg` non interne ne contient que le broker (artifice de labo : Docker ne publie un port que depuis un réseau non interne). L'edge n'a ainsi aucune route Internet et FF-04 reste vrai pour lui. Sous réserve de l'essai Docker de publication. Détail : `docs/architecture/dmz-target.md` section 7.7.

@@ -8,7 +8,7 @@ An enterprise does not build everything. It builds and tests the few protections
 
 | # | Item | Reuses | Test |
 |---|---|---|---|
-| 1 | Broker: mutual TLS, one certificate per client, ACL keyed on the certificate identity; no anonymous access, no plain-text port, TLS 1.2 at least | `pki-init` pattern (ADR-023 point 7) | the ADR-020 ACL FF, plus a check that port 1883 is not published |
+| 1 | Broker: mutual TLS, one certificate per client, ACL keyed on the certificate identity; no anonymous access, no plain-text port, TLS 1.2 at least | `pki-init` (ADR-023 point 7), extended with a lab CA for MQTT only (decided 17 Nov 2026) | the ADR-020 ACL FF, a check that port 1883 is not published, and a revocation test: a client revoked through the CRL is refused (whether Mosquitto reloads the CRL without a restart is not verified) |
 | 2 | Broker limits (message size, connections, rate, no retained telemetry) and a last-will message so the edge going silent is visible | broker configuration | a flood and a cut, in the WAN scenario (FF-29) |
 | 3 | Hardened containers for the new services (`edge`, broker, `jump`): non-root user, read-only root filesystem, all capabilities dropped, `no-new-privileges`, memory and process limits | compose | a static FF on the compose file, proved by a deliberate bad copy |
 | 4 | One log format for new services: structured, UTC (ADR-010), one event per line | ADR-010 | a format check; collection is S24 |

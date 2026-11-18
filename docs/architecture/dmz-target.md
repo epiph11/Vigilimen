@@ -168,3 +168,16 @@ Replace `EDGE -- F3 --> GW` and `COL -- F1 --> GW` by `EDGE -- "F3 / F-01R" --> 
 - **F9 also carries two reads.** The HMI shows `StartCommand` and `StopCommand`, which `opcua-sup` does not have, so FUXA reads them from the gateway on the command device. Command state is read through F9; every measurement is read from `opcua-sup`.
 - **FUXA needs its OPC UA driver built into the image** (`plant/scada/Dockerfile`): the stock image downloads it at runtime, impossible on an internal network.
 - **Not done:** the OPC UA secure channel on `opcua-sup` (ADR-023 point 7: passwords still travel in clear), FF-34 (needs the DMZ), the DMZ itself (`edge`, broker, `jump`), and an F10 sink beyond `docker logs`. FF-32 is written and not yet run. FF-26 and FF-28 now read from `opcua-sup` and write through `fw-cell` (16 Nov); FF-27 is unchanged and runs inside the gateway. Run on 16 Nov: FF-26, FF-33 live, 4e by hand in FUXA.
+
+### 7.7 DMZ topology B (decided 17 Nov 2026; replaces the "DMZ is not internal" rows of 7.1 and section 3.2)
+
+**Problem.** With a non-internal `net_dmz`, `edge` (also on `net_supervisory`) would have an Internet route, which makes FF-04 false for an OT container.
+**Decision.** `net_dmz` is **internal**: `edge`, `broker` (and `jump` later). A new `net_hostleg` is **not internal** and holds only the services the host must reach (`broker` now, `jump` later); it exists only because Docker publishes a port from a non-internal network. It is a lab artifice and is labelled as such in the compose file and the drawing.
+
+| Network | `internal` | Members |
+|---|---|---|
+| `net_dmz` | yes | `edge`, `broker` (`jump` later) |
+| `net_hostleg` | no (lab artifice) | `broker` (`jump` later) |
+
+**Consequences.** The multi-homed set becomes {`fw-cell`, `edge`, `broker`} (`jump`, `historian` later). FF-22: `edge` is on exactly {`net_supervisory`, `net_dmz`}; `broker` on exactly {`net_dmz`, `net_hostleg`}; `net_dmz` has exactly the members above; no service is on `net_dmz` and `net_control` or `net_safety`; nothing but `broker` (and `jump`) is on `net_hostleg`. FF-04 holds for `edge`; `broker` and `jump` keep an Internet route through `net_hostleg`, stated as a limit.
+**Not verified.** That a container on one internal and one non-internal network publishes its port on `127.0.0.1`. Docker test first (spike), before the compose change; if it fails, option B is reopened.
