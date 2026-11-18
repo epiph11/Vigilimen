@@ -172,6 +172,9 @@ def evaluate(c: dict) -> list[tuple[str, str, str]]:
         check("the broker publishes TLS only and never 1883",
               all(p.split("/")[0].split(":")[-1] == "8883" for p in broker_ports),
               f"ports: {broker_ports}. A plain-text MQTT port is an unauthenticated door to the topics")
+        check("the broker runs as a non-root user (1883), so the image never needs to drop privileges",
+              "broker" not in svcs or str(svcs["broker"].get("user", "")).split(":")[0] not in ("", "0", "root"),
+              f"user={svcs.get('broker', {}).get('user')!r}. As root the image chowns and drops privileges, which needs CHOWN, SETUID and SETGID: the 18 Nov 2026 restart loop")
         check("the edge publishes no port and does not forward (ip_forward 0)",
               "edge" not in svcs or (not svcs.get("edge", {}).get("ports") and str((svcs.get("edge", {}).get("sysctls") or {}).get("net.ipv4.ip_forward")) == "0"),
               f"ports={svcs.get('edge', {}).get('ports')} sysctls={svcs.get('edge', {}).get('sysctls')}. The edge reads and republishes; it is not a router between its two networks")
@@ -338,6 +341,7 @@ def s5_mutations(t: dict):
           "the edge publishes no port and does not forward (ip_forward 0)"),
         m("S5: the edge does not set ip_forward", lambda d: sv(d, "edge").pop("sysctls"),
           "the edge publishes no port and does not forward (ip_forward 0)"),
+        m("S5: the broker runs as root (no user:)", lambda d: sv(d, "broker").pop("user", None), "the broker runs as a non-root user (1883), so the image never needs to drop privileges"),
         m("S5: the edge alone, without the broker", lambda d: d["services"].pop("broker"), "the edge is never present without the broker"),
         m("S5: the edge told where the SIS is", lambda d: sv(d, "edge").__setitem__("environment", {"SIS_HOST": "sis-conv-001"}),
           "nothing configured for gateway, collector, scada, edge or broker names the safety controller"),

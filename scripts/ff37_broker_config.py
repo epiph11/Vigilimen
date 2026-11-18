@@ -87,7 +87,7 @@ def checks(conf_text: str, acl_text: str) -> list[tuple[str, bool, str]]:
     for k, fname in certs.items():
         add(f"{k} is set to the file mqttpki.py writes ({fname})", one(k) is not None and one(k).endswith("/" + fname) and fname in BROKER_FILES, f"{k}: {one(k)}")
     add("the ACL file is set", bool(one("acl_file")), f"acl_file: {one('acl_file')}")
-    add("message size limit is set and at most 65536 bytes", one("message_size_limit") is not None and int(one("message_size_limit")) <= 65536, f"message_size_limit: {one('message_size_limit')}")
+    add("packet size limit is set and at most 65536 bytes", one("max_packet_size") is not None and 0 < int(one("max_packet_size")) <= 65536, f"max_packet_size: {one('max_packet_size')}")
     add("connections are capped (at most 20)", one("max_connections") is not None and 0 < int(one("max_connections")) <= 20, f"max_connections: {one('max_connections')}")
     add("queues and in-flight messages are bounded", one("max_queued_messages") is not None and 0 < int(one("max_queued_messages")) <= 10000 and one("max_inflight_messages") is not None and 0 < int(one("max_inflight_messages")) <= 100,
         f"max_queued: {one('max_queued_messages')}, max_inflight: {one('max_inflight_messages')}")
@@ -131,8 +131,8 @@ MUTATIONS = [
     ("the CA file points at a file mqttpki.py does not write", c_sub("/mosquitto/certs/ca.pem", "/mosquitto/certs/rootca.pem"), "cafile is set to the file"),
     ("the ACL file line is removed", c_sub("acl_file /mosquitto/config/acl\n", ""), "the ACL file is set"),
     ("per-listener settings turned off", c_sub("per_listener_settings true", "per_listener_settings false"), "per-listener settings are on"),
-    ("message size limit removed", c_sub("message_size_limit 4096\n", ""), "message size limit is set"),
-    ("message size limit 10 MB", c_sub("message_size_limit 4096", "message_size_limit 10485760"), "message size limit is set"),
+    ("packet size limit removed", c_sub("max_packet_size 4096\n", ""), "packet size limit is set"),
+    ("packet size limit 10 MB", c_sub("max_packet_size 4096", "max_packet_size 10485760"), "packet size limit is set"),
     ("connections uncapped (0)", c_sub("max_connections 10", "max_connections 0"), "connections are capped"),
     ("queue limit removed", c_sub("max_queued_messages 1000\n", ""), "queues and in-flight messages are bounded"),
     ("retained messages allowed", c_sub("retain_available false", "retain_available true"), "retained telemetry is switched off"),

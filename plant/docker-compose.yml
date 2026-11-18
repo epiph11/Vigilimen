@@ -335,6 +335,7 @@ services:
     image: eclipse-mosquitto:2.0.20
     container_name: vigilimen-broker
     hostname: broker
+    user: "1883:1883"            # never root: the image would chown and then drop privileges, which cap_drop ALL forbids
     networks: [net_dmz, net_hostleg]
     ports:
       - "127.0.0.1:18883:8883"     # TLS only. There is no 1883 anywhere (FF-22, FF-37).

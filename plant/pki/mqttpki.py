@@ -23,7 +23,10 @@ Layout under <root> (the `pki-mqtt` volume). Each service folder is mounted read
 Names: the certificate CN is the identity and the ACL key. Servers carry their DNS names in the SAN (so
 verification by host name works, unlike the OPC UA lab certificates).
 
-    python3 mqttpki.py init /pki-mqtt [--tester]
+    python3 mqttpki.py init /pki-mqtt [--tester [--no-revoke]]
+
+--no-revoke (with --tester): edge-old exists but the CRL is empty. FF-38 uses it to show that edge-old is accepted
+before the revocation, so the later refusal is the CRL's doing and nothing else.
 """
 
 from __future__ import annotations
@@ -156,7 +159,7 @@ def _load_leaf(master: Path, ident: str):
     return None
 
 
-def init(root: Path, tester: bool = False) -> None:
+def init(root: Path, tester: bool = False, revoke: bool = True) -> None:
     ca_dir = root / "_ca"
     ca_dir.mkdir(parents=True, exist_ok=True)
     os.chmod(ca_dir, 0o700)
@@ -182,7 +185,7 @@ def init(root: Path, tester: bool = False) -> None:
             _write(master / f"{ident}.key", key_pem(got[1]), 0o600)
         leaves[ident] = got
 
-    crl = make_crl(ca_cert, ca_key, [leaves[i][0].serial_number for i in REVOKED if i in leaves])
+    crl = make_crl(ca_cert, ca_key, [leaves[i][0].serial_number for i in REVOKED if i in leaves and revoke])
 
     def fresh(folder: Path) -> Path:
         # Folders are kept and only their files replaced: a running container's subpath mount points at the folder.
@@ -190,6 +193,10 @@ def init(root: Path, tester: bool = False) -> None:
         for old in folder.iterdir():
             old.unlink()
         return folder
+
+    for gone in TESTER_CLIENTS:                      # a run without --tester removes the tester's folder
+        if gone not in clients and (root / gone).is_dir():
+            shutil.rmtree(root / gone)
 
     b = fresh(root / "broker")
     shutil.copy2(ca_dir / "ca.pem", b / "ca.pem")
@@ -210,7 +217,7 @@ def init(root: Path, tester: bool = False) -> None:
             except OSError:                          # local, non-root runs: ownership is irrelevant
                 pass
         print(f"mqttpki: {ident}: {sorted(x.name for x in (root / ident).iterdir())}", flush=True)
-    print(f"mqttpki: CRL lists {len([i for i in REVOKED if i in leaves])} revoked certificate(s)", flush=True)
+    print(f"mqttpki: CRL lists {len([i for i in REVOKED if i in leaves and revoke])} revoked certificate(s)", flush=True)
 
 
 if __name__ == "__main__":
@@ -219,6 +226,7 @@ if __name__ == "__main__":
     p = sub.add_parser("init")
     p.add_argument("root")
     p.add_argument("--tester", action="store_true", default=os.environ.get("VIGILIMEN_PKI_TESTER") == "1")
+    p.add_argument("--no-revoke", action="store_true")
     a = ap.parse_args()
-    init(Path(a.root), a.tester)
+    init(Path(a.root), a.tester, revoke=not a.no_revoke)
     sys.exit(0)

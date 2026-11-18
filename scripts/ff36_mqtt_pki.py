@@ -362,6 +362,23 @@ def main() -> int:
         print(f"  {'PASS' if ok else 'FAIL'}  a second run keeps the same identities (stable until the volume is removed)")
         failed += 0 if ok else 1
 
+        # --no-revoke: the tester exists, the CRL is empty (FF-38 needs the 'accepted before revocation' state)
+        nr = Path(td) / "norevoke"
+        M.init(nr, tester=True, revoke=False)
+        crl2 = x509.load_pem_x509_crl((nr / "broker" / "crl.pem").read_bytes())
+        ok = (nr / "edge-old").is_dir() and len(list(crl2)) == 0
+        print(f"  {'PASS' if ok else 'FAIL'}  --no-revoke: edge-old exists and the CRL is empty   [revoked: {len(list(crl2))}]")
+        failed += 0 if ok else 1
+        M.init(nr, tester=True)
+        crl3 = x509.load_pem_x509_crl((nr / "broker" / "crl.pem").read_bytes())
+        ok = len(list(crl3)) == 1
+        print(f"  {'PASS' if ok else 'FAIL'}  revoking afterwards (same volume, no restart of the CA) puts edge-old on the CRL   [revoked: {len(list(crl3))}]")
+        failed += 0 if ok else 1
+        M.init(nr, tester=False)
+        ok = not (nr / "edge-old").exists() and len(list(x509.load_pem_x509_crl((nr / "broker" / "crl.pem").read_bytes()))) == 0
+        print(f"  {'PASS' if ok else 'FAIL'}  a run without --tester removes the tester's folder and empties the CRL")
+        failed += 0 if ok else 1
+
         caught = 0
         if not a.static and failed == 0:
             print("\nMutation self-test (each damage must be caught by the named check):")
