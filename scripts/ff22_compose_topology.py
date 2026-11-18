@@ -29,8 +29,8 @@ would, so an opt-in override cannot quietly add a network either:
   5. no service uses host networking, privileged mode, or links/extra_hosts that
      route around a network;
   6. nothing configured for the gateway, collector, scada, edge or broker names the safety controller;
-  7. the service set is the expected nine, or those nine plus the edge and the broker TOGETHER:
-     a new container is a new decision.
+  7. the service set is the expected nine, or those plus the broker, or plus the broker and the edge
+     (S5 is built broker first, 18 Nov 2026; an edge without a broker is refused): a new container is a new decision.
      fw-cell is the only service that may add capabilities: exactly NET_ADMIN, SETUID and
      SETGID, after dropping ALL, with ip_forward 0 (it relays, it does not route);
   9. the compose default for the control function is the PLC link, not the embedded model (ADR-013);
@@ -145,24 +145,25 @@ def evaluate(c: dict) -> list[tuple[str, str, str]]:
     check("fw-cell is the only service on both net_control and net_supervisory",
           {s for s in svcs if {"net_control", "net_supervisory"} <= nets(svcs[s])} == {"fw-cell"},
           "a second bridge between zones is a second conduit nobody assessed")
-    multi_expected = {"fw-cell", "opcua-sup"} | (S5_SERVICES if s5 else set())
-    check("the multi-homed set is exactly {fw-cell, opcua-sup}, plus {edge, broker} in S5",
+    present5 = S5_SERVICES & set(svcs)                 # S5 is built in steps: the broker first, then the edge
+    multi_expected = {"fw-cell", "opcua-sup"} | present5
+    check("the multi-homed set is exactly {fw-cell, opcua-sup}, plus the S5 services present (edge, broker)",
           {s for s in svcs if len(nets(svcs[s])) > 1} == multi_expected,
           f"multi-homed: {sorted(s for s in svcs if len(nets(svcs[s])) > 1)}; expected {sorted(multi_expected)}. Each one is a registered conduit component (jump and historian join it when S5 builds them: FF-22 is edited then)")
 
-    check("the edge and the broker arrive together", ("edge" in svcs) == ("broker" in svcs),
-          f"edge present: {'edge' in svcs}, broker present: {'broker' in svcs}. One without the other has nowhere to publish, or nobody to publish")
+    check("the edge is never present without the broker", "edge" not in svcs or "broker" in svcs,
+          f"edge present: {'edge' in svcs}, broker present: {'broker' in svcs}. An edge without a broker has nowhere to publish. The broker alone is allowed: S5 is built broker first (18 Nov 2026)")
     if s5:
         check("net_dmz is internal", (netdefs.get("net_dmz") or {}).get("internal") is True,
               "a routable DMZ gives the edge an Internet route and makes FF-04 false for an OT-side container")
-        check("net_dmz has exactly the edge and the broker", members("net_dmz") == S5_SERVICES,
+        check("net_dmz has exactly the S5 services present (the edge, the broker)", members("net_dmz") == present5,
               f"members: {sorted(members('net_dmz'))}. Nothing from the cell or the supervisory zone belongs here")
         check("net_hostleg is NOT internal and holds the broker only (lab artifice)",
               (netdefs.get("net_hostleg") or {}).get("internal") is not True and members("net_hostleg") == {"broker"},
               f"internal={(netdefs.get('net_hostleg') or {}).get('internal')} members: {sorted(members('net_hostleg'))}. Docker publishes a port only from a non-internal network; the edge must never be on it")
-        check("the edge is on exactly net_edgelink and net_dmz", nets(svcs.get("edge", {})) == {"net_edgelink", "net_dmz"},
+        check("the edge is on exactly net_edgelink and net_dmz", "edge" not in svcs or nets(svcs.get("edge", {})) == {"net_edgelink", "net_dmz"},
               f"networks: {sorted(nets(svcs.get('edge', {})))}. Not net_supervisory (it would see scada, historian, collector), never net_control or net_safety, never net_hostleg (an Internet route)")
-        check("the broker is on exactly net_dmz and net_hostleg", nets(svcs.get("broker", {})) == {"net_dmz", "net_hostleg"},
+        check("the broker is on exactly net_dmz and net_hostleg", "broker" not in svcs or nets(svcs.get("broker", {})) == {"net_dmz", "net_hostleg"},
               f"networks: {sorted(nets(svcs.get('broker', {})))}. The broker has no business in any OT network")
         check("no service is on net_dmz and an OT network",
               not any("net_dmz" in nets(v) and nets(v) & {"net_control", "net_safety", "net_supervisory"} for v in svcs.values()),
@@ -172,7 +173,7 @@ def evaluate(c: dict) -> list[tuple[str, str, str]]:
               all(p.split("/")[0].split(":")[-1] == "8883" for p in broker_ports),
               f"ports: {broker_ports}. A plain-text MQTT port is an unauthenticated door to the topics")
         check("the edge publishes no port and does not forward (ip_forward 0)",
-              not svcs.get("edge", {}).get("ports") and str((svcs.get("edge", {}).get("sysctls") or {}).get("net.ipv4.ip_forward")) == "0",
+              "edge" not in svcs or (not svcs.get("edge", {}).get("ports") and str((svcs.get("edge", {}).get("sysctls") or {}).get("net.ipv4.ip_forward")) == "0"),
               f"ports={svcs.get('edge', {}).get('ports')} sysctls={svcs.get('edge', {}).get('sysctls')}. The edge reads and republishes; it is not a router between its two networks")
 
     bad_ports = []
@@ -225,8 +226,8 @@ def evaluate(c: dict) -> list[tuple[str, str, str]]:
           plc_mode.replace(" ", "") == "${VIGILIMEN_PLC_LINK:-modbus}",
           f"VIGILIMEN_PLC_LINK={plc_mode!r}. ADR-013: the PLC link is the default since 26 Oct 2026; a silent fall back to the embedded model would make every later check about a different plant")
 
-    check("the service set is the expected nine, or those plus edge and broker together",
-          set(svcs) in (EXPECTED, EXPECTED | S5_SERVICES),
+    check("the service set is the expected nine, or those plus the broker, or plus broker and edge",
+          set(svcs) in (EXPECTED, EXPECTED | {"broker"}, EXPECTED | S5_SERVICES),
           f"unexpected: {sorted(set(svcs) - EXPECTED - S5_SERVICES)}; missing: {sorted(EXPECTED - set(svcs))}")
     return out
 
@@ -278,7 +279,7 @@ def mutations(c: dict):
           "the compose default is the PLC link (embedded needs an explicit opt-out)"),
         m("an unreviewed ninth container", lambda d: d["services"].__setitem__(
             "debug", {"image": "alpine", "networks": ["net_supervisory"]}),
-          "the service set is the expected nine, or those plus edge and broker together"),
+          "the service set is the expected nine, or those plus the broker, or plus broker and edge"),
         m("scada joins net_control", lambda d: d["services"]["scada"].__setitem__(
             "networks", ["net_supervisory", "net_control"]),
           "only plc-control, gateway and fw-cell are on net_control"),
@@ -294,7 +295,7 @@ def mutations(c: dict):
         m("net_supervisory no longer internal", lambda d: d["networks"]["net_supervisory"].__setitem__("internal", False),
           "net_supervisory is internal (ADR-020 Q1 = a)"),
         m("fw-cell removed", lambda d: d["services"].pop("fw-cell"),
-          "the service set is the expected nine, or those plus edge and broker together"),
+          "the service set is the expected nine, or those plus the broker, or plus broker and edge"),
         m("fw-cell gains a capability", lambda d: d["services"]["fw-cell"]["cap_add"].append("SYS_ADMIN"),
           "fw-cell drops ALL capabilities and adds exactly NET_ADMIN, SETUID, SETGID"),
         m("fw-cell forwards packets", lambda d: d["services"]["fw-cell"]["sysctls"].__setitem__("net.ipv4.ip_forward", "1"),
@@ -320,8 +321,8 @@ def s5_mutations(t: dict):
         m("S5: the broker joins net_supervisory", lambda d: add(d, "broker", "net_supervisory"), BROKER_NETS),
         m("S5: the broker joins net_edgelink", lambda d: add(d, "broker", "net_edgelink"), "net_edgelink has exactly opcua-sup (and the edge once it exists)"),
         m("S5: the collector joins net_edgelink", lambda d: add(d, "collector", "net_edgelink"), "net_edgelink has exactly opcua-sup (and the edge once it exists)"),
-        m("S5: scada joins net_dmz", lambda d: add(d, "scada", "net_dmz"), "net_dmz has exactly the edge and the broker"),
-        m("S5: the gateway joins net_dmz", lambda d: sv(d, "gateway").__setitem__("networks", ["net_control", "net_dmz"]), "net_dmz has exactly the edge and the broker"),
+        m("S5: scada joins net_dmz", lambda d: add(d, "scada", "net_dmz"), "net_dmz has exactly the S5 services present (the edge, the broker)"),
+        m("S5: the gateway joins net_dmz", lambda d: sv(d, "gateway").__setitem__("networks", ["net_control", "net_dmz"]), "net_dmz has exactly the S5 services present (the edge, the broker)"),
         m("S5: a service on net_dmz and net_supervisory", lambda d: sv(d, "collector").__setitem__("networks", ["net_supervisory", "net_dmz"]), "no service is on net_dmz and an OT network"),
         m("S5: net_dmz no longer internal", lambda d: d["networks"]["net_dmz"].__setitem__("internal", False), "net_dmz is internal"),
         m("S5: net_edgelink no longer internal", lambda d: d["networks"]["net_edgelink"].__setitem__("internal", False), "net_edgelink is internal"),
@@ -337,8 +338,7 @@ def s5_mutations(t: dict):
           "the edge publishes no port and does not forward (ip_forward 0)"),
         m("S5: the edge does not set ip_forward", lambda d: sv(d, "edge").pop("sysctls"),
           "the edge publishes no port and does not forward (ip_forward 0)"),
-        m("S5: the broker alone, without the edge", lambda d: d["services"].pop("edge"), "the edge and the broker arrive together"),
-        m("S5: the edge alone, without the broker", lambda d: d["services"].pop("broker"), "the edge and the broker arrive together"),
+        m("S5: the edge alone, without the broker", lambda d: d["services"].pop("broker"), "the edge is never present without the broker"),
         m("S5: the edge told where the SIS is", lambda d: sv(d, "edge").__setitem__("environment", {"SIS_HOST": "sis-conv-001"}),
           "nothing configured for gateway, collector, scada, edge or broker names the safety controller"),
         m("S5: the edge gets a capability", lambda d: sv(d, "edge").__setitem__("cap_add", ["NET_ADMIN"]),
@@ -346,7 +346,7 @@ def s5_mutations(t: dict):
         m("S5: opcua-sup drops its edge link", lambda d: sv(d, "opcua-sup").__setitem__("networks", ["net_supervisory"]),
           "opcua-sup is on exactly net_supervisory and net_edgelink"),
         m("S5: an unreviewed twelfth container", lambda d: d["services"].__setitem__("debug", {"image": "alpine", "networks": ["net_dmz"]}),
-          "the service set is the expected nine, or those plus edge and broker together"),
+          "the service set is the expected nine, or those plus the broker, or plus broker and edge"),
     ]
 
 
