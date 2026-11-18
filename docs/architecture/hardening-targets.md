@@ -24,6 +24,7 @@ Retrofit of the existing services (3 and 4) is listed, not promised: some images
 | Vendor access | OpenSSH `jump` (ADR-021) | a PAM product, approval tied to a change ticket, two-person approval on critical assets | OpenSSH stands in for it; the properties are the same, the product is not evaluated |
 | Secrets | demo credentials (ADR-018) | a secrets vault | no real secret exists in the lab |
 | Audit log | append-only volume | immutable storage with hash chaining | tamper-evidence needs a separate trust domain |
+| Zone separation | DMZ and supervisory are separated by Docker network membership (no filtering inside a network), pinned by FF-22 | a filtering firewall between each pair of zones, allow-list by source, destination and port, logged | one firewall exists in the lab (`fw-cell`), a second adds a service without a new property |
 | OT to IT boundary | logical, outbound only (ADR-005) | a hardware data diode for high SL-T zones | hardware |
 | PLC program | signature check after load | baseline hash, management of change | no change process in a lab |
 | Images | digest, SBOM, scan (FF-20) | signed images and an admission policy | later sprint |
