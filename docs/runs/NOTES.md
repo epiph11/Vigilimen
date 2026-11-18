@@ -443,3 +443,9 @@ CORRECTION : le faux nœud prend `raise_on_bad_status=True` comme le vrai.
 - Finding confirmed on 2.0.20 (it was first seen on 2.0.18 locally): the edge's SUBSCRIBE is answered 0x00 by the broker; the refusal is in delivery only.
 - Consequence to carry: revoking a client needs a broker restart (or an untested reload). Production target, to write in hardening-targets.md: short-lived certificates or OCSP so revocation does not depend on a restart.
 - Still not proven: that the broker's compose hardening keys are checked (no static FF), anything about the WAN (FF-29), the ACL warning on the bind-mounted `acl` (open decision above).
+
+## 2026-11-18 - Edge core written (FF-39), not yet run on Windows
+- What: `plant/edge/message.py` (topic + payload schema 1), `durable_queue.py` (SQLite WAL, FULL sync, bounded, drop-oldest-baseline, counted drops, seq kept in the database), `reporter.py` (baseline 10 s, deadband / alarm-limit / quality exceptions, unknown tag raises). `scripts/ff39_edge_core.py`: 31 properties, 15 mutations.
+- Run so far: Linux container, Python 3, standard library only: baseline PASS, 15 mutations, 0 not caught (one mutation is caught by a crash, not by a property). NOT run on Windows Python, NOT in Docker.
+- Not covered yet: OPC UA reading, MQTT publish and per-message ack (paho), edge image, compose service, WAN cut (FF-29).
+- Known limit written in reporter.py: no hysteresis around an alarm threshold.
