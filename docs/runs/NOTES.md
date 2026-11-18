@@ -379,3 +379,10 @@ CORRECTION : le faux nœud prend `raise_on_bad_status=True` comme le vrai.
 - Fix: the section moved unchanged (heading level only) to `docs/architecture/threat-model-tb1a.md`; `threat-model-v1.md` keeps a one-line pointer (112 lines). FF-01 passes locally. Limit NOT raised (that needs an ADR).
 - Limit of this fix: the new file is not in FF-01's GOVERNED list (a directory entry would be needed), so it is not under the cut line. Adding it is a choice for the maintainer.
 - To confirm: the next CI run on GitHub after the push (not seen yet).
+
+## 18/11/2026 - S5: Docker publish spike passed; edge moves to net_edgelink; FF-22 extended for topology B
+
+- Spike (user, PowerShell): a container on `spike-hostleg` (non-internal) plus `spike-dmz` (internal) publishes on `127.0.0.1:18884` (host got HTTP 200); a container on the internal net reaches it (200) and gets "Network is unreachable" for 1.1.1.1. Topology B holds. The first attempt failed only because Docker Desktop was not running.
+- Design correction: an edge on `net_supervisory` would reach scada, historian and collector (Docker: same network = every port). New internal `net_edgelink` holds `opcua-sup` and the edge only. `opcua-sup` becomes multi-homed. No filtering firewall between DMZ and supervisory in the lab (production target in `hardening-targets.md`).
+- `plant/docker-compose.yml`: `net_edgelink` added, `opcua-sup` on {net_supervisory, net_edgelink}. NOT yet run in Docker: needs `docker compose up -d --build` then validate-plcio, FF-27, FF-28, FF-32, FF-35 to confirm opcua-sup still serves the collector, SCADA and fw-cell F8 when multi-homed.
+- `scripts/ff22_compose_topology.py`: 23 properties on the real compose, plus an S5 target compose built from the design (31 properties hold), 44 mutations all caught. Edge and broker properties run on the target until the real services exist. Not tested: ip_forward on the real edge (set and checked in the compose only).

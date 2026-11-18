@@ -15,6 +15,12 @@
 #      net_control      PLC, gateway, fw-cell   internal: no route to the outside
 #      net_supervisory  fw-cell, opcua-sup, SCADA, historian, collector   internal (ADR-020 Q1 = a)
 #      net_safety       SIS ONLY — one member, internal, no gateway
+#      net_edgelink     opcua-sup and (S5) the edge ONLY — internal. Added 18 Nov 2026 (dmz-target.md 7.7): Docker
+#                       gives every service on a network access to every other one on all ports, so the edge
+#                       gets its own link to opcua-sup instead of joining net_supervisory.
+#
+#  S5 adds net_dmz (internal: edge, broker) and net_hostleg (NOT internal, lab artifice, broker only)
+#  with the edge and the broker. FF-22 already pins their membership.
 #
 #  ADR-023 (accepted 15 Nov 2026): the gateway is on net_control ONLY. The one door of
 #  the cell is fw-cell, the only service on both net_control and net_supervisory. What
@@ -40,6 +46,10 @@ networks:
   net_safety:
     driver: bridge
     internal: true          # SIS-CONV-001 is alone here, and stays alone.
+  net_edgelink:
+    driver: bridge
+    internal: true          # opcua-sup and the edge, nothing else (dmz-target.md 7.7). The edge has no
+                            # route to scada, historian or collector, and none off the host.
 
 volumes:
   historian_data:
@@ -180,7 +190,7 @@ services:
       dockerfile: opcua-sup/Dockerfile
     container_name: vigilimen-opcua-sup
     hostname: opcua-sup
-    networks: [net_supervisory]
+    networks: [net_supervisory, net_edgelink]   # the second leg is the edge's link (S5); a registered conduit component
     environment:
       VIGILIMEN_UPSTREAM_URL: opc.tcp://fw-cell:4840/vigilimen/conv001/
       VIGILIMEN_UPSTREAM_USER: opcua-sup
