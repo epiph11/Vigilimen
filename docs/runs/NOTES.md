@@ -430,3 +430,16 @@ CORRECTION : le faux nœud prend `raise_on_bad_status=True` comme le vrai.
 - Cause: the Windows Python on the project machine has no `cryptography`. FF-36 and FF-38 import it (the certificates are built with it). Earlier I said FF-36 "passed on the project machine": that run was in the Linux VM behind device_bash, NOT the Windows Python. FF-36 had never run on Windows. The script's own message was correct; the instrument did its job.
 - Fix: `python -m pip install cryptography` on the Windows host (the pki-init image already has it, so the Docker steps are unaffected). Not a code change.
 - Lesson: "ran on the project machine" must name which interpreter. Windows PowerShell + Windows Python is the one the user runs; the VM is not.
+
+## 18/11/2026 - S5: FF-36 on Windows: AttributeError: module 'os' has no attribute 'chown'
+- Symptom: `python scripts\ff36_mqtt_pki.py` on the Windows host (after pip install cryptography): traceback in mqttpki.py line 216, `os.chown(p, uid, uid)`.
+- Cause: `os.chown` does not exist on Windows (the attribute is missing, so it is an AttributeError, not the OSError my `except OSError` handles for non-root runs on Linux). My code was only run on Linux before. FF-36 therefore could not run on the machine the user works on.
+- Fix: `chown` is skipped when the platform does not have it (`getattr(os, "chown", None)`), same intent as the existing "ownership is irrelevant for local runs". The same pattern exists in `plant/pki/uasec.py`; not touched (it only runs in the pki-init container; noted, not fixed in passing).
+- How checked: the fix is run in the Linux VM with `os.chown` removed to imitate Windows. The Windows run itself is the user's.
+
+## 18/11/2026 - S5: FF-38 passes in Docker on the pinned broker (eclipse-mosquitto:2.0.20)
+- Measured (project machine, Windows host, Docker; log docs/runs/broker-20261118-195017.log): validate-broker.ps1 all steps PASS. FF-22, FF-36 (Windows Python, 15 mutations caught, 1 skipped: file modes are POSIX only; openssl cross-check skipped: not on PATH) and FF-37 pass locally. FF-38 main: positive controls (edge, consumer, TLS 1.2, TLS 1.3); refused: no certificate, right name signed by another CA, TLS 1.1; client refuses a wrong broker name; edge publish reaches the consumer; edge receives nothing; consumer cannot publish; no retained message; 6000-byte message not delivered and sender disconnected.
+- Revocation, in Docker: edge-old with an empty CRL connects (accepted); put on the CRL WITHOUT restart: still accepted (FINDING: this Mosquitto does not re-read the CRL while running); after a restart: refused ("certificate revoked"). Production state restored (no tester, empty CRL).
+- Finding confirmed on 2.0.20 (it was first seen on 2.0.18 locally): the edge's SUBSCRIBE is answered 0x00 by the broker; the refusal is in delivery only.
+- Consequence to carry: revoking a client needs a broker restart (or an untested reload). Production target, to write in hardening-targets.md: short-lived certificates or OCSP so revocation does not depend on a restart.
+- Still not proven: that the broker's compose hardening keys are checked (no static FF), anything about the WAN (FF-29), the ACL warning on the bind-mounted `acl` (open decision above).

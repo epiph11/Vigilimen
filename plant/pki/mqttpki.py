@@ -211,9 +211,12 @@ def init(root: Path, tester: bool = False, revoke: bool = True) -> None:
 
     for ident in ["broker", *clients]:
         uid = UIDS.get(ident, 0)
+        chown = getattr(os, "chown", None)           # absent on Windows
         for p in [root / ident, *(root / ident).rglob("*")]:
+            if chown is None:
+                break
             try:
-                os.chown(p, uid, uid)
+                chown(p, uid, uid)
             except OSError:                          # local, non-root runs: ownership is irrelevant
                 pass
         print(f"mqttpki: {ident}: {sorted(x.name for x in (root / ident).iterdir())}", flush=True)
