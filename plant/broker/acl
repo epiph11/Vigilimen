@@ -1,0 +1,12 @@
+# ACL for the DMZ broker, keyed on the certificate CN (use_identity_as_username).
+# Default is deny: an identity not listed here can connect (if its certificate is valid) and do nothing.
+# No top-level lines, no `pattern` lines (they apply to everybody).
+# Topic scheme (ADR-020 point 6): vigilimen/v1/<site>/<asset>/<tag>
+
+# The edge only publishes. No `read` line: it cannot subscribe to anything (ADR-020 point 3).
+user edge
+topic write vigilimen/v1/#
+
+# The consumer (IT side) only reads. No `write` line: it cannot publish to the edge's topics.
+user consumer
+topic read vigilimen/v1/#
